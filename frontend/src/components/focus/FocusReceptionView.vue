@@ -7,10 +7,14 @@ import { fetchInvoicePrintData, fetchReceiptPrintData, fetchTicketPrintData } fr
 import { searchPatients } from '@/services/patients';
 import CabinetServiceDialog from '@/components/patients/CabinetServiceDialog.vue';
 import { fetchCabinetServices, fetchCabinetService } from '@/services/cabinetServices';
+import { fetchFactures, fetchPayments } from '@/services/caisseService';
+import { isCabinetServiceFacture, isInsuranceFactureRow } from '@/utils/factureRow';
+import SelectButton from 'primevue/selectbutton';
+import Tag from 'primevue/tag';
 import ContextMenu from 'primevue/contextmenu';
 import AppDialog from '@/components/layout/AppDialog.vue';
 import ToggleSwitch from 'primevue/toggleswitch';
-import { computed, onMounted, ref, toRefs, useAttrs } from 'vue';
+import { computed, onMounted, ref, toRefs, useAttrs, watch } from 'vue';
 
 defineOptions({ inheritAttrs: false });
 
@@ -135,6 +139,48 @@ const showCompletedSecretary = defineModel('showCompletedSecretary', {
 const newestFirstSecretary = ref(false);
 const showRevenueStatsModal = ref(false);
 const centerView = ref('queue');
+const centerViewOptions = [
+    { label: "File d'attente", value: 'queue' },
+    { label: 'Services cabinets', value: 'services' }
+];
+const dailyInvoices = ref([]);
+const dailyPayments = ref([]);
+const financialStatsLoading = ref(false);
+const financialStatsLoaded = ref(false);
+const financialStatsError = ref('');
+const todayDate = () => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+};
+let financialRefreshPending = false;
+const loadDailyFinancialData = async () => {
+    if (financialStatsLoading.value) {
+        financialRefreshPending = true;
+        return;
+    }
+    financialStatsLoading.value = true;
+    financialStatsError.value = '';
+    try {
+        const date = todayDate();
+        const [invoices, payments] = await Promise.all([
+            fetchFactures({ start: date, end: date }, token),
+            fetchPayments({ start: date, end: date }, token)
+        ]);
+        dailyInvoices.value = Array.isArray(invoices) ? invoices : invoices?.data || [];
+        dailyPayments.value = Array.isArray(payments) ? payments : payments?.data || [];
+        financialStatsLoaded.value = true;
+    } catch (_) {
+        financialStatsError.value = 'Impossible d’actualiser les statistiques financières du jour.';
+    } finally {
+        financialStatsLoading.value = false;
+        if (financialRefreshPending) {
+            financialRefreshPending = false;
+            loadDailyFinancialData();
+        }
+    }
+};
+watch(() => props.billingByConsultation, loadDailyFinancialData);
+watch(showRevenueStatsModal, (visible) => { if (visible) loadDailyFinancialData(); });
 const cabinetServices = ref([]);
 const selectedCabinetService = ref(null);
 const cabinetServicesLoading = ref(false);
@@ -181,7 +227,14 @@ const selectCabinetService = async (service) => {
     try { selectedCabinetService.value = await fetchCabinetService(service.id, token) || service; }
     catch (_) { /* Keep the list row details available if the full record cannot be loaded. */ }
 };
-onMounted(loadCabinetServices);
+onMounted(() => {
+    loadCabinetServices();
+    loadDailyFinancialData();
+});
+const onCabinetServiceCreated = () => {
+    loadCabinetServices();
+    loadDailyFinancialData();
+};
 
 const patientImpayeesAmount = (patientOrConsultation) => {
     if (!patientOrConsultation) return 0;
@@ -256,11 +309,6 @@ const patientContextMenuItems = computed(() => [
 const openPatientContextMenu = (event, patient) => {
     contextMenuPatient.value = patient;
     contextMenu.value?.show(event);
-};
-
-const isInsurancePayment = (payment) => {
-    const role = String(payment?.rolePaiement || payment?.role || '').toLowerCase();
-    return role === 'patient_insurance';
 };
 
 const isSameCalendarDay = (left, right) => {
@@ -398,112 +446,102 @@ const hasPriorReliquat = computed(() => selectedPriorUnpaidInvoices.value.length
 
 const selectedPriorReliquatTotal = computed(() => selectedPriorUnpaidInvoices.value.reduce((sum, invoice) => sum + (Number(invoice?.reste ?? 0) || 0), 0));
 
-const todayConsultations = computed(() => {
-    const now = new Date();
-    return (consultations.value || []).filter((consultation) => isSameCalendarDay(consultation?.createdAt, now));
-});
-
-const todayCabinetServices = computed(() => cabinetServices.value.filter((service) => isSameCalendarDay(service?.createdAt || service?.date, new Date())));
-
 const dailyRevenueStats = computed(() => {
-    const invoiceMap = new Map();
-    const paymentMap = new Map();
-    let totalRevenue = 0;
-
-    for (const consultation of todayConsultations.value) {
-        totalRevenue += Number(consultation.paiementAmount ?? 0) || 0;
-        const billing = props.billingByConsultation?.[consultation.id] || null;
-        if (!billing) {
-            continue;
-        }
-
-        const invoiceId = Number(billing.invoiceId ?? 0);
-        if (invoiceId > 0 && !invoiceMap.has(invoiceId)) {
-            invoiceMap.set(invoiceId, {
-                id: invoiceId,
-                total: Number(billing.total ?? 0) || 0,
-                remaining: Number(billing.remaining ?? 0) || 0,
-                state: billing.state || null
-            });
-        }
-
-        const payments = Array.isArray(billing.payments) ? billing.payments : [];
-        for (const payment of payments) {
-            const paymentKey = payment?.id ?? `${consultation.id}-${payment?.invoiceId ?? 'x'}-${payment?.date ?? 'n/a'}-${payment?.montant ?? 0}-${payment?.mode ?? '—'}`;
-            if (paymentMap.has(paymentKey)) {
-                continue;
-            }
-
-            paymentMap.set(paymentKey, payment);
-        }
-    }
-
-    const invoices = Array.from(invoiceMap.values());
-    const payments = Array.from(paymentMap.values());
-    const cabinetServiceRevenue = todayCabinetServices.value.reduce((sum, service) => {
-        const payments = service?.facture?.paiements || service?.facture?.payments || [];
-        const paid = payments.length ? payments.reduce((subtotal, payment) => subtotal + (Number(payment?.montant ?? payment?.amount) || 0), 0) : Number(service?.facture?.montantEncaisse ?? service?.facture?.paye ?? service?.montantEncaisse ?? 0) || 0;
-        return sum + paid;
-    }, 0);
-    totalRevenue = totalRevenue + payments.reduce((sum, payment) => sum + (Number(payment?.montant) || 0), 0) + cabinetServiceRevenue;
-    const totalUnpaid = invoices.reduce((sum, invoice) => sum + (Number(invoice?.remaining) || 0), 0);
-    const paymentModeRows = Object.entries(
-        payments.reduce((acc, payment) => {
-            const mode = payment?.mode || 'Autre';
-            acc[mode] = (acc[mode] || 0) + (Number(payment?.montant) || 0);
-            return acc;
-        }, {})
-    )
-        .map(([mode, amount]) => ({ mode, amount: Number(amount) || 0 }))
-        .sort((left, right) => right.amount - left.amount);
-
-    const statusCounts = {
-        paid: 0,
-        partial: 0,
-        unpaid: 0,
-        freeNotValidated: 0
-    };
-
-    invoices.forEach((invoice) => {
-        const total = Number(invoice.total) || 0;
-        const remaining = Number(invoice.remaining) || 0;
-        const severity = invoice.state?.severity || null;
-
-        if (remaining === 0 && total > 0) {
-            statusCounts.paid += 1;
-            return;
-        }
-
-        if (remaining === 0 && total === 0 && severity !== 'success') {
-            statusCounts.freeNotValidated += 1;
-            return;
-        }
-
-        if (remaining === total) {
-            statusCounts.unpaid += 1;
-            return;
-        }
-
-        statusCounts.partial += 1;
+    const amount = (value) => Number(value) || 0;
+    const invoiceFamily = (invoice) => isCabinetServiceFacture(invoice) ? 'service_cabinet' : isInsuranceFactureRow(invoice) ? 'facture_assurance' : 'facture';
+    const familyDefinitions = [
+        { key: 'facture', label: 'Factures normales', icon: 'pi pi-file' },
+        { key: 'facture_assurance', label: 'Factures avec assurance', icon: 'pi pi-shield' },
+        { key: 'service_cabinet', label: 'Services cabinets', icon: 'pi pi-building' }
+    ];
+    const invoiceRows = familyDefinitions.map((family) => {
+        const rows = dailyInvoices.value.filter((invoice) => invoiceFamily(invoice) === family.key);
+        return {
+            ...family,
+            count: rows.length,
+            total: rows.reduce((sum, invoice) => sum + amount(invoice.montantTotal ?? invoice.montant), 0),
+            patient: rows.reduce((sum, invoice) => sum + amount(invoice.montantPatient ?? invoice.montant), 0),
+            insurer: rows.reduce((sum, invoice) => sum + amount(invoice.montantAssureur), 0),
+            remaining: rows.reduce((sum, invoice) => sum + amount(invoice.reste), 0)
+        };
     });
 
-    const insurancePayments = payments.filter((payment) => isInsurancePayment(payment));
-
+    // The cashdesk journal is the single source for today's receipts, including old invoices.
+    const uniquePayments = new Map();
+    dailyPayments.value.forEach((payment, index) => {
+        uniquePayments.set(payment.pId ?? payment.id ?? `row-${index}`, payment);
+    });
+    const invoiceDates = new Map(dailyInvoices.value.map((invoice) => [`${invoiceFamily(invoice)}-${invoice.id}`, invoice.date]));
+    const paymentDetails = [...uniquePayments.values()].map((payment) => {
+        const family = payment.type === 'devis' ? 'facture' : payment.type;
+        const invoiceDate = payment.factureDate || invoiceDates.get(`${family}-${payment.factureId}`);
+        const parsedInvoiceDate = parseDateTime(invoiceDate);
+        let context = 'Date de facture non disponible';
+        let contextKey = 'unknown';
+        if (family === 'ticket') {
+            context = 'Ticket de consultation';
+            contextKey = 'ticket';
+        } else if (parsedInvoiceDate && isSameCalendarDay(parsedInvoiceDate, new Date())) {
+            context = 'Facture du jour';
+            contextKey = 'today';
+        } else if (parsedInvoiceDate && parsedInvoiceDate < new Date(`${todayDate()}T00:00:00`)) {
+            context = 'Règlement de reliquat';
+            contextKey = 'prior';
+        }
+        return {
+            ...payment,
+            family,
+            familyLabel: familyDefinitions.find((item) => item.key === family)?.label || (family === 'ticket' ? 'Tickets de consultation' : 'Autres encaissements'),
+            invoiceDate,
+            context,
+            contextKey,
+            montant: amount(payment.montant)
+        };
+    });
+    const paymentFamilies = [...familyDefinitions, { key: 'ticket', label: 'Tickets de consultation', icon: 'pi pi-ticket' }];
+    if (paymentDetails.some((payment) => !paymentFamilies.some((family) => family.key === payment.family))) {
+        paymentFamilies.push({ key: 'other', label: 'Autres encaissements', icon: 'pi pi-wallet' });
+    }
+    const paymentRows = paymentFamilies.map((family) => {
+        const rows = paymentDetails.filter((payment) => family.key === 'other'
+            ? !['facture', 'facture_assurance', 'service_cabinet', 'ticket'].includes(payment.family)
+            : payment.family === family.key);
+        return {
+            ...family,
+            count: rows.length,
+            documents: new Set(rows.map((payment) => payment.factureId ?? payment.consultationId ?? payment.pId)).size,
+            today: rows.filter((payment) => ['today', 'ticket'].includes(payment.contextKey)).reduce((sum, payment) => sum + payment.montant, 0),
+            prior: rows.filter((payment) => payment.contextKey === 'prior').reduce((sum, payment) => sum + payment.montant, 0),
+            unknown: rows.filter((payment) => payment.contextKey === 'unknown').reduce((sum, payment) => sum + payment.montant, 0),
+            total: rows.reduce((sum, payment) => sum + payment.montant, 0)
+        };
+    });
+    const modes = new Map();
+    paymentDetails.forEach((payment) => {
+        const mode = payment.mode || 'Non renseigné';
+        const row = modes.get(mode) || { mode, amount: 0, count: 0 };
+        row.amount += payment.montant;
+        row.count += 1;
+        modes.set(mode, row);
+    });
     return {
-        totalConsultations: todayConsultations.value.length,
-        totalInvoices: invoices.length,
-        totalRevenue: totalRevenue,
-        totalCabinetServices: todayCabinetServices.value.length,
-        cabinetServiceRevenue,
-        totalUnpaid,
-        totalPaymentsCount: payments.length,
-        totalInsurance: insurancePayments.reduce((sum, payment) => sum + (Number(payment?.montant) || 0), 0),
-        paymentModeRows,
-        statusCounts
+        invoiceRows,
+        paymentRows,
+        paymentDetails,
+        totalInvoices: invoiceRows.reduce((sum, row) => sum + row.count, 0),
+        totalBilled: invoiceRows.reduce((sum, row) => sum + row.total, 0),
+        totalUnpaid: invoiceRows.reduce((sum, row) => sum + row.remaining, 0),
+        totalRevenue: paymentDetails.reduce((sum, payment) => sum + payment.montant, 0),
+        totalPaymentsCount: paymentDetails.length,
+        totalPrior: paymentRows.reduce((sum, row) => sum + row.prior, 0),
+        hasUnknownContext: paymentRows.some((row) => row.unknown !== 0),
+        paymentModeRows: [...modes.values()].sort((left, right) => right.amount - left.amount)
     };
 });
 
-const revenueButtonLabel = computed(() => `Encaissements · ${formatFcfa(dailyRevenueStats.value.totalRevenue)}`);
+const revenueButtonLabel = computed(() => financialStatsLoaded.value
+    ? `Encaissements · ${formatFcfa(dailyRevenueStats.value.totalRevenue)}`
+    : financialStatsLoading.value ? 'Encaissements · Chargement…' : 'Encaissements · Indisponibles');
 
 const selectedInvoicePayments = computed(() => {
     const payments = currentBilling.value?.payments || [];
@@ -865,17 +903,15 @@ const handleCancelWithConfirm = (event, consultation) => {
             <div class="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-surface-200/60 bg-white/90 backdrop-blur-sm dark:border-surface-700/60 dark:bg-surface-900/90">
                 <!-- Header -->
                 <div class="shrink-0 border-b border-surface-200/60 px-3 py-3 dark:border-surface-700/60 sm:px-4">
-                    <div class="flex items-center justify-between gap-2">
-                        <div class="min-w-0">
-                            <select v-model="centerView" class="max-w-[190px] rounded-lg border border-surface-200 bg-white px-2 py-1.5 text-sm font-semibold text-surface-900 dark:border-surface-700 dark:bg-surface-800 dark:text-surface-50" aria-label="Vue centrale">
-                                <option value="queue">File d'attente</option>
-                                <option value="services">Services cabinets</option>
-                            </select>
-                            <p class="text-xs text-surface-500">{{ centerView === 'queue' ? `${secretaryRows.length} consultation(s)` : `${cabinetServices.length} service(s)` }}</p>
+                    <div class="flex flex-col gap-3">
+                        <div class="flex min-w-0 items-center justify-between gap-2">
+                            <SelectButton v-model="centerView" :options="centerViewOptions" option-label="label" option-value="value" :allow-empty="false" size="small" aria-label="Vue centrale" />
+                            <Tag :value="centerView === 'queue' ? secretaryRows.length : cabinetServices.length" :icon="centerView === 'queue' ? 'pi pi-users' : 'pi pi-building'" severity="info" :aria-label="centerView === 'queue' ? 'Nombre de consultations' : 'Nombre de services cabinets'" />
                         </div>
-                        <div class="flex shrink-0 items-center gap-1.5 sm:gap-2">
-                            <ToggleSwitch v-model="showCompletedSecretary" />
+                        <div class="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
+                            <ToggleSwitch v-if="centerView === 'queue'" v-model="showCompletedSecretary" />
                             <button
+                                v-if="centerView === 'queue'"
                                 :class="['flex h-10 w-10 items-center justify-center rounded-xl transition-all xl:h-8 xl:w-8', newestFirstSecretary ? 'bg-primary-500 text-white shadow-md' : 'bg-surface-100 text-surface-500 hover:bg-surface-200']"
                                 :title="newestFirstSecretary ? 'Plus récentes en haut' : 'Plus anciennes en haut'"
                                 @click="newestFirstSecretary = !newestFirstSecretary"
@@ -888,8 +924,8 @@ const handleCancelWithConfirm = (event, consultation) => {
                                 :title="revenueButtonLabel"
                                 @click="showRevenueStatsModal = true"
                             >
-                                <span class="sm:hidden"><i class="pi pi-wallet"></i></span>
-                                <span class="hidden sm:inline">{{ revenueButtonLabel }}</span>
+                                <i :class="financialStatsLoading ? 'pi pi-spin pi-spinner' : 'pi pi-wallet'" class="mr-1.5"></i>
+                                <span>{{ revenueButtonLabel }}</span>
                             </button>
                             <button
                                 @click="centerView === 'queue' ? emit('open-create-consultation') : openCabinetService(null)"
@@ -911,65 +947,112 @@ const handleCancelWithConfirm = (event, consultation) => {
                     :show-footer="false"
                 >
                     <div class="space-y-6">
-                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                            <div class="rounded-2xl border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800/40">
-                                <span class="text-xs uppercase tracking-wide text-surface-500">Consultations</span>
-                                <strong class="mt-2 block text-2xl text-surface-900 dark:text-surface-50">{{ dailyRevenueStats.totalConsultations }}</strong>
-                            </div>
-                            <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-800/60 dark:bg-emerald-950/20">
-                                <span class="text-xs uppercase tracking-wide text-emerald-600 dark:text-emerald-300">Encaissements du jour</span>
-                                <strong class="mt-2 block text-2xl text-emerald-700 dark:text-emerald-200">{{ formatFcfa(dailyRevenueStats.totalRevenue) }}</strong>
-                                <span class="mt-1 block text-xs text-emerald-700 dark:text-emerald-300">Services cabinets : {{ formatFcfa(dailyRevenueStats.cabinetServiceRevenue) }} · {{ dailyRevenueStats.totalCabinetServices }} service(s)</span>
-                            </div>
-                            <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800/60 dark:bg-amber-950/20">
-                                <span class="text-xs uppercase tracking-wide text-amber-600 dark:text-amber-300">Reste à payer</span>
-                                <strong class="mt-2 block text-2xl text-amber-700 dark:text-amber-200">{{ formatFcfa(dailyRevenueStats.totalUnpaid) }}</strong>
-                            </div>
-                            <div class="rounded-2xl border border-sky-200 bg-sky-50 p-4 dark:border-sky-800/60 dark:bg-sky-950/20">
-                                <span class="text-xs uppercase tracking-wide text-sky-600 dark:text-sky-300">Paiements</span>
-                                <strong class="mt-2 block text-2xl text-sky-700 dark:text-sky-200">{{ dailyRevenueStats.totalPaymentsCount }}</strong>
-                            </div>
+                        <div class="flex flex-wrap items-center justify-between gap-3 text-sm text-surface-500">
+                            <span><i class="pi pi-calendar mr-2"></i>{{ new Date().toLocaleDateString('fr-FR', { dateStyle: 'full' }) }}</span>
+                            <button type="button" class="inline-flex items-center gap-2 font-medium text-primary-600 dark:text-primary-300" :disabled="financialStatsLoading" @click="loadDailyFinancialData">
+                                <i :class="financialStatsLoading ? 'pi pi-spin pi-spinner' : 'pi pi-refresh'"></i>Actualiser
+                            </button>
                         </div>
+                        <div v-if="financialStatsError" role="alert" class="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+                            {{ financialStatsError }} {{ financialStatsLoaded ? 'Les derniers chiffres chargés restent affichés.' : '' }}
+                        </div>
+                        <div v-if="!financialStatsLoaded && financialStatsLoading" class="py-8 text-center text-surface-500"><i class="pi pi-spin pi-spinner mr-2"></i>Chargement des statistiques…</div>
+                        <template v-if="financialStatsLoaded">
+                            <section class="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-800 dark:bg-emerald-950/25">
+                                <div class="flex flex-wrap items-start justify-between gap-4">
+                                    <div>
+                                        <h4 class="text-sm font-semibold text-emerald-800 dark:text-emerald-200">Total encaissé aujourd’hui</h4>
+                                        <p class="mt-2 text-3xl font-bold text-emerald-700 dark:text-emerald-200">{{ formatFcfa(dailyRevenueStats.totalRevenue) }}</p>
+                                        <p class="mt-2 text-xs text-emerald-700 dark:text-emerald-300">Factures normales, parts patient des assurances, services cabinets et tickets de consultation.</p>
+                                    </div>
+                                    <Tag :value="dailyRevenueStats.totalPaymentsCount" icon="pi pi-wallet" severity="success" aria-label="Nombre de paiements du jour" />
+                                </div>
+                                <div class="mt-4 grid gap-3 border-t border-emerald-200 pt-4 text-sm dark:border-emerald-800 sm:grid-cols-2">
+                                    <div><span class="text-emerald-800 dark:text-emerald-300">Dont règlements de reliquats</span><strong class="mt-1 block text-emerald-900 dark:text-emerald-100">{{ formatFcfa(dailyRevenueStats.totalPrior) }}</strong></div>
+                                    <div><span class="text-emerald-800 dark:text-emerald-300">Reste patient sur les factures du jour</span><strong class="mt-1 block text-emerald-900 dark:text-emerald-100">{{ formatFcfa(dailyRevenueStats.totalUnpaid) }}</strong></div>
+                                </div>
+                            </section>
 
-                        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                            <div class="rounded-2xl border border-surface-200 bg-white p-4 dark:border-surface-700 dark:bg-surface-900/50">
-                                <h4 class="text-sm font-semibold text-surface-900 dark:text-surface-50">État des factures</h4>
-                                <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
-                                    <div class="rounded-xl bg-emerald-50 px-3 py-3 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-300">
-                                        Payées: <strong>{{ dailyRevenueStats.statusCounts.paid }}</strong>
-                                    </div>
-                                    <div class="rounded-xl bg-amber-50 px-3 py-3 text-amber-700 dark:bg-amber-950/20 dark:text-amber-300">
-                                        Partielles: <strong>{{ dailyRevenueStats.statusCounts.partial }}</strong>
-                                    </div>
-                                    <div class="rounded-xl bg-rose-50 px-3 py-3 text-rose-700 dark:bg-rose-950/20 dark:text-rose-300">
-                                        Impayées: <strong>{{ dailyRevenueStats.statusCounts.unpaid }}</strong>
-                                    </div>
-                                    <div class="rounded-xl bg-surface-100 px-3 py-3 text-surface-700 dark:bg-surface-800 dark:text-surface-300">
-                                        Vides non validées: <strong>{{ dailyRevenueStats.statusCounts.freeNotValidated }}</strong>
+                            <section class="overflow-hidden rounded-2xl border border-surface-200 dark:border-surface-700">
+                                <div class="border-b border-surface-200 p-4 dark:border-surface-700">
+                                    <h4 class="font-semibold text-surface-900 dark:text-surface-50">Facturation du jour</h4>
+                                    <p class="mt-1 text-xs text-surface-500">Factures émises aujourd’hui. Les montants facturés sont distincts des sommes réellement encaissées.</p>
+                                </div>
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-sm">
+                                        <thead class="bg-surface-50 text-xs text-surface-500 dark:bg-surface-800/50">
+                                            <tr><th class="p-3 text-left">Type</th><th class="p-3 text-right">Nombre</th><th class="p-3 text-right">Montant facturé</th><th class="p-3 text-right">Part patient</th><th class="p-3 text-right">Part assurance</th><th class="p-3 text-right">Reste patient</th></tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-surface-100 dark:divide-surface-800">
+                                            <tr v-for="row in dailyRevenueStats.invoiceRows" :key="row.key">
+                                                <th class="whitespace-nowrap p-3 text-left font-medium"><i :class="row.icon" class="mr-2 text-surface-400"></i>{{ row.label }}</th>
+                                                <td class="p-3 text-right"><Tag :value="row.count" severity="secondary" /></td>
+                                                <td class="whitespace-nowrap p-3 text-right font-semibold">{{ formatFcfa(row.total) }}</td>
+                                                <td class="whitespace-nowrap p-3 text-right">{{ formatFcfa(row.patient) }}</td>
+                                                <td class="whitespace-nowrap p-3 text-right">{{ formatFcfa(row.insurer) }}</td>
+                                                <td class="whitespace-nowrap p-3 text-right text-amber-700 dark:text-amber-300">{{ formatFcfa(row.remaining) }}</td>
+                                            </tr>
+                                        </tbody>
+                                        <tfoot class="border-t border-surface-200 bg-surface-50 font-semibold dark:border-surface-700 dark:bg-surface-800/50">
+                                            <tr><th class="p-3 text-left">Total</th><td class="p-3 text-right">{{ dailyRevenueStats.totalInvoices }}</td><td class="whitespace-nowrap p-3 text-right">{{ formatFcfa(dailyRevenueStats.totalBilled) }}</td><td colspan="2"></td><td class="whitespace-nowrap p-3 text-right">{{ formatFcfa(dailyRevenueStats.totalUnpaid) }}</td></tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </section>
+
+                            <section class="overflow-hidden rounded-2xl border border-surface-200 dark:border-surface-700">
+                                <div class="border-b border-surface-200 p-4 dark:border-surface-700">
+                                    <h4 class="font-semibold text-surface-900 dark:text-surface-50">Origine des encaissements</h4>
+                                    <p class="mt-1 text-xs text-surface-500">Tous les paiements enregistrés aujourd’hui, quelle que soit la date de la facture. Les reliquats correspondent aux factures antérieures à aujourd’hui.</p>
+                                </div>
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-sm">
+                                        <thead class="bg-surface-50 text-xs text-surface-500 dark:bg-surface-800/50">
+                                            <tr><th class="p-3 text-left">Origine</th><th class="p-3 text-right">Documents</th><th class="p-3 text-right">Paiements</th><th class="p-3 text-right">Factures du jour / tickets</th><th class="p-3 text-right">Reliquats</th><th v-if="dailyRevenueStats.hasUnknownContext" class="p-3 text-right">Date non renseignée</th><th class="p-3 text-right">Total encaissé</th></tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-surface-100 dark:divide-surface-800">
+                                            <tr v-for="row in dailyRevenueStats.paymentRows" :key="row.key">
+                                                <th class="whitespace-nowrap p-3 text-left font-medium"><i :class="row.icon" class="mr-2 text-surface-400"></i>{{ row.label }}<small v-if="row.key === 'facture_assurance'" class="mt-1 block font-normal text-surface-500">Part patient encaissée</small></th>
+                                                <td class="p-3 text-right">{{ row.documents }}</td><td class="p-3 text-right">{{ row.count }}</td>
+                                                <td class="whitespace-nowrap p-3 text-right">{{ formatFcfa(row.today) }}</td>
+                                                <td class="whitespace-nowrap p-3 text-right">{{ formatFcfa(row.prior) }}</td>
+                                                <td v-if="dailyRevenueStats.hasUnknownContext" class="whitespace-nowrap p-3 text-right">{{ formatFcfa(row.unknown) }}</td>
+                                                <td class="whitespace-nowrap p-3 text-right font-semibold text-emerald-700 dark:text-emerald-300">{{ formatFcfa(row.total) }}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </section>
+
+                            <section>
+                                <h4 class="font-semibold text-surface-900 dark:text-surface-50">Répartition par moyen de paiement</h4>
+                                <div class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                                    <div v-for="row in dailyRevenueStats.paymentModeRows" :key="row.mode" class="rounded-xl border border-surface-200 p-4 dark:border-surface-700">
+                                        <div class="flex items-center justify-between gap-2"><span class="text-sm text-surface-500">{{ row.mode }}</span><Tag :value="row.count" icon="pi pi-wallet" severity="secondary" /></div>
+                                        <strong class="mt-2 block text-lg">{{ formatFcfa(row.amount) }}</strong>
                                     </div>
                                 </div>
-                            </div>
+                                <p v-if="!dailyRevenueStats.paymentModeRows.length" class="mt-3 text-sm text-surface-500">Aucun encaissement enregistré aujourd’hui.</p>
+                            </section>
 
-                            <div class="rounded-2xl border border-surface-200 bg-white p-4 dark:border-surface-700 dark:bg-surface-900/50">
-                                <h4 class="text-sm font-semibold text-surface-900 dark:text-surface-50">Assurances</h4>
-                                <div class="mt-4 grid grid-cols-1 gap-3 text-sm">
-                                    <div class="rounded-xl bg-sky-50 px-3 py-3 text-sky-700 dark:bg-sky-950/20 dark:text-sky-300">
-                                        Parts patient encaissées: <strong>{{ formatFcfa(dailyRevenueStats.totalInsurance) }}</strong>
-                                    </div>
+                            <section v-if="dailyRevenueStats.paymentDetails.length" class="overflow-hidden rounded-2xl border border-surface-200 dark:border-surface-700">
+                                <div class="border-b border-surface-200 p-4 dark:border-surface-700"><h4 class="font-semibold text-surface-900 dark:text-surface-50">Journal des encaissements du jour</h4></div>
+                                <div class="max-h-80 overflow-auto">
+                                    <table class="w-full text-sm">
+                                        <thead class="sticky top-0 bg-surface-50 text-xs text-surface-500 dark:bg-surface-800"><tr><th class="p-3 text-left">Heure / patient</th><th class="p-3 text-left">Document</th><th class="p-3 text-left">Contexte</th><th class="p-3 text-left">Moyen</th><th class="p-3 text-right">Montant</th></tr></thead>
+                                        <tbody class="divide-y divide-surface-100 dark:divide-surface-800">
+                                            <tr v-for="(payment, index) in dailyRevenueStats.paymentDetails" :key="payment.pId ?? payment.id ?? index">
+                                                <td class="p-3"><span class="block text-xs text-surface-500">{{ formatTime(payment.date) }}</span><span class="whitespace-nowrap">{{ typeof payment.patient === 'string' ? payment.patient : patientDisplayName(payment.patient) }}</span></td>
+                                                <td class="p-3"><span class="block whitespace-nowrap">{{ payment.familyLabel }}</span><small class="text-surface-500">#{{ payment.factureId }}<span v-if="payment.invoiceDate"> · {{ formatDateTime(payment.invoiceDate).split(' ')[0] }}</span></small></td>
+                                                <td class="p-3"><Tag :value="payment.context" :severity="payment.contextKey === 'prior' ? 'warn' : 'secondary'" /></td>
+                                                <td class="whitespace-nowrap p-3">{{ payment.mode }}</td>
+                                                <td class="whitespace-nowrap p-3 text-right font-semibold">{{ formatFcfa(payment.montant) }}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
                                 </div>
-                            </div>
-                        </div>
-
-                        <div class="rounded-2xl border border-surface-200 bg-white p-4 dark:border-surface-700 dark:bg-surface-900/50">
-                            <h4 class="text-sm font-semibold text-surface-900 dark:text-surface-50">Encaissements par mode de paiement</h4>
-                            <div v-if="dailyRevenueStats.paymentModeRows.length" class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                                <div v-for="item in dailyRevenueStats.paymentModeRows" :key="item.mode" class="rounded-xl border border-surface-200 bg-surface-50 px-4 py-3 dark:border-surface-700 dark:bg-surface-800/40">
-                                    <span class="text-xs uppercase tracking-wide text-surface-500">{{ item.mode }}</span>
-                                    <strong class="mt-2 block text-lg text-surface-900 dark:text-surface-50">{{ formatFcfa(item.amount) }}</strong>
-                                </div>
-                            </div>
-                            <div v-else class="mt-4 rounded-xl border border-dashed border-surface-300 px-4 py-5 text-sm text-surface-500 dark:border-surface-700 dark:text-surface-400">Aucun paiement enregistré aujourd'hui.</div>
-                        </div>
+                            </section>
+                        </template>
                     </div>
                 </AppDialog>
 
@@ -1131,12 +1214,12 @@ const handleCancelWithConfirm = (event, consultation) => {
                     <div class="space-y-2 rounded-xl border border-surface-200 p-4 text-sm dark:border-surface-700">
                         <div class="flex justify-between"><span class="text-surface-500">Date</span><strong>{{ formatDateTime(selectedCabinetService.createdAt || selectedCabinetService.date) }}</strong></div>
                         <div class="flex justify-between"><span class="text-surface-500">Montant</span><strong>{{ formatFcfa(selectedCabinetService.montant) }}</strong></div>
-                        <div class="flex justify-between"><span class="text-surface-500">Réglé</span><strong>{{ formatFcfa(selectedCabinetService.facture?.montantEncaisse ?? selectedCabinetService.facture?.paye ?? selectedCabinetService.montantEncaisse ?? 0) }}</strong></div>
+                        <div class="flex justify-between"><span class="text-surface-500">Réglé</span><strong>{{ formatFcfa(selectedCabinetService.facture?.partPatientPayee ?? 0) }}</strong></div>
                         <div class="flex justify-between"><span class="text-surface-500">Reste</span><strong>{{ formatFcfa(selectedCabinetService.facture?.reste ?? selectedCabinetService.montant) }}</strong></div>
                         <div v-if="selectedCabinetService.observation" class="border-t border-surface-200 pt-2 dark:border-surface-700"><span class="text-surface-500">Note</span><p class="mt-1">{{ selectedCabinetService.observation }}</p></div>
                     </div>
                 </div>
-                <div v-else-if="currentConsultation" class="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 scrollbar-thin">
+                <div v-else-if="centerView === 'queue' && currentConsultation" class="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 scrollbar-thin">
                     <!-- Carte patient -->
                     <div
                         :class="[
@@ -1415,7 +1498,7 @@ const handleCancelWithConfirm = (event, consultation) => {
         :patient-id="cabinetServicePatient?.id"
         :patient-name="cabinetServicePatient?.fullname || cabinetServicePatient?.nom || ''"
         :allow-patient-select="!cabinetServicePatient?.id"
-        @created="loadCabinetServices"
+        @created="onCabinetServiceCreated"
     />
 </template>
 

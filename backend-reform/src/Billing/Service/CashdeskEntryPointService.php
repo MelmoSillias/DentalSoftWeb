@@ -198,6 +198,9 @@ class CashdeskEntryPointService
                 'date' => $p->getDate()->format('Y-m-d H:i:s'),
                 'type' => $type,
                 'pId' => $p->getId(),
+                'factureDate' => ($p->getFacture()?->getDateFacture()
+                    ?? $p->getFactureAssurance()?->getDateFacture()
+                    ?? $p->getFactureCabinet()?->getDateFacture())?->format('Y-m-d'),
             ];
         }, $paiements);
     }
