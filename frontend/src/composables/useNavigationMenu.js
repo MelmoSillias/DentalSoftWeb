@@ -20,6 +20,7 @@ export function useNavigationMenu() {
     const settingsSection = {
         label: 'Paramètres',
         items: [
+            { label: 'Apparence', icon: 'pi pi-fw pi-palette', iconKey: 'appearance', to: '/parametres/apparence' },
             { label: 'Paramètres généraux', icon: 'pi pi-fw pi-cog', iconKey: 'general-options', to: '/parametres/general-options' },
             { label: 'API SMS', icon: 'pi pi-fw pi-send', iconKey: 'api-sms', to: '/administration/api-sms', adminOnly: true, requiresInternet: true }
         ]
@@ -189,7 +190,7 @@ export function useNavigationMenu() {
             menu.push({ label: 'Administration', items: adminItems });
         }
 
-        if (hasAnyRole(['ROLE_ADMIN', 'ROLE_SECRETAIRE', 'ROLE_TOPO'])) {
+        {
             menu.push({
                 ...settingsSection,
                 items: settingsSection.items.filter((item) => {

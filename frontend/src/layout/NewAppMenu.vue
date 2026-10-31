@@ -44,7 +44,8 @@ const baseModel = ref([
 const settingsSection = {
     label: 'Paramètres',
     items: [
-        { label: 'Paramètres généraux', icon: 'pi pi-fw pi-cog', to: '/parametres/apparence' },
+        { label: 'Apparence', icon: 'pi pi-fw pi-palette', to: '/parametres/apparence' },
+        { label: 'Paramètres généraux', icon: 'pi pi-fw pi-cog', to: '/parametres/general-options' },
         { label: 'API SMS', icon: 'pi pi-fw pi-send', to: '/administration/api-sms', adminOnly: true, requiresInternet: true }
         // { label: 'Options des fichiers', icon: 'pi pi-fw pi-file-edit', to: '/parametres/fileOptions' },
     ]
@@ -122,8 +123,8 @@ const model = computed(() => {
         menu.push({ label: 'Administration', items: adminItems });
     }
 
-    // Paramètres : mêmes rôles que dans le routage (admin, secrétaire, topo)
-    if (hasAnyRole(['ROLE_ADMIN', 'ROLE_SECRETAIRE', 'ROLE_TOPO'])) {
+    // Les préférences d’apparence sont accessibles à tout utilisateur connecté.
+    {
         menu.push({
             ...settingsSection,
             items: settingsSection.items.filter((item) => {

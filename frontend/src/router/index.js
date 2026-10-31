@@ -176,6 +176,12 @@ const router = createRouter({
                 //    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', "ROLE_SECRETAIRE", "ROLE_TOPO"] }
                 // },
                 {
+                    path: '/parametres/apparence',
+                    name: 'settings-appearance',
+                    component: () => import('@/views/settings/AppearanceSettings.vue'),
+                    meta: { requiresAuth: true }
+                },
+                {
                     path: '/parametres/general-options',
                     name: 'settings-general-options',
                     component: () => import('@/views/settings/GeneralOptions.vue'),
