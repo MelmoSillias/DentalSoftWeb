@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import { createPayroll, deletePayroll, fetchPayroll, fetchPayrollContext, fetchPayrollPaymentMethods, fetchPayrollPrintPayload, fetchPayrolls, updatePayroll } from '@/services/rhManagementService';
+import { createPayroll, deletePayroll, fetchEmployeePayrolls, fetchPayroll, fetchPayrollContext, fetchPayrollPaymentMethods, fetchPayrollPrintPayload, fetchPayrolls, updatePayroll } from '@/services/rhManagementService';
 
 const payrolls = ref([]);
 const totalRecords = ref(0);
@@ -8,10 +8,18 @@ const contextLoading = ref(false);
 const paymentContext = ref(null);
 const paymentMethods = ref([]);
 const error = ref(null);
+let contextRequestId = 0;
 
 const getToken = () => localStorage.getItem('token') || localStorage.getItem('authToken');
 
 export function usePayrolls() {
+    const fetchEmployees = (filters) => fetchEmployeePayrolls(filters, getToken());
+    const resetContext = () => {
+        contextRequestId += 1;
+        paymentContext.value = null;
+        contextLoading.value = false;
+        error.value = null;
+    };
     const fetchAll = async ({ employeeId = null, month, year }) => {
         const rows = [];
         let total = 0;
@@ -56,7 +64,7 @@ export function usePayrolls() {
             const data = await fetchPayrollPaymentMethods(getToken());
             paymentMethods.value = data;
             return data;
-        } catch (err) {
+        } catch {
             paymentMethods.value = [];
             return [];
         }
@@ -73,8 +81,11 @@ export function usePayrolls() {
     };
 
     const fetchContext = async (employeeId, { month, year, day = null } = {}) => {
+        const requestId = ++contextRequestId;
+        paymentContext.value = null;
+        error.value = null;
         if (!employeeId || !month || !year) {
-            paymentContext.value = null;
+            contextLoading.value = false;
             return null;
         }
 
@@ -82,14 +93,16 @@ export function usePayrolls() {
         error.value = null;
         try {
             const data = await fetchPayrollContext(employeeId, { month, year, day }, getToken());
+            if (requestId !== contextRequestId) return null;
             paymentContext.value = data;
             return data;
         } catch (err) {
+            if (requestId !== contextRequestId) return null;
             error.value = err?.response?.data?.message || err?.message || 'Erreur lors du calcul du salaire.';
             paymentContext.value = null;
             return null;
         } finally {
-            contextLoading.value = false;
+            if (requestId === contextRequestId) contextLoading.value = false;
         }
     };
 
@@ -146,6 +159,8 @@ export function usePayrolls() {
         fetchPaymentMethods,
         fetchOne,
         fetchContext,
+        fetchEmployees,
+        resetContext,
         add,
         edit,
         remove,

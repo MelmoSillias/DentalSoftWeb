@@ -20,6 +20,7 @@ import AppDialog from '@/components/layout/AppDialog.vue';
 import LeaveFormDialog from '@/components/administration/LeaveFormDialog.vue';
 import PayrollPaymentDialog from '@/components/administration/PayrollPaymentDialog.vue';
 import PayrollDetailDialog from '@/components/administration/PayrollDetailDialog.vue';
+import EmployeePayrollTable from '@/components/administration/EmployeePayrollTable.vue';
 import PrintDataTablePage from '@/components/print/PrintDataTablePage.vue';
 import PrintPayrollSlipPage from '@/components/print/PrintPayrollSlipPage.vue';
 import { useEmployees } from '@/composables/useEmployees';
@@ -61,6 +62,8 @@ const {
     error: payrollError,
     fetchData: fetchPayrolls,
     fetchAll: fetchAllPayrolls,
+    fetchEmployees: fetchEmployeePayrolls,
+    resetContext: resetPayrollContext,
     fetchPaymentMethods,
     fetchOne: fetchPayrollOne,
     fetchContext: fetchPayrollContext,
@@ -87,6 +90,12 @@ const selectedPayroll = ref(null);
 const payrollDetailSaving = ref(false);
 const payrollSaving = ref(false);
 const payrollPrinting = ref(false);
+const payrollView = ref('payments');
+const payrollViewOptions = [{ label: 'Vue des paiements', value: 'payments' }, { label: 'Vue des employés', value: 'employees' }];
+const employeePayrollRows = ref([]);
+const employeePayrollLoading = ref(false);
+const payrollInitialEmployeeId = ref(null);
+let employeePayrollRequestId = 0;
 
 const leaveDialogVisible = ref(false);
 const leaveMode = ref('create');
@@ -111,7 +120,7 @@ let trashSearchTimer = null;
 
 let guidedTourDemoActive = false;
 
-const employeeOptions = computed(() => employees.value || []);
+const employeeOptions = computed(() => [...new Map([...(employees.value || []), ...employeePayrollRows.value.map((row) => row.context.employee)].map((employee) => [employee.id, employee])).values()]);
 
 const filteredEmployees = computed(() => {
     const rows = Array.isArray(employees.value) ? employees.value : [];
@@ -190,6 +199,22 @@ const loadEmployees = async () => {
 const loadPayrolls = async ({ page = payrollPage.value, rows = payrollRows.value } = {}) => {
     payrollPage.value = page;
     payrollRows.value = rows;
+
+    if (payrollView.value === 'employees') {
+        const requestId = ++employeePayrollRequestId;
+        employeePayrollLoading.value = true;
+        employeePayrollRows.value = [];
+        try {
+            if (!payrollMonth.value || !payrollYear.value) return;
+            const data = await fetchEmployeePayrolls({ month: payrollMonth.value, year: payrollYear.value, employeeId: payrollEmployeeId.value });
+            if (requestId === employeePayrollRequestId) employeePayrollRows.value = data;
+        } catch (err) {
+            if (requestId === employeePayrollRequestId) toast.add({ severity: 'error', summary: 'Erreur', detail: err?.response?.data?.message || err?.message || 'Chargement des salaires impossible.', life: 4000 });
+        } finally {
+            if (requestId === employeePayrollRequestId) employeePayrollLoading.value = false;
+        }
+        return;
+    }
 
     await fetchPayrolls({
         page,
@@ -359,7 +384,9 @@ const printEmployees = async () => {
     });
 };
 
-const openPayrollDialog = async () => {
+const openPayrollDialog = async (employee = null) => {
+    resetPayrollContext();
+    payrollInitialEmployeeId.value = Number(employee?.id) || null;
     await fetchPaymentMethods();
     payrollDialogVisible.value = true;
 };
@@ -434,18 +461,18 @@ const printPayrollList = async () => {
         const payments = await fetchAllPayrolls({ employeeId: payrollEmployeeId.value, month: payrollMonth.value, year: payrollYear.value });
         const rows = payments.map((payment) => ({
             employee: payment.employeeName || '-',
-            period: payrollPeriodLabel(payment),
+            netSalary: formatAmount(payment.calculatedAmount),
             amount: formatAmount(payment.paidAmount),
             method: payment.paymentMethod?.libelle || '-',
             date: formatDate(payment.paidAt)
         }));
-        if (rows.length) rows.push({ employee: 'Total versé', amount: formatAmount(payments.reduce((total, payment) => total + Number(payment.paidAmount || 0), 0)), period: '', method: '', date: '' });
+        if (rows.length) rows.push({ employee: 'Total versé', netSalary: '', amount: formatAmount(payments.reduce((total, payment) => total + Number(payment.paidAmount || 0), 0)), method: '', date: '' });
         await printComponent(PrintDataTablePage, {
             title: 'Liste des salaires',
-            subtitle: `${period} — ${payments.length} paiement(s)`,
+            subtitle: `Période : ${period} — ${payments.length} paiement(s)`,
             columns: [
                 { key: 'employee', label: 'Employé' },
-                { key: 'period', label: 'Période' },
+                { key: 'netSalary', label: 'Salaire net', align: 'right' },
                 { key: 'amount', label: 'Montant versé', align: 'right' },
                 { key: 'method', label: 'Mode' },
                 { key: 'date', label: 'Date de paiement' }
@@ -601,7 +628,7 @@ watch(search, () => {
     searchTimer = setTimeout(() => loadEmployees(), 350);
 });
 
-watch([payrollEmployeeId, payrollMonthModel], () => {
+watch([payrollEmployeeId, payrollMonthModel, payrollView], () => {
     if (activeTab.value !== 'payroll') return;
     loadPayrolls({ page: 0, rows: payrollRows.value });
 });
@@ -664,7 +691,7 @@ onBeforeUnmount(() => {
                 <template #actions>
                     <Button v-if="activeTab === 'employees'" icon="pi pi-trash" label="Corbeille" severity="secondary" outlined @click="openTrashDialog" />
                     <Button v-if="activeTab === 'employees'" icon="pi pi-plus" label="Nouvel employe" @click="openCreateEmployee" />
-                    <Button v-if="activeTab === 'payroll'" icon="pi pi-wallet" label="Ajouter un paiement" @click="openPayrollDialog" />
+                    <Button v-if="activeTab === 'payroll'" icon="pi pi-wallet" label="Ajouter un paiement" @click="openPayrollDialog()" />
                     <Button v-if="activeTab === 'leaves'" icon="pi pi-calendar-plus" label="Ajouter un conge" @click="openCreateLeave" />
                 </template>
             </PageHeader>
@@ -785,6 +812,10 @@ onBeforeUnmount(() => {
                     <PageSection title="Gestion de la paie">
                         <template #header>
                             <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end w-full">
+                                <div class="md:col-span-12">
+                                    <label class="block text-sm font-medium mb-2">Vue de la paie</label>
+                                    <Select v-model="payrollView" :options="payrollViewOptions" optionLabel="label" optionValue="value" class="w-full md:w-64" />
+                                </div>
                                 <div class="md:col-span-4">
                                     <label class="block text-sm font-medium mb-2">Mois / Annee</label>
                                     <DatePicker v-model="payrollMonthModel" view="month" dateFormat="mm/yy" showIcon class="w-full" />
@@ -805,7 +836,9 @@ onBeforeUnmount(() => {
                         </template>
 
                         <div class="page-table-scroll">
+                        <EmployeePayrollTable v-if="payrollView === 'employees'" :rows="employeePayrollRows" :loading="employeePayrollLoading" @pay="openPayrollDialog" @detail="openPayrollDetail" @print="printPayrollSlip" @remove="confirmDeletePayroll" />
                         <DataTable
+                            v-else
                             :value="payrolls"
                             :loading="payrollLoading"
                             dataKey="id"
@@ -819,6 +852,9 @@ onBeforeUnmount(() => {
                             <Column field="employeeName" header="Employe" />
                             <Column header="Periode">
                                 <template #body="{ data }">{{ payrollPeriodLabel(data) }}</template>
+                            </Column>
+                            <Column field="calculatedAmount" header="Salaire net">
+                                <template #body="{ data }">{{ formatAmount(data.calculatedAmount) }}</template>
                             </Column>
                             <Column field="paidAmount" header="Montant verse">
                                 <template #body="{ data }"
@@ -909,6 +945,9 @@ onBeforeUnmount(() => {
             :payment-methods="paymentMethods"
             :context="paymentContext"
             :context-loading="payrollContextLoading"
+            :context-error="payrollError || ''"
+            :initial-employee-id="payrollInitialEmployeeId"
+            :initial-period="payrollMonthModel"
             :loading="payrollSaving"
             @request-context="requestPayrollContext"
             @submit="submitPayroll"

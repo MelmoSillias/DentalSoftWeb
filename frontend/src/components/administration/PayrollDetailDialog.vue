@@ -66,7 +66,7 @@ const hydrateForm = () => {
     };
 };
 
-const hasFixedPrime = computed(() => props.payment?.primeType === 'fixe');
+const hasFixedPrime = computed(() => props.payment?.primeType === 'fixe' && props.payment?.frequenceSnapshot !== 'mensuel');
 
 const formatCurrency = (value) => {
     if (value === null || value === undefined) return '—';

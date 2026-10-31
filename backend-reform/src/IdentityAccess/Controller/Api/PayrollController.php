@@ -44,6 +44,20 @@ class PayrollController extends AbstractController
         }
     }
 
+    #[Route('/employees', name: 'api_payrolls_employees', methods: ['GET'])]
+    public function employees(Request $request): JsonResponse
+    {
+        try {
+            return $this->json($this->payrollService->listEmployeePayrolls(
+                $request->query->getInt('month', (int) date('n')),
+                $request->query->getInt('year', (int) date('Y')),
+                $request->query->getInt('employeeId') ?: null,
+            ));
+        } catch (\InvalidArgumentException $exception) {
+            return $this->json(['message' => $exception->getMessage()], 400);
+        }
+    }
+
     #[Route('/context/{employeeId}', name: 'api_payrolls_context', methods: ['GET'])]
     public function context(int $employeeId, Request $request): JsonResponse
     {

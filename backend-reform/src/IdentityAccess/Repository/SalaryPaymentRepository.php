@@ -55,6 +55,16 @@ class SalaryPaymentRepository extends ServiceEntityRepository
             ->getOneOrNullResult();
     }
 
+    public function findFirstForPeriod(Employe $employee, int $month, int $year, ?string $day = null): ?SalaryPayment
+    {
+        $criteria = ['employe' => $employee, 'month' => $month, 'year' => $year, 'frequenceSnapshot' => $employee->getFrequencePaiement()];
+        if ($employee->getFrequencePaiement() === 'journalier') {
+            $criteria['workedDay'] = new \DateTimeImmutable($day);
+        }
+
+        return $this->findOneBy($criteria, ['createdAt' => 'ASC', 'id' => 'ASC']);
+    }
+
     public function sumPaidForMonthlyPeriod(Employe $employee, int $month, int $year): float
     {
         $result = $this->createQueryBuilder('sp')

@@ -38,6 +38,7 @@ class PayrollService
 
     public function getPaymentContext(int $employeeId, int $month, int $year, ?string $day = null): array
     {
+        $this->validatePeriod($month, $year);
         $employee = $this->employeRepo->find($employeeId);
         if (!$employee || $employee->isDeleted()) {
             throw new InvalidArgumentException('Employe introuvable.');
@@ -61,11 +62,11 @@ class PayrollService
                 'fullname' => $employee->getFullName(),
                 'fonction' => $employee->getFonction(),
                 'type' => $employee->getType(),
-                'typeSalaire' => $employee->getTypeSalaire(),
-                'valeurSalaire' => $employee->getValeurSalaire(),
-                'frequencePaiement' => $employee->getFrequencePaiement(),
-                'typePrime' => $employee->getTypePrime(),
-                'valeurPrime' => $employee->getValeurPrime(),
+                'typeSalaire' => $computed['salaryType'],
+                'valeurSalaire' => $computed['salaryValue'],
+                'frequencePaiement' => $computed['frequencePaiement'],
+                'typePrime' => $computed['typePrime'],
+                'valeurPrime' => $computed['valeurPrime'],
                 'matricule' => $employee->getMatricule(),
                 'dateDernierPaiement' => $lastPayment?->getPaidAt()?->format('Y-m-d'),
             ],
@@ -76,6 +77,33 @@ class PayrollService
             ],
             ...$computed,
         ];
+    }
+
+    public function listEmployeePayrolls(int $month, int $year, ?int $employeeId = null): array
+    {
+        $this->validatePeriod($month, $year);
+        $employees = $this->employeRepo->findAllEmployees();
+        $payments = $this->salaryPaymentRepo->findBy(['month' => $month, 'year' => $year], ['paidAt' => 'DESC', 'id' => 'DESC']);
+        $byEmployee = [];
+        foreach ($payments as $payment) {
+            $byEmployee[$payment->getEmploye()->getId()][] = $this->mapPaymentRow($payment);
+        }
+        $reference = new \DateTimeImmutable(sprintf('%04d-%02d-01', $year, $month));
+        $day = $reference->format('Y-m') === date('Y-m') ? date('Y-m-d') : $reference->format('Y-m-d');
+        $rows = [];
+        foreach ($employees as $employee) {
+            if ($employeeId && $employee->getId() !== $employeeId) continue;
+            $context = $this->getPaymentContext($employee->getId(), $month, $year, $employee->getFrequencePaiement() === 'journalier' ? $day : null);
+            $rows[] = [
+                'id' => $employee->getId(),
+                'employeeName' => $employee->getFullName(),
+                'employeeFonction' => $employee->getFonction(),
+                'context' => $context,
+                'payments' => $byEmployee[$employee->getId()] ?? [],
+            ];
+        }
+
+        return $rows;
     }
 
     public function createSalaryPayment(array $payload): array
@@ -112,17 +140,18 @@ class PayrollService
             ? $this->normalizeAmount($payload['primeAmount'], 'Montant prime')
             : null;
 
-        if ($primeOverride !== null && $employee->getTypePrime() !== 'fixe') {
+        $salaryLocked = $computed['salaryLocked'] ?? false;
+        if (!$salaryLocked && $primeOverride !== null && $computed['typePrime'] !== 'fixe') {
             throw new InvalidArgumentException('Le montant de prime ne peut etre modifie que pour une prime fixe.');
         }
 
         $baseSalaryAmount = (float) ($computed['baseSalaryAmount'] ?? 0);
-        $primeAmount = $primeOverride ?? (float) ($computed['primeAmount'] ?? 0);
-        $indemniteSpeciale = $this->normalizeAmount($payload['indemniteSpeciale'] ?? 0, 'Indemnite speciale');
-        $inps = $this->normalizeAmount($payload['inps'] ?? 0, 'INPS');
+        $primeAmount = $salaryLocked ? (float) $computed['primeAmount'] : ($primeOverride ?? (float) ($computed['primeAmount'] ?? 0));
+        $indemniteSpeciale = $salaryLocked ? (float) $computed['indemniteSpeciale'] : $this->normalizeAmount($payload['indemniteSpeciale'] ?? 0, 'Indemnite speciale');
+        $inps = $salaryLocked ? (float) $computed['inps'] : $this->normalizeAmount($payload['inps'] ?? 0, 'INPS');
         $grossAmount = round($baseSalaryAmount + $primeAmount + $indemniteSpeciale, 2);
         if ($inps > $grossAmount) throw new InvalidArgumentException('La retenue INPS ne peut depasser le salaire brut.');
-        $calculatedAmount = round($grossAmount - $inps, 2);
+        $calculatedAmount = $salaryLocked ? (float) $computed['calculatedAmount'] : round($grossAmount - $inps, 2);
         $alreadyPaid = (float) ($computed['breakdown']['alreadyPaid'] ?? 0);
         $remaining = round(max(0, $calculatedAmount - $alreadyPaid), 2);
 
@@ -160,8 +189,8 @@ class PayrollService
             ->setFrequenceSnapshot($employee->getFrequencePaiement())
             ->setSalaryTypeSnapshot((string) ($computed['salaryType'] ?? 'non_defini'))
             ->setSalaryValueSnapshot($computed['salaryValue'] ?? null)
-            ->setPrimeTypeSnapshot($employee->getTypePrime())
-            ->setPrimeValueSnapshot($employee->getValeurPrime())
+            ->setPrimeTypeSnapshot($computed['typePrime'])
+            ->setPrimeValueSnapshot($computed['valeurPrime'])
             ->setBaseAmount($computed['baseAmount'] ?? null)
             ->setBaseSalaryAmount($baseSalaryAmount)
             ->setPrimeAmount($primeAmount)
@@ -208,9 +237,6 @@ class PayrollService
             throw new InvalidArgumentException('Employe introuvable.');
         }
 
-        $day = $payment->getWorkedDay()?->format('Y-m-d');
-        $computed = $this->computeSalaryForPeriod($employee, $payment->getMonth(), $payment->getYear(), $day);
-
         $primeOverride = isset($payload['primeAmount']) && $payload['primeAmount'] !== '' && $payload['primeAmount'] !== null
             ? $this->normalizeAmount($payload['primeAmount'], 'Montant prime')
             : null;
@@ -219,10 +245,15 @@ class PayrollService
             throw new InvalidArgumentException('Le montant de prime ne peut etre modifie que pour une prime fixe.');
         }
 
-        $baseSalaryAmount = (float) ($payment->getBaseSalaryAmount() ?? $computed['baseSalaryAmount'] ?? 0);
+        $baseSalaryAmount = $payment->getBaseSalaryAmount();
         $primeAmount = $primeOverride ?? $payment->getPrimeAmount();
         $indemniteSpeciale = array_key_exists('indemniteSpeciale', $payload) ? $this->normalizeAmount($payload['indemniteSpeciale'], 'Indemnite speciale') : $payment->getIndemniteSpeciale();
         $inps = array_key_exists('inps', $payload) ? $this->normalizeAmount($payload['inps'], 'INPS') : $payment->getInps();
+        if ($payment->getFrequenceSnapshot() === 'mensuel' && (
+            $primeAmount !== $payment->getPrimeAmount() || $indemniteSpeciale !== $payment->getIndemniteSpeciale() || $inps !== $payment->getInps()
+        )) {
+            throw new InvalidArgumentException('Le calcul mensuel est fige apres le premier paiement.');
+        }
         $grossAmount = round($baseSalaryAmount + $primeAmount + $indemniteSpeciale, 2);
         if ($inps > $grossAmount) throw new InvalidArgumentException('La retenue INPS ne peut depasser le salaire brut.');
         $calculatedAmount = round($grossAmount - $inps, 2);
@@ -430,7 +461,7 @@ class PayrollService
 
     private function computeAlreadyPaidExcluding(Employe $employee, SalaryPayment $exclude): float
     {
-        if ($employee->getFrequencePaiement() === 'journalier' && $exclude->getWorkedDay()) {
+        if ($exclude->getFrequenceSnapshot() === 'journalier' && $exclude->getWorkedDay()) {
             $total = $this->salaryPaymentRepo->sumPaidForWorkedDay($employee, $exclude->getWorkedDay());
 
             return round(max(0, $total - $exclude->getPaidAmount()), 2);
@@ -444,6 +475,40 @@ class PayrollService
     private function computeSalaryForPeriod(Employe $employee, int $month, int $year, ?string $day = null): array
     {
         [$periodStart, $periodEnd] = $this->buildPeriodBounds($employee, $month, $year, $day);
+
+        $firstPayment = $this->salaryPaymentRepo->findFirstForPeriod($employee, $month, $year, $day);
+        if ($firstPayment) {
+            $alreadyPaid = $this->computeAlreadyPaid($employee, $month, $year, $day, $periodStart);
+            $remaining = round(max(0, $firstPayment->getCalculatedAmount() - $alreadyPaid), 2);
+
+            return [
+                'salaryLocked' => true,
+                'firstPaymentId' => $firstPayment->getId(),
+                'periodStart' => $firstPayment->getPeriodStart()?->format('Y-m-d'),
+                'periodEnd' => $firstPayment->getPeriodEnd()?->format('Y-m-d'),
+                'salaryType' => $firstPayment->getSalaryTypeSnapshot(),
+                'salaryValue' => $firstPayment->getSalaryValueSnapshot(),
+                'frequencePaiement' => $firstPayment->getFrequenceSnapshot(),
+                'typePrime' => $firstPayment->getPrimeTypeSnapshot(),
+                'valeurPrime' => $firstPayment->getPrimeValueSnapshot(),
+                'baseAmount' => $firstPayment->getBaseAmount(),
+                'primeBaseAmount' => $firstPayment->getPrimeBaseAmount(),
+                'baseSalaryAmount' => $firstPayment->getBaseSalaryAmount(),
+                'primeAmount' => $firstPayment->getPrimeAmount(),
+                'indemniteSpeciale' => $firstPayment->getIndemniteSpeciale(),
+                'inps' => $firstPayment->getInps(),
+                'calculatedAmount' => $firstPayment->getCalculatedAmount(),
+                'breakdown' => [
+                    'baseSalary' => $firstPayment->getBaseSalaryAmount(),
+                    'prime' => $firstPayment->getPrimeAmount(),
+                    'total' => $firstPayment->getCalculatedAmount(),
+                    'alreadyPaid' => $alreadyPaid,
+                    'remaining' => $remaining,
+                ],
+                'canPay' => $remaining > 0.01,
+                'blockReason' => $remaining > 0.01 ? null : 'Cette periode est deja entierement reglee.',
+            ];
+        }
 
         $salaryType = (string) ($employee->getTypeSalaire() ?? 'non_defini');
         $salaryValue = $employee->getValeurSalaire();
@@ -489,6 +554,9 @@ class PayrollService
 
         return [
             'periodStart' => $periodStart->format('Y-m-d'),
+            'salaryLocked' => false,
+            'indemniteSpeciale' => 0.0,
+            'inps' => 0.0,
             'periodEnd' => $periodEnd->format('Y-m-d'),
             'salaryType' => $salaryType,
             'salaryValue' => $salaryValue,
@@ -568,6 +636,13 @@ class PayrollService
         return $date;
     }
 
+    private function validatePeriod(int $month, int $year): void
+    {
+        if ($month < 1 || $month > 12 || $year < 2000 || $year > 2100) {
+            throw new InvalidArgumentException('Mois ou annee invalide.');
+        }
+    }
+
     private function normalizeAmount(mixed $value, string $field): float
     {
         if ($value === null || $value === '') {
@@ -576,6 +651,10 @@ class PayrollService
 
         if (!is_numeric($value)) {
             throw new InvalidArgumentException(sprintf('Le champ "%s" doit etre numerique.', $field));
+        }
+
+        if ((float) $value < 0) {
+            throw new InvalidArgumentException(sprintf('Le champ "%s" ne peut etre negatif.', $field));
         }
 
         return round((float) $value, 2);

@@ -23,7 +23,8 @@ const props = defineProps({
         default: false
     },
     indemniteSpeciale: { type: Number, default: 0 },
-    inps: { type: Number, default: 0 }
+    inps: { type: Number, default: 0 },
+    paidAmount: { type: Number, default: 0 }
 });
 
 const emit = defineEmits(['update:primeAmount']);
@@ -45,8 +46,7 @@ const primeTypeLabel = computed(() => {
 });
 
 const breakdown = computed(() => props.context?.breakdown || {});
-const canPay = computed(() => props.context?.canPay !== false);
-const blockReason = computed(() => props.context?.blockReason || 'Cette période est déjà entièrement réglée.');
+const canPay = computed(() => adjustedTotal.value.remaining > 0.01);
 
 const localPrimeAmount = computed({
     get: () => props.primeAmount ?? props.context?.primeAmount ?? 0,
@@ -58,12 +58,13 @@ const adjustedTotal = computed(() => {
     const prime = Number(localPrimeAmount.value || 0);
     const alreadyPaid = Number(breakdown.value.alreadyPaid || 0);
     const gross = base + prime + Number(props.indemniteSpeciale || 0);
-    const net = Math.max(0, gross - Number(props.inps || 0));
+    const net = props.context?.salaryLocked ? Number(props.context.calculatedAmount) : Math.round((gross - Number(props.inps || 0)) * 100) / 100;
     return {
         gross,
         deductions: Number(props.inps || 0),
         total: net,
-        remaining: Math.max(0, net - alreadyPaid)
+        remaining: Math.max(0, Math.round((net - alreadyPaid) * 100) / 100),
+        afterPayment: Math.max(0, Math.round((net - alreadyPaid - props.paidAmount) * 100) / 100)
     };
 });
 </script>
@@ -128,7 +129,7 @@ const adjustedTotal = computed(() => {
                 </div>
                 <div v-if="editablePrime" class="space-y-1">
                     <label class="text-sm font-medium">Montant prime (modifiable)</label>
-                    <InputNumber v-model="localPrimeAmount" class="w-full" :min="0" mode="decimal" :minFractionDigits="0" :maxFractionDigits="2" suffix=" F CFA" />
+                    <InputNumber v-model="localPrimeAmount" @input="localPrimeAmount = $event.value" class="w-full" :min="0" mode="decimal" :minFractionDigits="0" :maxFractionDigits="2" suffix=" F CFA" />
                 </div>
                 <div class="flex justify-between text-sm font-semibold text-amber-700 dark:text-amber-300">
                     <span>Montant prime</span>
@@ -151,13 +152,16 @@ const adjustedTotal = computed(() => {
                 </div>
                 <div class="flex justify-between text-base font-bold text-primary-600 dark:text-primary-300">
                     <span>Reste à payer</span>
-                    <span>{{ formatCurrency(editablePrime ? adjustedTotal.remaining : breakdown.remaining) }}</span>
+                    <span>{{ formatCurrency(adjustedTotal.remaining) }}</span>
                 </div>
+                <div class="flex justify-between text-sm"><span>Versement en cours</span><span>{{ formatCurrency(paidAmount) }}</span></div>
+                <div class="flex justify-between text-sm font-semibold"><span>Reliquat après ce versement</span><span>{{ formatCurrency(adjustedTotal.afterPayment) }}</span></div>
             </div>
 
-            <Message v-if="!canPay" severity="warn" :closable="false">{{ blockReason }}</Message>
+            <Message v-if="!canPay" severity="warn" :closable="false">{{ adjustedTotal.total < 0 ? 'La retenue INPS dépasse le salaire brut.' : 'Cette période est déjà entièrement réglée.' }}</Message>
+            <Message v-if="paidAmount > adjustedTotal.remaining" severity="error" :closable="false">Le montant versé dépasse le reste à payer.</Message>
         </div>
 
-        <p v-else class="p-4 text-sm text-surface-500">Sélectionnez un employé et une période pour calculer automatiquement le salaire.</p>
+        <p v-else class="p-4 text-sm text-surface-500">{{ loading ? 'Chargement du calcul de salaire…' : 'Sélectionnez un employé et une période pour calculer automatiquement le salaire.' }}</p>
     </div>
 </template>

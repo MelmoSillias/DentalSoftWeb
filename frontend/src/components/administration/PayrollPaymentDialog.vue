@@ -6,207 +6,137 @@ import DatePicker from 'primevue/datepicker';
 import InputNumber from 'primevue/inputnumber';
 import Select from 'primevue/select';
 import Textarea from 'primevue/textarea';
+import Message from 'primevue/message';
 import SalaryPreviewPanel from '@/components/administration/SalaryPreviewPanel.vue';
 
 const props = defineProps({
     visible: Boolean,
-    employees: {
-        type: Array,
-        default: () => []
-    },
-    paymentMethods: {
-        type: Array,
-        default: () => []
-    },
-    context: {
-        type: Object,
-        default: null
-    },
-    contextLoading: {
-        type: Boolean,
-        default: false
-    },
-    loading: {
-        type: Boolean,
-        default: false
-    }
+    employees: { type: Array, default: () => [] },
+    paymentMethods: { type: Array, default: () => [] },
+    context: { type: Object, default: null },
+    contextLoading: Boolean,
+    contextError: { type: String, default: '' },
+    loading: Boolean,
+    initialEmployeeId: { type: Number, default: null },
+    initialPeriod: { type: Date, default: null }
 });
-
 const emit = defineEmits(['update:visible', 'request-context', 'submit']);
-
 const localVisible = ref(false);
 const monthModel = ref(new Date());
 const dayModel = ref(new Date());
 const primeAmountModel = ref(null);
-const readSavedAmount = (key) => {
-    try { return Number(localStorage.getItem(key) || 0); } catch { return 0; }
-};
-const indemniteSpecialeModel = ref(readSavedAmount('payroll.indemniteSpeciale'));
-const inpsModel = ref(readSavedAmount('payroll.inps'));
-const form = ref({
-    employeeId: null,
-    paidAmount: null,
-    paidAt: new Date(),
-    paymentMethodId: null,
-    note: ''
+const indemniteSpecialeModel = ref(0);
+const inpsModel = ref(0);
+const form = ref({ employeeId: null, paidAmount: null, paidAt: new Date(), paymentMethodId: null, note: '' });
+const localDay = (date) => (date instanceof Date && !Number.isNaN(date.getTime()) ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` : null);
+const roundAmount = (value) => Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+const selectedEmployee = computed(() => props.employees.find((employee) => Number(employee.id) === Number(form.value.employeeId)) || null);
+const isJournalier = computed(() => selectedEmployee.value?.frequencePaiement === 'journalier');
+const selectedMonth = computed(() => monthModel.value?.getMonth() + 1 || null);
+const selectedYear = computed(() => monthModel.value?.getFullYear() || null);
+const selectedDay = computed(() => (isJournalier.value ? localDay(dayModel.value) : null));
+const dayMatchesPeriod = computed(() => !isJournalier.value || (dayModel.value?.getMonth() + 1 === selectedMonth.value && dayModel.value?.getFullYear() === selectedYear.value));
+const currentContext = computed(() => {
+    const context = props.context;
+    if (!localVisible.value || !form.value.employeeId || props.contextLoading || !context) return null;
+    if (Number(context.employee?.id) !== Number(form.value.employeeId) || context.period?.month !== selectedMonth.value || context.period?.year !== selectedYear.value) return null;
+    if ((context.period?.day || null) !== selectedDay.value) return null;
+    return context;
 });
-
-const selectedEmployee = computed(() => (props.employees || []).find((employee) => employee.id === form.value.employeeId) || null);
-
-const isJournalier = computed(() => {
-    const freq = props.context?.employee?.frequencePaiement || selectedEmployee.value?.frequencePaiement;
-    return freq === 'journalier';
+const salaryLocked = computed(() => currentContext.value?.salaryLocked === true);
+const hasFixedPrime = computed(() => currentContext.value?.typePrime === 'fixe' && !salaryLocked.value);
+const effectiveNet = computed(() => {
+    if (!currentContext.value) return 0;
+    if (salaryLocked.value) return Number(currentContext.value.calculatedAmount);
+    return roundAmount(Number(currentContext.value.baseSalaryAmount || 0) + Number(primeAmountModel.value || 0) + Number(indemniteSpecialeModel.value || 0) - Number(inpsModel.value || 0));
 });
-
-const hasFixedPrime = computed(() => {
-    const type = props.context?.employee?.typePrime;
-    return type === 'fixe';
-});
-
-const selectedMonth = computed(() => (monthModel.value ? monthModel.value.getMonth() + 1 : null));
-const selectedYear = computed(() => (monthModel.value ? monthModel.value.getFullYear() : null));
-const selectedDay = computed(() => {
-    if (!isJournalier.value || !dayModel.value) return null;
-    return dayModel.value.toISOString().slice(0, 10);
-});
-
-const canSubmit = computed(() => {
-    if (!form.value.employeeId || !selectedMonth.value || !selectedYear.value || !form.value.paidAmount) {
-        return false;
-    }
-    if (!form.value.paymentMethodId) return false;
-    if (isJournalier.value && !selectedDay.value) return false;
-    if (props.context && props.context.canPay === false && !(effectiveRemaining.value > 0)) return false;
-    return true;
-});
-
+const effectiveRemaining = computed(() => Math.max(0, roundAmount(effectiveNet.value - Number(currentContext.value?.breakdown?.alreadyPaid || 0))));
 const submitTooltip = computed(() => {
-    if (!form.value.paymentMethodId) {
-        return 'Sélectionnez un mode de règlement.';
-    }
-    if (props.context?.canPay === false) {
-        return props.context?.blockReason || 'Cette période est déjà entièrement réglée.';
-    }
-    if (isJournalier.value && !selectedDay.value) {
-        return 'Sélectionnez le jour travaillé à payer.';
-    }
+    if (!form.value.employeeId) return 'Sélectionnez un employé pour préparer son paiement.';
+    if (props.contextLoading) return 'Chargement du salaire en cours.';
+    if (!dayMatchesPeriod.value) return 'Le jour travaillé doit appartenir au mois sélectionné.';
+    if (!currentContext.value) return props.contextError || 'Le calcul du salaire est indisponible.';
+    if (effectiveNet.value < 0) return 'La retenue INPS ne peut pas dépasser le salaire brut.';
+    if ([primeAmountModel.value, indemniteSpecialeModel.value, inpsModel.value].some((value) => !Number.isFinite(Number(value)) || Number(value) < 0)) return 'Les montants doivent être positifs ou nuls.';
+    if (effectiveRemaining.value <= 0.01) return 'Cette période est déjà entièrement réglée.';
+    if (!Number.isFinite(Number(form.value.paidAmount)) || Number(form.value.paidAmount) <= 0) return 'Saisissez un montant versé supérieur à zéro.';
+    if (roundAmount(form.value.paidAmount) > effectiveRemaining.value) return 'Le montant versé dépasse le reste à payer.';
+    if (!form.value.paymentMethodId) return 'Sélectionnez un mode de règlement.';
+    if (!localDay(form.value.paidAt)) return 'Sélectionnez une date de règlement valide.';
     return '';
 });
-
-const effectiveRemaining = computed(() => {
-    if (!props.context) return null;
-    const base = Number(props.context.breakdown?.baseSalary ?? props.context.baseSalaryAmount ?? 0);
-    const prime = Number(primeAmountModel.value ?? props.context.primeAmount ?? 0);
-    const alreadyPaid = Number(props.context.breakdown?.alreadyPaid ?? 0);
-    const gross = base + prime + Number(indemniteSpecialeModel.value || 0);
-    return Math.max(0, gross - Number(inpsModel.value || 0) - alreadyPaid);
-});
-
-watch(indemniteSpecialeModel, (value) => { try { localStorage.setItem('payroll.indemniteSpeciale', String(Number(value || 0))); } catch {} });
-watch(inpsModel, (value) => { try { localStorage.setItem('payroll.inps', String(Number(value || 0))); } catch {} });
+const canSubmit = computed(() => !props.loading && !submitTooltip.value);
+const employeeOptions = computed(() => props.employees.map((employee) => ({ label: `${employee.prenom || ''} ${employee.nom || ''}`.trim() || `Employé #${employee.id}`, value: employee.id })));
 
 watch(
     () => props.visible,
-    (val) => {
-        localVisible.value = val;
-        if (val) {
-            const now = new Date();
-            monthModel.value = now;
-            dayModel.value = now;
-            primeAmountModel.value = null;
-            form.value = {
-                employeeId: null,
-                paidAmount: null,
-                paidAt: now,
-                paymentMethodId: props.paymentMethods?.[0]?.id ?? null,
-                note: ''
-            };
-        }
+    (visible) => {
+        localVisible.value = visible;
+        if (!visible) return;
+        const now = new Date();
+        const period = props.initialPeriod ? new Date(props.initialPeriod) : now;
+        monthModel.value = period;
+        dayModel.value = new Date(period.getFullYear(), period.getMonth(), period.getFullYear() === now.getFullYear() && period.getMonth() === now.getMonth() ? now.getDate() : 1);
+        primeAmountModel.value = null;
+        indemniteSpecialeModel.value = 0;
+        inpsModel.value = 0;
+        form.value = { employeeId: props.initialEmployeeId, paidAmount: null, paidAt: now, paymentMethodId: props.paymentMethods[0]?.id ?? null, note: '' };
     },
     { immediate: true }
 );
-
-watch(localVisible, (val) => emit('update:visible', val));
-
+watch(localVisible, (visible) => emit('update:visible', visible));
 watch(
     () => props.paymentMethods,
     (methods) => {
-        if (!form.value.paymentMethodId && methods?.length) {
-            form.value.paymentMethodId = methods[0].id;
-        }
-    },
-    { immediate: true }
-);
-
-watch(
-    () => [form.value.employeeId, selectedMonth.value, selectedYear.value, selectedDay.value],
-    ([employeeId, month, year, day]) => {
-        if (!employeeId || !month || !year) return;
-        const employee = (props.employees || []).find((item) => item.id === employeeId);
-        if (employee?.frequencePaiement === 'journalier' && !day) return;
-        emit('request-context', { employeeId, month, year, day: day || null });
+        if (!form.value.paymentMethodId) form.value.paymentMethodId = methods[0]?.id ?? null;
     }
 );
-
+watch([selectedMonth, selectedYear], ([month, year]) => {
+    if (month && year && !dayMatchesPeriod.value) dayModel.value = new Date(year, month - 1, 1);
+});
 watch(
-    () => props.context,
-    (val) => {
-        if (!val) return;
-        primeAmountModel.value = Number(val?.primeAmount || 0);
-        const remaining = effectiveRemaining.value ?? Number(val?.breakdown?.remaining || val?.calculatedAmount || 0);
+    () => [localVisible.value, form.value.employeeId, selectedMonth.value, selectedYear.value, selectedDay.value],
+    ([visible, employeeId, month, year, day]) => {
+        primeAmountModel.value = null;
+        indemniteSpecialeModel.value = 0;
+        inpsModel.value = 0;
+        form.value.paidAmount = null;
+        emit('request-context', { employeeId: visible && dayMatchesPeriod.value ? employeeId : null, month, year, day });
+    }
+);
+watch(currentContext, (context) => {
+    if (!context) return;
+    primeAmountModel.value = Number(context.primeAmount || 0);
+    indemniteSpecialeModel.value = Number(context.indemniteSpeciale || 0);
+    inpsModel.value = Number(context.inps || 0);
+    form.value.paidAmount = effectiveRemaining.value > 0 ? effectiveRemaining.value : null;
+});
+watch(effectiveRemaining, (remaining, previous) => {
+    if (!currentContext.value) return;
+    if (form.value.paidAmount === null || Number(form.value.paidAmount) === previous || Number(form.value.paidAmount) > remaining) {
         form.value.paidAmount = remaining > 0 ? remaining : null;
     }
-);
-
-watch(primeAmountModel, () => {
-    if (!props.context) return;
-    const remaining = effectiveRemaining.value;
-    form.value.paidAmount = remaining > 0 ? remaining : null;
 });
-watch([indemniteSpecialeModel, inpsModel], () => {
-    if (!props.context) return;
-    const remaining = effectiveRemaining.value;
-    form.value.paidAmount = remaining > 0 ? remaining : null;
-});
-
 const close = () => {
     localVisible.value = false;
 };
-
 const submit = () => {
     if (!canSubmit.value) return;
-
-    const paidAt = form.value.paidAt instanceof Date ? form.value.paidAt.toISOString().slice(0, 10) : '';
-
     const payload = {
         employeeId: form.value.employeeId,
         month: selectedMonth.value,
         year: selectedYear.value,
-        paidAmount: Number(form.value.paidAmount),
-        paidAt,
+        paidAmount: roundAmount(form.value.paidAmount),
+        paidAt: localDay(form.value.paidAt),
         paymentMethodId: form.value.paymentMethodId,
-        note: form.value.note || ''
+        note: form.value.note || '',
+        indemniteSpeciale: Number(indemniteSpecialeModel.value || 0),
+        inps: Number(inpsModel.value || 0)
     };
-
-    if (isJournalier.value && selectedDay.value) {
-        payload.day = selectedDay.value;
-    }
-
-    if (hasFixedPrime.value && primeAmountModel.value !== null) {
-        payload.primeAmount = Number(primeAmountModel.value);
-    }
-    payload.indemniteSpeciale = Number(indemniteSpecialeModel.value || 0);
-    payload.inps = Number(inpsModel.value || 0);
-
+    if (isJournalier.value) payload.day = selectedDay.value;
+    if (hasFixedPrime.value) payload.primeAmount = Number(primeAmountModel.value || 0);
     emit('submit', payload);
 };
-
-const employeeOptions = computed(() =>
-    (props.employees || []).map((employee) => ({
-        label: `${employee.prenom || ''} ${employee.nom || ''}`.trim() || `Employe #${employee.id}`,
-        value: employee.id
-    }))
-);
 </script>
 
 <template>
@@ -220,7 +150,6 @@ const employeeOptions = computed(() =>
         :confirm-disabled="!canSubmit"
         cancel-label="Annuler"
         confirm-label="Enregistrer"
-        confirm-icon="pi pi-check"
         @cancel="close"
         @confirm="submit"
         @hide="close"
@@ -229,59 +158,62 @@ const employeeOptions = computed(() =>
             <div class="space-y-4">
                 <div class="space-y-1">
                     <label class="text-sm font-medium">Employé <span class="text-red-500">*</span></label>
-                    <Select v-model="form.employeeId" :options="employeeOptions" optionLabel="label" optionValue="value" class="w-full" placeholder="Sélectionnez un employé" />
+                    <Select v-model="form.employeeId" :options="employeeOptions" optionLabel="label" optionValue="value" class="w-full" showClear filter :disabled="loading" placeholder="Sélectionnez un employé" />
                 </div>
-
                 <div class="space-y-1">
-                    <label class="text-sm font-medium">{{ isJournalier ? 'Mois de référence' : 'Mois de paie' }} <span class="text-red-500">*</span></label>
-                    <DatePicker v-model="monthModel" view="month" dateFormat="mm/yy" showIcon class="w-full" />
+                    <label class="text-sm font-medium">Mois de paie <span class="text-red-500">*</span></label>
+                    <DatePicker v-model="monthModel" view="month" dateFormat="mm/yy" showIcon class="w-full" :disabled="loading" />
                 </div>
-
                 <div v-if="isJournalier" class="space-y-1">
                     <label class="text-sm font-medium">Jour travaillé à payer <span class="text-red-500">*</span></label>
-                    <DatePicker v-model="dayModel" dateFormat="yy-mm-dd" showIcon class="w-full" />
+                    <DatePicker v-model="dayModel" dateFormat="yy-mm-dd" showIcon class="w-full" :disabled="loading" />
                 </div>
-
-                <div class="space-y-1">
-                    <label class="text-sm font-medium">Indemnité spéciale</label>
-                    <InputNumber v-model="indemniteSpecialeModel" class="w-full" :min="0" mode="decimal" :minFractionDigits="0" :maxFractionDigits="2" suffix=" F CFA" />
-                </div>
-
-                <div class="space-y-1">
-                    <label class="text-sm font-medium">INPS (retenue)</label>
-                    <InputNumber v-model="inpsModel" class="w-full" :min="0" mode="decimal" :minFractionDigits="0" :maxFractionDigits="2" suffix=" F CFA" />
-                </div>
-
-                <div class="space-y-1">
-                    <label class="text-sm font-medium">Montant versé <span class="text-red-500">*</span></label>
-                    <InputNumber v-model="form.paidAmount" class="w-full" :min="0" mode="decimal" :minFractionDigits="0" :maxFractionDigits="2" suffix=" F CFA" />
-                </div>
-
-                <div class="space-y-1">
-                    <label class="text-sm font-medium">Mode de règlement <span class="text-red-500">*</span></label>
-                    <Select v-model="form.paymentMethodId" :options="paymentMethods" optionLabel="libelle" optionValue="id" class="w-full" placeholder="Sélectionnez un mode" />
-                </div>
-
-                <div class="space-y-1">
-                    <label class="text-sm font-medium">Date de règlement</label>
-                    <DatePicker v-model="form.paidAt" dateFormat="yy-mm-dd" showIcon class="w-full" />
-                </div>
-
-                <div class="space-y-1">
-                    <label class="text-sm font-medium">Note (optionnel)</label>
-                    <Textarea v-model="form.note" rows="3" class="w-full" autoResize />
-                </div>
+                <Message v-if="!form.employeeId" severity="info" :closable="false">Sélectionnez un employé pour afficher son salaire et saisir un paiement.</Message>
+                <fieldset :disabled="!currentContext || loading" class="space-y-4 border-0 p-0 m-0 min-w-0" :class="{ 'opacity-50': !currentContext }">
+                    <Message v-if="salaryLocked" severity="info" :closable="false">Le premier calcul de cette période est conservé. Vous pouvez verser tout ou partie du solde restant.</Message>
+                    <div class="space-y-1">
+                        <label class="text-sm font-medium">Indemnité spéciale</label>
+                        <InputNumber v-model="indemniteSpecialeModel" @input="indemniteSpecialeModel = $event.value" :disabled="salaryLocked || !currentContext || loading" class="w-full" :min="0" :maxFractionDigits="2" suffix=" F CFA" />
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-sm font-medium">INPS (retenue)</label>
+                        <InputNumber v-model="inpsModel" @input="inpsModel = $event.value" :disabled="salaryLocked || !currentContext || loading" class="w-full" :min="0" :maxFractionDigits="2" suffix=" F CFA" />
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-sm font-medium">Montant versé <span class="text-red-500">*</span></label>
+                        <InputNumber v-model="form.paidAmount" @input="form.paidAmount = $event.value" :disabled="!currentContext || loading" class="w-full" :min="0" :maxFractionDigits="2" suffix=" F CFA" />
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-sm font-medium">Mode de règlement <span class="text-red-500">*</span></label>
+                        <Select v-model="form.paymentMethodId" :options="paymentMethods" optionLabel="libelle" optionValue="id" class="w-full" :disabled="!currentContext || loading" placeholder="Sélectionnez un mode" />
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-sm font-medium">Date de règlement</label>
+                        <DatePicker v-model="form.paidAt" dateFormat="yy-mm-dd" showIcon class="w-full" :disabled="!currentContext || loading" />
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-sm font-medium">Note (optionnel)</label>
+                        <Textarea v-model="form.note" rows="3" class="w-full" autoResize />
+                    </div>
+                </fieldset>
             </div>
-
-            <SalaryPreviewPanel :context="context" :loading="contextLoading" v-model:prime-amount="primeAmountModel" :editable-prime="hasFixedPrime" :indemnite-speciale="indemniteSpecialeModel" :inps="inpsModel" />
+            <div>
+                <Message v-if="contextError && form.employeeId && !contextLoading && !currentContext" severity="error" :closable="false">{{ contextError }}</Message>
+                <SalaryPreviewPanel
+                    :context="currentContext"
+                    :loading="contextLoading && !!form.employeeId"
+                    v-model:prime-amount="primeAmountModel"
+                    :editable-prime="hasFixedPrime"
+                    :indemnite-speciale="indemniteSpecialeModel"
+                    :inps="inpsModel"
+                    :paid-amount="Number(form.paidAmount || 0)"
+                />
+            </div>
         </div>
-
         <template #footer>
             <div class="flex justify-end gap-2 w-full">
-                <Button label="Annuler" text severity="secondary" @click="close" />
-                <span v-tooltip.top="submitTooltip">
-                    <Button label="Enregistrer" icon="pi pi-check" :loading="loading" :disabled="!canSubmit" @click="submit" />
-                </span>
+                <Button label="Annuler" text severity="secondary" :disabled="loading" @click="close" />
+                <span v-tooltip.top="submitTooltip"><Button label="Enregistrer" icon="pi pi-check" :loading="loading" :disabled="!canSubmit" @click="submit" /></span>
             </div>
         </template>
     </AppDialog>
