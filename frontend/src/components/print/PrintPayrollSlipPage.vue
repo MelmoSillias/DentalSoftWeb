@@ -31,6 +31,8 @@ const props = defineProps({
     netAPayer: { type: Number, default: null },
     calculatedAmount: { type: Number, default: 0 },
     paidAmount: { type: Number, default: 0 },
+    previousPaidAmount: { type: Number, default: 0 },
+    remainingAmount: { type: Number, default: 0 },
     paidAt: { type: String, default: '' },
     paymentMethodLabel: { type: String, default: '' },
     note: { type: String, default: '' },
@@ -126,7 +128,9 @@ const formatPrimeValue = (value, type) => {
                                 <strong>{{ formatAmount(netAPayer ?? calculatedAmount) }}</strong>
                             </td>
                         </tr>
+                        <tr v-if="previousPaidAmount > 0"><td colspan="2"><strong>Montant versé antérieurement</strong></td><td class="right"><strong>{{ formatAmount(previousPaidAmount) }}</strong></td></tr>
                         <tr><td colspan="2"><strong>Net versé</strong></td><td class="right"><strong>{{ formatAmount(paidAmount) }}</strong></td></tr>
+                        <tr v-if="remainingAmount > 0"><td colspan="2"><strong>Reliquat à payer</strong></td><td class="right"><strong>{{ formatAmount(remainingAmount) }}</strong></td></tr>
 
                     </tfoot>
                 </table>

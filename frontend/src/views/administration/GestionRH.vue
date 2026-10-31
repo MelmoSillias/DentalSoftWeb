@@ -60,6 +60,7 @@ const {
     paymentMethods,
     error: payrollError,
     fetchData: fetchPayrolls,
+    fetchAll: fetchAllPayrolls,
     fetchPaymentMethods,
     fetchOne: fetchPayrollOne,
     fetchContext: fetchPayrollContext,
@@ -85,6 +86,7 @@ const payrollDetailVisible = ref(false);
 const selectedPayroll = ref(null);
 const payrollDetailSaving = ref(false);
 const payrollSaving = ref(false);
+const payrollPrinting = ref(false);
 
 const leaveDialogVisible = ref(false);
 const leaveMode = ref('create');
@@ -424,6 +426,39 @@ const confirmDeletePayroll = (event, row) => {
     });
 };
 
+const printPayrollList = async () => {
+    if (!payrollMonth.value || !payrollYear.value || payrollPrinting.value) return;
+    payrollPrinting.value = true;
+    const period = monthLabel(payrollMonth.value, payrollYear.value);
+    try {
+        const payments = await fetchAllPayrolls({ employeeId: payrollEmployeeId.value, month: payrollMonth.value, year: payrollYear.value });
+        const rows = payments.map((payment) => ({
+            employee: payment.employeeName || '-',
+            period: payrollPeriodLabel(payment),
+            amount: formatAmount(payment.paidAmount),
+            method: payment.paymentMethod?.libelle || '-',
+            date: formatDate(payment.paidAt)
+        }));
+        if (rows.length) rows.push({ employee: 'Total versé', amount: formatAmount(payments.reduce((total, payment) => total + Number(payment.paidAmount || 0), 0)), period: '', method: '', date: '' });
+        await printComponent(PrintDataTablePage, {
+            title: 'Liste des salaires',
+            subtitle: `${period} — ${payments.length} paiement(s)`,
+            columns: [
+                { key: 'employee', label: 'Employé' },
+                { key: 'period', label: 'Période' },
+                { key: 'amount', label: 'Montant versé', align: 'right' },
+                { key: 'method', label: 'Mode' },
+                { key: 'date', label: 'Date de paiement' }
+            ],
+            rows
+        });
+    } catch (err) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: err?.response?.data?.message || err?.message || 'Impression impossible.', life: 4000 });
+    } finally {
+        payrollPrinting.value = false;
+    }
+};
+
 const printPayrollSlip = async (row) => {
     try {
         const data = await fetchPayrollPrintPayload(row?.id ?? row);
@@ -452,6 +487,8 @@ const printPayrollSlip = async (row) => {
             netAPayer: data.netAPayer,
             calculatedAmount: data.calculatedAmount,
             paidAmount: data.paidAmount,
+            previousPaidAmount: data.previousPaidAmount,
+            remainingAmount: data.remainingAmount,
             paidAt: formatDate(data.paidAt),
             paymentMethodLabel: data.paymentMethod?.libelle,
             note: data.note
@@ -760,7 +797,8 @@ onBeforeUnmount(() => {
                                         </template>
                                     </Select>
                                 </div>
-                                <div class="md:col-span-3 flex justify-end">
+                                <div class="md:col-span-3 flex flex-wrap justify-end gap-2">
+                                    <Button icon="pi pi-print" label="Imprimer" severity="secondary" outlined :loading="payrollPrinting" :disabled="!payrollMonthModel" @click="printPayrollList" />
                                     <Button icon="pi pi-refresh" severity="secondary" outlined @click="loadPayrolls({ page: 0, rows: payrollRows })" />
                                 </div>
                             </div>

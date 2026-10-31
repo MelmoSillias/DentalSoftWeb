@@ -89,6 +89,31 @@ class SalaryPaymentRepository extends ServiceEntityRepository
         return round((float) $result, 2);
     }
 
+    public function sumPaidBeforePayment(SalaryPayment $payment): float
+    {
+        $qb = $this->createQueryBuilder('sp')
+            ->select('COALESCE(SUM(sp.paidAmount), 0)')
+            ->andWhere('sp.employe = :employee')
+            ->andWhere('sp.frequenceSnapshot = :frequence')
+            ->andWhere('(sp.paidAt < :paidAt OR (sp.paidAt = :paidAt AND sp.id < :id))')
+            ->setParameter('employee', $payment->getEmploye())
+            ->setParameter('frequence', $payment->getFrequenceSnapshot())
+            ->setParameter('paidAt', $payment->getPaidAt()?->format('Y-m-d'))
+            ->setParameter('id', $payment->getId());
+
+        if ($payment->getFrequenceSnapshot() === 'journalier') {
+            $qb->andWhere('sp.workedDay = :workedDay')
+                ->setParameter('workedDay', $payment->getWorkedDay()?->format('Y-m-d'));
+        } else {
+            $qb->andWhere('sp.month = :month')
+                ->andWhere('sp.year = :year')
+                ->setParameter('month', $payment->getMonth())
+                ->setParameter('year', $payment->getYear());
+        }
+
+        return round((float) $qb->getQuery()->getSingleScalarResult(), 2);
+    }
+
     private function applyFilters($qb, ?int $employeeId, ?int $month, ?int $year): void
     {
         if ($employeeId) {

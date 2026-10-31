@@ -322,6 +322,7 @@ class PayrollService
         }
 
         $employee = $payment->getEmploye();
+        $previousPaidAmount = $this->salaryPaymentRepo->sumPaidBeforePayment($payment);
 
         return [
             'id' => $payment->getId(),
@@ -354,6 +355,8 @@ class PayrollService
             'salaireBrut' => round($payment->getBaseSalaryAmount() + $payment->getPrimeAmount() + $payment->getIndemniteSpeciale(), 2),
             'totalRetenues' => $payment->getInps(),
             'netAPayer' => $payment->getCalculatedAmount(),
+            'previousPaidAmount' => $previousPaidAmount,
+            'remainingAmount' => round(max(0, $payment->getCalculatedAmount() - $previousPaidAmount - $payment->getPaidAmount()), 2),
             'calculatedAmount' => $payment->getCalculatedAmount(),
             'paidAmount' => $payment->getPaidAmount(),
             'paidAt' => $payment->getPaidAt()?->format('Y-m-d'),

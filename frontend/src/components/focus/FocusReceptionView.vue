@@ -540,8 +540,8 @@ const dailyRevenueStats = computed(() => {
 });
 
 const revenueButtonLabel = computed(() => financialStatsLoaded.value
-    ? `Encaissements · ${formatFcfa(dailyRevenueStats.value.totalRevenue)}`
-    : financialStatsLoading.value ? 'Encaissements · Chargement…' : 'Encaissements · Indisponibles');
+    ? `${formatFcfa(dailyRevenueStats.value.totalRevenue)}`
+    : financialStatsLoading.value ? 'Chargement…' : 'Indisponibles');
 
 const selectedInvoicePayments = computed(() => {
     const payments = currentBilling.value?.payments || [];
@@ -904,7 +904,7 @@ const handleCancelWithConfirm = (event, consultation) => {
                 <!-- Header -->
                 <div class="shrink-0 border-b border-surface-200/60 px-3 py-3 dark:border-surface-700/60 sm:px-4">
                     <div class="flex flex-row gap-3">
-                        <div class="flex min-w-0 items-center justify-between gap-2">
+                        <div class="flex min-w-0 items-center gap-2">
                             <SelectButton v-model="centerView" :options="centerViewOptions" option-label="label" option-value="value" :allow-empty="false" size="small" aria-label="Vue centrale" />
                             <Tag :value="centerView === 'queue' ? secretaryRows.length : cabinetServices.length" :icon="centerView === 'queue' ? 'pi pi-users' : 'pi pi-building'" severity="info" :aria-label="centerView === 'queue' ? 'Nombre de consultations' : 'Nombre de services cabinets'" />
                         </div>

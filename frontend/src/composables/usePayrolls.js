@@ -12,6 +12,19 @@ const error = ref(null);
 const getToken = () => localStorage.getItem('token') || localStorage.getItem('authToken');
 
 export function usePayrolls() {
+    const fetchAll = async ({ employeeId = null, month, year }) => {
+        const rows = [];
+        let total = 0;
+        do {
+            const result = await fetchPayrolls({ start: rows.length, length: 200, employeeId, month, year }, getToken());
+            const batch = Array.isArray(result.data) ? result.data : [];
+            total = result.recordsFiltered ?? result.recordsTotal ?? batch.length;
+            if (!batch.length && rows.length < total) throw new Error('La liste des salaires est incomplète. Veuillez réessayer.');
+            rows.push(...batch);
+        } while (rows.length < total);
+        return rows;
+    };
+
     const fetchData = async ({ page = 0, rows = 10, employeeId = null, month = null, year = null } = {}) => {
         loading.value = true;
         error.value = null;
@@ -129,6 +142,7 @@ export function usePayrolls() {
         paymentMethods,
         error,
         fetchData,
+        fetchAll,
         fetchPaymentMethods,
         fetchOne,
         fetchContext,
