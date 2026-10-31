@@ -6,10 +6,11 @@ import { usePrinter } from '@/composables/usePrinter';
 import { fetchInvoicePrintData, fetchReceiptPrintData, fetchTicketPrintData } from '@/services/printService';
 import { searchPatients } from '@/services/patients';
 import CabinetServiceDialog from '@/components/patients/CabinetServiceDialog.vue';
+import { fetchCabinetServices, fetchCabinetService } from '@/services/cabinetServices';
 import ContextMenu from 'primevue/contextmenu';
 import AppDialog from '@/components/layout/AppDialog.vue';
 import ToggleSwitch from 'primevue/toggleswitch';
-import { computed, ref, toRefs, useAttrs } from 'vue';
+import { computed, onMounted, ref, toRefs, useAttrs } from 'vue';
 
 defineOptions({ inheritAttrs: false });
 
@@ -133,6 +134,10 @@ const showCompletedSecretary = defineModel('showCompletedSecretary', {
 
 const newestFirstSecretary = ref(false);
 const showRevenueStatsModal = ref(false);
+const centerView = ref('queue');
+const cabinetServices = ref([]);
+const selectedCabinetService = ref(null);
+const cabinetServicesLoading = ref(false);
 /** Mobile panel: patients | queue | details (xl+ shows all three) */
 const mobilePanel = ref('queue');
 
@@ -162,6 +167,21 @@ const formatDateTime = (value) => {
 };
 
 const formatFcfa = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
+const servicePatientLabel = (service) => service?.patientName || service?.patient?.fullname || `${service?.patient?.prenom || ''} ${service?.patient?.nom || ''}`.trim() || 'Patient';
+const loadCabinetServices = async () => {
+    cabinetServicesLoading.value = true;
+    try { cabinetServices.value = await fetchCabinetServices({}, token) || []; }
+    catch (_) { cabinetServices.value = []; }
+    finally { cabinetServicesLoading.value = false; }
+};
+const selectCabinetService = async (service) => {
+    selectedCabinetService.value = service;
+    mobilePanel.value = 'details';
+    if (!service?.id) return;
+    try { selectedCabinetService.value = await fetchCabinetService(service.id, token) || service; }
+    catch (_) { /* Keep the list row details available if the full record cannot be loaded. */ }
+};
+onMounted(loadCabinetServices);
 
 const patientImpayeesAmount = (patientOrConsultation) => {
     if (!patientOrConsultation) return 0;
@@ -186,9 +206,6 @@ const contextMenuPatient = ref(null);
 const cabinetServiceVisible = ref(false);
 const cabinetServicePatient = ref(null);
 const openCabinetService = (patient) => {
-    if (!patient?.id) {
-        return;
-    }
     cabinetServicePatient.value = patient;
     cabinetServiceVisible.value = true;
 };
@@ -386,6 +403,8 @@ const todayConsultations = computed(() => {
     return (consultations.value || []).filter((consultation) => isSameCalendarDay(consultation?.createdAt, now));
 });
 
+const todayCabinetServices = computed(() => cabinetServices.value.filter((service) => isSameCalendarDay(service?.createdAt || service?.date, new Date())));
+
 const dailyRevenueStats = computed(() => {
     const invoiceMap = new Map();
     const paymentMap = new Map();
@@ -421,7 +440,12 @@ const dailyRevenueStats = computed(() => {
 
     const invoices = Array.from(invoiceMap.values());
     const payments = Array.from(paymentMap.values());
-    totalRevenue = totalRevenue + payments.reduce((sum, payment) => sum + (Number(payment?.montant) || 0), 0);
+    const cabinetServiceRevenue = todayCabinetServices.value.reduce((sum, service) => {
+        const payments = service?.facture?.paiements || service?.facture?.payments || [];
+        const paid = payments.length ? payments.reduce((subtotal, payment) => subtotal + (Number(payment?.montant ?? payment?.amount) || 0), 0) : Number(service?.facture?.montantEncaisse ?? service?.facture?.paye ?? service?.montantEncaisse ?? 0) || 0;
+        return sum + paid;
+    }, 0);
+    totalRevenue = totalRevenue + payments.reduce((sum, payment) => sum + (Number(payment?.montant) || 0), 0) + cabinetServiceRevenue;
     const totalUnpaid = invoices.reduce((sum, invoice) => sum + (Number(invoice?.remaining) || 0), 0);
     const paymentModeRows = Object.entries(
         payments.reduce((acc, payment) => {
@@ -469,6 +493,8 @@ const dailyRevenueStats = computed(() => {
         totalConsultations: todayConsultations.value.length,
         totalInvoices: invoices.length,
         totalRevenue: totalRevenue,
+        totalCabinetServices: todayCabinetServices.value.length,
+        cabinetServiceRevenue,
         totalUnpaid,
         totalPaymentsCount: payments.length,
         totalInsurance: insurancePayments.reduce((sum, payment) => sum + (Number(payment?.montant) || 0), 0),
@@ -841,8 +867,11 @@ const handleCancelWithConfirm = (event, consultation) => {
                 <div class="shrink-0 border-b border-surface-200/60 px-3 py-3 dark:border-surface-700/60 sm:px-4">
                     <div class="flex items-center justify-between gap-2">
                         <div class="min-w-0">
-                            <h3 class="text-base font-semibold text-surface-900 dark:text-surface-50">File d'attente</h3>
-                            <p class="text-xs text-surface-500">{{ secretaryRows.length }} consultation(s)</p>
+                            <select v-model="centerView" class="max-w-[190px] rounded-lg border border-surface-200 bg-white px-2 py-1.5 text-sm font-semibold text-surface-900 dark:border-surface-700 dark:bg-surface-800 dark:text-surface-50" aria-label="Vue centrale">
+                                <option value="queue">File d'attente</option>
+                                <option value="services">Services cabinets</option>
+                            </select>
+                            <p class="text-xs text-surface-500">{{ centerView === 'queue' ? `${secretaryRows.length} consultation(s)` : `${cabinetServices.length} service(s)` }}</p>
                         </div>
                         <div class="flex shrink-0 items-center gap-1.5 sm:gap-2">
                             <ToggleSwitch v-model="showCompletedSecretary" />
@@ -863,11 +892,11 @@ const handleCancelWithConfirm = (event, consultation) => {
                                 <span class="hidden sm:inline">{{ revenueButtonLabel }}</span>
                             </button>
                             <button
-                                @click="emit('open-create-consultation')"
-                                :disabled="consultationToolbarLoading"
+                                @click="centerView === 'queue' ? emit('open-create-consultation') : openCabinetService(null)"
+                                :disabled="centerView === 'queue' && consultationToolbarLoading"
                                 class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-md transition-all hover:shadow-lg hover:scale-105 disabled:cursor-not-allowed disabled:opacity-60 xl:h-auto xl:w-auto xl:p-1.5"
                             >
-                                <i :class="consultationToolbarLoading ? 'pi pi-spin pi-spinner text-xs' : 'pi pi-plus text-xs'"></i>
+                                <i :class="centerView === 'queue' && consultationToolbarLoading ? 'pi pi-spin pi-spinner text-xs' : 'pi pi-plus text-xs'"></i>
                             </button>
                         </div>
                     </div>
@@ -890,6 +919,7 @@ const handleCancelWithConfirm = (event, consultation) => {
                             <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-800/60 dark:bg-emerald-950/20">
                                 <span class="text-xs uppercase tracking-wide text-emerald-600 dark:text-emerald-300">Encaissements du jour</span>
                                 <strong class="mt-2 block text-2xl text-emerald-700 dark:text-emerald-200">{{ formatFcfa(dailyRevenueStats.totalRevenue) }}</strong>
+                                <span class="mt-1 block text-xs text-emerald-700 dark:text-emerald-300">Services cabinets : {{ formatFcfa(dailyRevenueStats.cabinetServiceRevenue) }} · {{ dailyRevenueStats.totalCabinetServices }} service(s)</span>
                             </div>
                             <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800/60 dark:bg-amber-950/20">
                                 <span class="text-xs uppercase tracking-wide text-amber-600 dark:text-amber-300">Reste à payer</span>
@@ -944,7 +974,7 @@ const handleCancelWithConfirm = (event, consultation) => {
                 </AppDialog>
 
                 <!-- Contenu consultations -->
-                <div class="min-h-0 flex-1 overflow-y-auto p-4 scrollbar-thin">
+                <div v-if="centerView === 'queue'" class="min-h-0 flex-1 overflow-y-auto p-4 scrollbar-thin">
                     <div v-if="loading" class="space-y-3">
                         <div v-for="i in 4" :key="i" class="rounded-xl bg-surface-100/50 p-3 animate-pulse dark:bg-surface-800/30">
                             <div class="flex gap-3">
@@ -1058,6 +1088,14 @@ const handleCancelWithConfirm = (event, consultation) => {
                         <p class="mt-1 text-xs text-surface-400">Aujourd'hui</p>
                     </div>
                 </div>
+                <div v-else class="min-h-0 flex-1 overflow-y-auto p-3 scrollbar-thin">
+                    <div v-if="cabinetServicesLoading" class="p-6 text-center text-sm text-surface-500">Chargement des services…</div>
+                    <button v-for="service in cabinetServices" :key="service.id" type="button" @click="selectCabinetService(service)" :class="['mb-2 flex w-full items-center justify-between gap-3 rounded-xl border p-3 text-left transition hover:border-primary-400 hover:bg-primary-50/50 dark:hover:bg-primary-950/20', selectedCabinetService?.id === service.id ? 'border-primary-400 bg-primary-50 dark:bg-primary-950/20' : 'border-surface-200 dark:border-surface-700']">
+                        <span class="min-w-0"><strong class="block truncate text-sm text-surface-900 dark:text-surface-50">{{ service.designation || 'Service cabinet' }}</strong><small class="block truncate text-surface-500">{{ servicePatientLabel(service) }} · {{ formatTime(service.createdAt || service.date) }}</small></span>
+                        <span class="shrink-0 text-xs font-semibold">{{ formatFcfa(service.montant) }}</span>
+                    </button>
+                    <div v-if="!cabinetServicesLoading && !cabinetServices.length" class="p-8 text-center text-sm text-surface-500">Aucun service cabinet enregistré.</div>
+                </div>
             </div>
         </section>
 
@@ -1085,7 +1123,20 @@ const handleCancelWithConfirm = (event, consultation) => {
                     </div>
                 </div>
 
-                <div v-if="currentConsultation" class="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 scrollbar-thin">
+                <div v-if="centerView === 'services' && selectedCabinetService" class="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 scrollbar-thin">
+                    <div class="rounded-xl border border-primary-200 bg-primary-50/60 p-4 dark:border-primary-800 dark:bg-primary-950/20">
+                        <p class="text-lg font-semibold text-surface-900 dark:text-surface-50">{{ selectedCabinetService.designation || 'Service cabinet' }}</p>
+                        <p class="mt-1 text-sm text-surface-600 dark:text-surface-300">{{ servicePatientLabel(selectedCabinetService) }}</p>
+                    </div>
+                    <div class="space-y-2 rounded-xl border border-surface-200 p-4 text-sm dark:border-surface-700">
+                        <div class="flex justify-between"><span class="text-surface-500">Date</span><strong>{{ formatDateTime(selectedCabinetService.createdAt || selectedCabinetService.date) }}</strong></div>
+                        <div class="flex justify-between"><span class="text-surface-500">Montant</span><strong>{{ formatFcfa(selectedCabinetService.montant) }}</strong></div>
+                        <div class="flex justify-between"><span class="text-surface-500">Réglé</span><strong>{{ formatFcfa(selectedCabinetService.facture?.montantEncaisse ?? selectedCabinetService.facture?.paye ?? selectedCabinetService.montantEncaisse ?? 0) }}</strong></div>
+                        <div class="flex justify-between"><span class="text-surface-500">Reste</span><strong>{{ formatFcfa(selectedCabinetService.facture?.reste ?? selectedCabinetService.montant) }}</strong></div>
+                        <div v-if="selectedCabinetService.observation" class="border-t border-surface-200 pt-2 dark:border-surface-700"><span class="text-surface-500">Note</span><p class="mt-1">{{ selectedCabinetService.observation }}</p></div>
+                    </div>
+                </div>
+                <div v-else-if="currentConsultation" class="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 scrollbar-thin">
                     <!-- Carte patient -->
                     <div
                         :class="[
@@ -1302,8 +1353,8 @@ const handleCancelWithConfirm = (event, consultation) => {
                     <div class="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-surface-100 to-surface-200 dark:from-surface-800 dark:to-surface-700">
                         <i class="pi pi-inbox text-3xl text-surface-400"></i>
                     </div>
-                    <p class="text-sm font-medium text-surface-600">Aucune consultation sélectionnée</p>
-                    <p class="mt-1 text-xs text-surface-400">Sélectionnez une consultation dans la file</p>
+                    <p class="text-sm font-medium text-surface-600">{{ centerView === 'services' ? 'Aucun service sélectionné' : 'Aucune consultation sélectionnée' }}</p>
+                    <p class="mt-1 text-xs text-surface-400">{{ centerView === 'services' ? 'Sélectionnez un service dans la liste' : 'Sélectionnez une consultation dans la file' }}</p>
                     <button
                         type="button"
                         class="mt-4 rounded-xl bg-primary-500 px-4 py-2.5 text-xs font-medium text-white shadow-md xl:hidden"
@@ -1363,6 +1414,8 @@ const handleCancelWithConfirm = (event, consultation) => {
         v-model:visible="cabinetServiceVisible"
         :patient-id="cabinetServicePatient?.id"
         :patient-name="cabinetServicePatient?.fullname || cabinetServicePatient?.nom || ''"
+        :allow-patient-select="!cabinetServicePatient?.id"
+        @created="loadCabinetServices"
     />
 </template>
 
