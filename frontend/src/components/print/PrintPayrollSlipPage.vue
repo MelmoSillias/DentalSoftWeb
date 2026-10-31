@@ -63,12 +63,11 @@ const formatPrimeValue = (value, type) => {
     <PrintA4Page :logo-src="logoSrc">
         <template #header>
             <PrintDocumentHeader :title="title" :doc-id="docId" :date="date" />
+            <p class="payroll-slip__period">{{ "Salaire " + periodLabel + " | Payé le " + paidAt }}</p>
+
         </template>
 
         <div class="payroll-slip">
-            <p class="payroll-slip__title">Bulletin de paie</p>
-            <p class="payroll-slip__period">{{ periodLabel }}</p>
-
             <section class="payroll-slip__section">
                 <h2 class="payroll-slip__section-title">Identité du salarié</h2>
                 <div class="payroll-slip__grid">
@@ -81,37 +80,11 @@ const formatPrimeValue = (value, type) => {
                         <span class="payroll-slip__value">{{ matricule || '—' }}</span>
                     </div>
                     <div class="payroll-slip__field">
-                        <span class="payroll-slip__label">Description de la fonction</span>
+                        <span class="payroll-slip__label">Description d'emploi</span>
                         <span class="payroll-slip__value">{{ employeeFonction || '—' }}</span>
                     </div>
                     <div class="payroll-slip__field"><span class="payroll-slip__label">Titre</span><span class="payroll-slip__value">{{ employeeTitle || '—' }}</span></div>
                     <div class="payroll-slip__field"><span class="payroll-slip__label">Adresse</span><span class="payroll-slip__value">{{ employeeAddress || '—' }}</span></div>
-                    <div class="payroll-slip__field">
-                        <span class="payroll-slip__label">Fréquence</span>
-                        <span class="payroll-slip__value">{{ frequenceLabel }}</span>
-                    </div>
-                </div>
-            </section>
-
-            <section class="payroll-slip__section">
-                <h2 class="payroll-slip__section-title">Paramètres de rémunération</h2>
-                <div class="payroll-slip__grid">
-                    <div class="payroll-slip__field">
-                        <span class="payroll-slip__label">Type de salaire</span>
-                        <span class="payroll-slip__value payroll-slip__value--caps">{{ salaryTypeLabel }}</span>
-                    </div>
-                    <div class="payroll-slip__field">
-                        <span class="payroll-slip__label">Valeur contractuelle</span>
-                        <span class="payroll-slip__value">{{ formatSalaryValue(salaryValue, salaryType) }}</span>
-                    </div>
-                    <div v-if="primeType && primeType !== 'aucune'" class="payroll-slip__field">
-                        <span class="payroll-slip__label">Type de prime</span>
-                        <span class="payroll-slip__value payroll-slip__value--caps">{{ primeTypeDisplay }}</span>
-                    </div>
-                    <div v-if="primeType && primeType !== 'aucune'" class="payroll-slip__field">
-                        <span class="payroll-slip__label">Valeur prime</span>
-                        <span class="payroll-slip__value">{{ formatPrimeValue(primeValue, primeType) }}</span>
-                    </div>
                 </div>
             </section>
 
@@ -137,7 +110,7 @@ const formatPrimeValue = (value, type) => {
                             <td class="right">{{ formatAmount(primeAmount) }}</td>
                         </tr>
                         <tr><td>Indemnité spéciale</td><td class="right">—</td><td class="right">{{ formatAmount(indemniteSpeciale) }}</td></tr>
-                        <tr><td>INPS (retenue)</td><td class="right">—</td><td class="right">- {{ formatAmount(inps) }}</td></tr>
+                        <tr><td>INPS</td><td class="right">—</td><td class="right">- {{ formatAmount(inps) }}</td></tr>
                     </tbody>
                     <tfoot>
                         <tr>
@@ -154,11 +127,12 @@ const formatPrimeValue = (value, type) => {
                             </td>
                         </tr>
                         <tr><td colspan="2"><strong>Net versé</strong></td><td class="right"><strong>{{ formatAmount(paidAmount) }}</strong></td></tr>
+
                     </tfoot>
                 </table>
             </section>
 
-            <section class="payroll-slip__section">
+            <!-- <section class="payroll-slip__section">
                 <h2 class="payroll-slip__section-title">Informations de règlement</h2>
                 <div class="payroll-slip__grid">
                     <div class="payroll-slip__field">
@@ -174,16 +148,16 @@ const formatPrimeValue = (value, type) => {
                         <span class="payroll-slip__value">{{ note }}</span>
                     </div>
                 </div>
-            </section>
+            </section> -->
 
             <section class="payroll-slip__signatures">
                 <div class="payroll-slip__signature-box">
                     <p class="payroll-slip__signature-title">Cachet et visa du gestionnaire</p>
-                    <div class="payroll-slip__signature-area" />
+                    <!-- <div class="payroll-slip__signature-area" /> -->
                 </div>
                 <div class="payroll-slip__signature-box">
                     <p class="payroll-slip__signature-title">Émargement du bénéficiaire</p>
-                    <div class="payroll-slip__signature-area" />
+                    <!-- <div class="payroll-slip__signature-area" /> -->
                 </div>
             </section>
         </div>
