@@ -745,7 +745,7 @@ onBeforeUnmount(() => {
                 </TabPanel>
 
                 <TabPanel value="payroll">
-                    <PageSection title="Gestion de la paie" padded>
+                    <PageSection title="Gestion de la paie">
                         <template #header>
                             <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end w-full">
                                 <div class="md:col-span-4">
@@ -808,7 +808,7 @@ onBeforeUnmount(() => {
                 </TabPanel>
 
                 <TabPanel value="leaves">
-                    <PageSection title="Gestion des congés" padded>
+                    <PageSection title="Gestion des congés">
                         <template #header>
                             <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end w-full">
                                 <div class="md:col-span-4">
