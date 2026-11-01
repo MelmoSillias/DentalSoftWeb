@@ -33,7 +33,6 @@ const form = ref({
     paidAmount: null,
     paidAt: null,
     paymentMethodId: null,
-    primeAmount: null,
     note: ''
 });
 
@@ -61,12 +60,9 @@ const hydrateForm = () => {
         paidAmount: payment?.paidAmount ?? null,
         paidAt: payment?.paidAt ? new Date(payment.paidAt) : new Date(),
         paymentMethodId: payment?.paymentMethod?.id ?? null,
-        primeAmount: payment?.primeAmount ?? null,
         note: payment?.note || ''
     };
 };
-
-const hasFixedPrime = computed(() => props.payment?.primeType === 'fixe' && props.payment?.frequenceSnapshot !== 'mensuel');
 
 const formatCurrency = (value) => {
     if (value === null || value === undefined) return '—';
@@ -96,10 +92,6 @@ const submit = () => {
         paymentMethodId: form.value.paymentMethodId,
         note: form.value.note || ''
     };
-
-    if (hasFixedPrime.value && form.value.primeAmount !== null) {
-        payload.primeAmount = Number(form.value.primeAmount);
-    }
 
     emit('submit', payload);
     editMode.value = false;
@@ -171,11 +163,7 @@ const submit = () => {
             <div v-else class="space-y-3">
                 <div class="space-y-1">
                     <label class="text-sm font-medium">Montant versé</label>
-                    <InputNumber v-model="form.paidAmount" class="w-full" :min="0" suffix=" F CFA" />
-                </div>
-                <div v-if="hasFixedPrime" class="space-y-1">
-                    <label class="text-sm font-medium">Montant prime</label>
-                    <InputNumber v-model="form.primeAmount" class="w-full" :min="0" suffix=" F CFA" />
+                    <InputNumber v-model="form.paidAmount" class="w-full" :min="0" :disabled="payment.frequenceSnapshot === 'journalier'" suffix=" F CFA" />
                 </div>
                 <div class="space-y-1">
                     <label class="text-sm font-medium">Mode de règlement</label>

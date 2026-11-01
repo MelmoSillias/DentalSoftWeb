@@ -122,7 +122,7 @@ test('saved calculation hydrates all inputs and remaining amount', async (t) => 
     assert.equal(payload.inps, 3000);
 });
 
-test('employee and period changes reject stale context and request the new period', async (t) => {
+test('selecting a daily employee opens the dedicated dialog with the chosen period', async (t) => {
     const { props, state, events } = await dialog(t);
     await hydrate(props, state);
     state.form.value.employeeId = 8;
@@ -132,10 +132,95 @@ test('employee and period changes reject stale context and request the new perio
     assert.equal(state.canSubmit.value, false);
     state.monthModel.value = new Date(2026, 10, 1);
     await vue.nextTick();
-    const payload = events.findLast(([name]) => name === 'request-context')[1];
-    assert.equal(payload.employeeId, 8);
-    assert.equal(payload.month, 11);
-    assert.equal(payload.day, '2026-11-01');
+    const payload = events.findLast(([name]) => name === 'open-daily')[1];
+    assert.equal(payload.id, 8);
+    assert.equal(payload.period.getMonth(), 10);
+    assert.equal(events.findLast(([name]) => name === 'request-context')[1].employeeId, null);
+});
+
+async function dailyDialog(t, loadContext) {
+    const props = vue.reactive({
+        visible: false,
+        employees: [
+            { id: 8, prenom: 'Daily', frequencePaiement: 'journalier' },
+            { id: 7, prenom: 'Monthly', frequencePaiement: 'mensuel' }
+        ],
+        paymentMethods: [{ id: 1 }],
+        initialEmployeeId: 8,
+        initialPeriod: new Date(2026, 9, 1),
+        loadContext,
+        refreshKey: 0,
+        loading: false
+    });
+    const events = [];
+    const scope = vue.effectScope();
+    const state = scope.run(() => componentSetup('DailyPayrollPaymentDialog.vue', props, (...event) => events.push(event)));
+    t.after(() => scope.stop());
+    props.visible = true;
+    await vue.nextTick();
+    await vue.nextTick();
+    return { state, props, events };
+}
+
+test('daily dialog loads month activities and submits a whole day only once', async (t) => {
+    const calls = [];
+    const day = { day: '2026-10-02', calculatedAmount: 5000, canPay: true, hasPayment: false };
+    const { state, events } = await dailyDialog(t, async (...args) => {
+        calls.push(args);
+        return { days: [day], paidDays: 0, activityDays: 1 };
+    });
+    assert.deepEqual(calls[0], [8, { month: 10, year: 2026 }]);
+    assert.equal(state.employeeOptions.value.length, 1);
+    state.payDay(day);
+    state.payDay(day);
+    const submissions = events.filter(([name]) => name === 'submit');
+    assert.equal(submissions.length, 1);
+    assert.equal(submissions[0][1].paidAmount, 5000);
+    assert.equal(submissions[0][1].day, '2026-10-02');
+    assert.equal(submissions[0][1].inps, undefined);
+    assert.equal(submissions[0][1].indemniteSpeciale, undefined);
+});
+
+test('daily dialog refuses a paid day and refreshes the paid day count', async (t) => {
+    let paidDays = 0;
+    const { state, props, events } = await dailyDialog(t, async () => ({ days: [], activityDays: 2, paidDays }));
+    state.payDay({ day: '2026-10-02', calculatedAmount: 5000, canPay: true, hasPayment: true });
+    assert.equal(events.filter(([name]) => name === 'submit').length, 0);
+    paidDays = 1;
+    props.refreshKey += 1;
+    await vue.nextTick();
+    await vue.nextTick();
+    assert.equal(state.context.value.paidDays, 1);
+    state.employeeId.value = null;
+    await vue.nextTick();
+    assert.equal(state.context.value, null);
+    assert.equal(state.paymentReady.value, false);
+});
+
+test('daily dialog ignores responses for a previous month', async (t) => {
+    const requests = [];
+    const { state } = await dailyDialog(t, () => new Promise((resolve) => requests.push(resolve)));
+    state.monthModel.value = new Date(2026, 10, 1);
+    await vue.nextTick();
+    requests[1]({ month: 11 });
+    await vue.nextTick();
+    requests[0]({ month: 10 });
+    await vue.nextTick();
+    assert.equal(state.context.value.month, 11);
+});
+
+test('employee payroll groups monthly employees before daily employees', () => {
+    const rows = [
+        { id: 1, employeeName: 'A Daily', context: { frequencePaiement: 'journalier' } },
+        { id: 2, employeeName: 'Z Monthly', context: { frequencePaiement: 'mensuel' } }
+    ];
+    const scope = vue.effectScope();
+    const state = scope.run(() => componentSetup('EmployeePayrollTable.vue', vue.reactive({ rows, loading: false })));
+    assert.deepEqual(
+        state.groupedRows.value.map((row) => row.id),
+        [2, 1]
+    );
+    scope.stop();
 });
 
 test('preview reacts to the current payment and all salary inputs', () => {

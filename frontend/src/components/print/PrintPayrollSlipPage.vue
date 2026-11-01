@@ -111,8 +111,8 @@ const formatPrimeValue = (value, type) => {
                             <td class="right">{{ primeType === 'actes' ? formatAmount(primeBaseAmount) : '—' }}</td>
                             <td class="right">{{ formatAmount(primeAmount) }}</td>
                         </tr>
-                        <tr><td>Indemnité spéciale</td><td class="right">—</td><td class="right">{{ formatAmount(indemniteSpeciale) }}</td></tr>
-                        <tr><td>INPS</td><td class="right">—</td><td class="right">- {{ formatAmount(inps) }}</td></tr>
+                        <tr v-if="frequenceSnapshot !== 'journalier'"><td>Indemnité spéciale</td><td class="right">—</td><td class="right">{{ formatAmount(indemniteSpeciale) }}</td></tr>
+                        <tr v-if="frequenceSnapshot !== 'journalier'"><td>INPS</td><td class="right">—</td><td class="right">- {{ formatAmount(inps) }}</td></tr>
                     </tbody>
                     <tfoot>
                         <tr>
@@ -121,7 +121,7 @@ const formatPrimeValue = (value, type) => {
                                 <strong>{{ formatAmount(salaireBrut ?? (baseSalaryAmount + primeAmount + indemniteSpeciale)) }}</strong>
                             </td>
                         </tr>
-                        <tr><td colspan="2"><strong>Total des retenues</strong></td><td class="right"><strong>{{ formatAmount(totalRetenues ?? inps) }}</strong></td></tr>
+                        <tr v-if="frequenceSnapshot !== 'journalier'"><td colspan="2"><strong>Total des retenues</strong></td><td class="right"><strong>{{ formatAmount(totalRetenues ?? inps) }}</strong></td></tr>
                         <tr>
                             <td colspan="2"><strong>Net à payer</strong></td>
                             <td class="right">

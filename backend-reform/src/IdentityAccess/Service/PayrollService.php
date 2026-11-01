@@ -10,6 +10,7 @@ use App\IdentityAccess\Repository\EmployeRepository;
 use App\IdentityAccess\Repository\SalaryPaymentRepository;
 use App\Reporting\Service\ReportService;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\DBAL\LockMode;
 use InvalidArgumentException;
 
 class PayrollService
@@ -88,25 +89,115 @@ class PayrollService
         foreach ($payments as $payment) {
             $byEmployee[$payment->getEmploye()->getId()][] = $this->mapPaymentRow($payment);
         }
-        $reference = new \DateTimeImmutable(sprintf('%04d-%02d-01', $year, $month));
-        $day = $reference->format('Y-m') === date('Y-m') ? date('Y-m-d') : $reference->format('Y-m-d');
+        $dailyActivities = null;
         $rows = [];
         foreach ($employees as $employee) {
             if ($employeeId && $employee->getId() !== $employeeId) continue;
-            $context = $this->getPaymentContext($employee->getId(), $month, $year, $employee->getFrequencePaiement() === 'journalier' ? $day : null);
+            if ($employee->getFrequencePaiement() === 'journalier') {
+                $start = new \DateTimeImmutable(sprintf('%04d-%02d-01', $year, $month));
+                $dailyActivities ??= $this->reportService->dailyPayrollActivities($start, $start->modify('last day of this month')->setTime(23, 59, 59));
+                $employeePayments = array_values(array_filter($payments, fn (SalaryPayment $payment) => $payment->getEmploye()->getId() === $employee->getId() && $payment->getFrequenceSnapshot() === 'journalier'));
+                $context = $this->buildDailyPayroll($employee, $month, $year, $dailyActivities[$employee->getId()] ?? [], $employeePayments);
+            } else {
+                $context = $this->getPaymentContext($employee->getId(), $month, $year);
+            }
             $rows[] = [
                 'id' => $employee->getId(),
                 'employeeName' => $employee->getFullName(),
                 'employeeFonction' => $employee->getFonction(),
+                'frequencyOrder' => $employee->getFrequencePaiement() === 'mensuel' ? 0 : 1,
                 'context' => $context,
                 'payments' => $byEmployee[$employee->getId()] ?? [],
             ];
         }
 
+        usort($rows, fn (array $a, array $b) => [$a['frequencyOrder'], $a['employeeName']] <=> [$b['frequencyOrder'], $b['employeeName']]);
         return $rows;
     }
 
+    public function getDailyPaymentContext(int $employeeId, int $month, int $year): array
+    {
+        $this->validatePeriod($month, $year);
+        $employee = $this->employeRepo->find($employeeId);
+        if (!$employee || $employee->isDeleted() || $employee->getFrequencePaiement() !== 'journalier') {
+            throw new InvalidArgumentException('Employe journalier introuvable.');
+        }
+        $start = new \DateTimeImmutable(sprintf('%04d-%02d-01', $year, $month));
+        $activities = $this->reportService->dailyPayrollActivities($start, $start->modify('last day of this month')->setTime(23, 59, 59));
+        $payments = $this->salaryPaymentRepo->findBy(['employe' => $employee, 'month' => $month, 'year' => $year, 'frequenceSnapshot' => 'journalier'], ['createdAt' => 'ASC', 'id' => 'ASC']);
+        return $this->buildDailyPayroll($employee, $month, $year, $activities[$employeeId] ?? [], $payments);
+    }
+
+    private function buildDailyPayroll(Employe $employee, int $month, int $year, array $activities, array $payments): array
+    {
+        $byDay = [];
+        foreach ($activities as $activity) $byDay[$activity['day']] = $activity;
+        foreach ($payments as $payment) {
+            $day = $payment->getWorkedDay()?->format('Y-m-d');
+            if (!$day) continue;
+            $byDay[$day] ??= ['day' => $day, 'revenueTotal' => $payment->getBaseAmount() ?? 0, 'consultations' => 0];
+            $byDay[$day]['payments'][] = $payment;
+        }
+        ksort($byDay);
+        $days = [];
+        $paidDays = 0;
+        $total = $paid = $remaining = 0.0;
+        foreach ($byDay as $day => $activity) {
+            $recorded = $activity['payments'] ?? [];
+            usort($recorded, fn (SalaryPayment $a, SalaryPayment $b) => [$a->getCreatedAt(), $a->getId()] <=> [$b->getCreatedAt(), $b->getId()]);
+            $first = $recorded[0] ?? null;
+            $revenue = (float) $activity['revenueTotal'];
+            $type = $first?->getSalaryTypeSnapshot() ?? $employee->getTypeSalaire();
+            $value = $first?->getSalaryValueSnapshot() ?? $employee->getValeurSalaire();
+            $primeType = $first?->getPrimeTypeSnapshot() ?? $employee->getTypePrime();
+            $primeValue = $first?->getPrimeValueSnapshot() ?? $employee->getValeurPrime();
+            $base = $first?->getBaseSalaryAmount() ?? round($type === 'pourcentage' ? $revenue * (float) $value / 100 : ($type === 'fixe' ? (float) $value : 0), 2);
+            $prime = $first?->getPrimeAmount() ?? round($primeType === 'actes' ? $revenue * (float) $primeValue / 100 : ($primeType === 'fixe' ? (float) $primeValue : 0), 2);
+            $net = $first?->getCalculatedAmount() ?? round($base + $prime, 2);
+            $alreadyPaid = round(array_sum(array_map(fn (SalaryPayment $payment) => $payment->getPaidAmount(), $recorded)), 2);
+            $isPaid = count($recorded) > 0 && $alreadyPaid >= $net - 0.01;
+            if ($isPaid) $paidDays++;
+            $balance = round(max(0, $net - $alreadyPaid), 2);
+            $days[] = [
+                'day' => $day, 'revenueTotal' => $revenue, 'consultations' => $activity['consultations'],
+                'salaryType' => $type, 'salaryValue' => $value, 'typePrime' => $primeType, 'valeurPrime' => $primeValue,
+                'baseSalaryAmount' => $base, 'primeAmount' => $prime, 'calculatedAmount' => $net,
+                'paidAmount' => $alreadyPaid, 'remainingAmount' => $balance,
+                'isPaid' => $isPaid, 'hasPayment' => count($recorded) > 0,
+                'canPay' => !$recorded && $net > 0,
+                'payments' => array_map(fn (SalaryPayment $payment) => $this->mapPaymentRow($payment), $recorded),
+            ];
+            $total += $net;
+            $paid += $alreadyPaid;
+            $remaining += $balance;
+        }
+        return [
+            'employee' => ['id' => $employee->getId(), 'nom' => $employee->getNom(), 'prenom' => $employee->getPrenom(), 'fullname' => $employee->getFullName(), 'frequencePaiement' => 'journalier'],
+            'period' => ['month' => $month, 'year' => $year, 'day' => null],
+            'frequencePaiement' => 'journalier', 'salaryType' => $employee->getTypeSalaire(), 'salaryValue' => $employee->getValeurSalaire(),
+            'typePrime' => $employee->getTypePrime(), 'valeurPrime' => $employee->getValeurPrime(),
+            'indemniteSpeciale' => 0, 'inps' => 0, 'salaryLocked' => false,
+            'calculatedAmount' => round($total, 2),
+            'breakdown' => ['alreadyPaid' => round($paid, 2), 'remaining' => round($remaining, 2)],
+            'canPay' => count(array_filter($days, fn (array $day) => $day['canPay'])) > 0,
+            'days' => $days, 'paidDays' => $paidDays, 'activityDays' => count($days),
+        ];
+    }
+
     public function createSalaryPayment(array $payload): array
+    {
+        $employee = $this->employeRepo->find((int) ($payload['employeeId'] ?? 0));
+        if ($employee && $employee->getFrequencePaiement() === 'journalier') {
+            return $this->em->wrapInTransaction(function () use ($employee, $payload): array {
+                // Serialize payments for this employee, including two requests for the same day.
+                $this->em->lock($employee, LockMode::PESSIMISTIC_WRITE);
+                return $this->createSalaryPaymentRecord($payload);
+            });
+        }
+        return $this->createSalaryPaymentRecord($payload);
+    }
+
+    private function createSalaryPaymentRecord(array $payload): array
     {
         $employeeId = isset($payload['employeeId']) ? (int) $payload['employeeId'] : 0;
         $month = isset($payload['month']) ? (int) $payload['month'] : 0;
@@ -134,7 +225,22 @@ class PayrollService
             throw new InvalidArgumentException('Le jour travaille est requis pour un employe en paiement journalier.');
         }
 
-        $computed = $this->computeSalaryForPeriod($employee, $month, $year, $day);
+        if ($employee->getFrequencePaiement() === 'journalier') {
+            $this->parseDay($day, $month, $year);
+            $daily = $this->getDailyPaymentContext($employeeId, $month, $year);
+            $matches = array_values(array_filter($daily['days'], fn (array $row) => $row['day'] === $day));
+            $activity = $matches[0] ?? null;
+            if (!$activity) throw new InvalidArgumentException('Aucune activite enregistree pour ce jour.');
+            if ($activity['hasPayment']) throw new InvalidArgumentException('Un paiement existe deja pour ce jour.');
+            if ((float) ($payload['inps'] ?? 0) !== 0.0 || (float) ($payload['indemniteSpeciale'] ?? 0) !== 0.0) {
+                throw new InvalidArgumentException('Les journaliers ne sont pas soumis a l INPS ni aux indemnites speciales.');
+            }
+            $paidAmount = $this->normalizeAmount($payload['paidAmount'] ?? null, 'Montant verse');
+            if ($paidAmount !== $activity['calculatedAmount']) throw new InvalidArgumentException('Le salaire journalier doit etre paye integralement en un seul paiement.');
+            $computed = [...$activity, 'baseAmount' => $activity['revenueTotal'], 'primeBaseAmount' => $activity['typePrime'] === 'actes' ? $activity['revenueTotal'] : null, 'salaryLocked' => true, 'indemniteSpeciale' => 0, 'inps' => 0, 'breakdown' => ['alreadyPaid' => 0]];
+        } else {
+            $computed = $this->computeSalaryForPeriod($employee, $month, $year, $day);
+        }
 
         $primeOverride = isset($payload['primeAmount']) && $payload['primeAmount'] !== '' && $payload['primeAmount'] !== null
             ? $this->normalizeAmount($payload['primeAmount'], 'Montant prime')
@@ -249,9 +355,9 @@ class PayrollService
         $primeAmount = $primeOverride ?? $payment->getPrimeAmount();
         $indemniteSpeciale = array_key_exists('indemniteSpeciale', $payload) ? $this->normalizeAmount($payload['indemniteSpeciale'], 'Indemnite speciale') : $payment->getIndemniteSpeciale();
         $inps = array_key_exists('inps', $payload) ? $this->normalizeAmount($payload['inps'], 'INPS') : $payment->getInps();
-        if ($payment->getFrequenceSnapshot() === 'mensuel' && (
+        if (
             $primeAmount !== $payment->getPrimeAmount() || $indemniteSpeciale !== $payment->getIndemniteSpeciale() || $inps !== $payment->getInps()
-        )) {
+        ) {
             throw new InvalidArgumentException('Le calcul mensuel est fige apres le premier paiement.');
         }
         $grossAmount = round($baseSalaryAmount + $primeAmount + $indemniteSpeciale, 2);
@@ -267,6 +373,9 @@ class PayrollService
         }
 
         $alreadyPaidOthers = $this->computeAlreadyPaidExcluding($employee, $payment);
+        if ($payment->getFrequenceSnapshot() === 'journalier' && $paidAmount !== $calculatedAmount) {
+            throw new InvalidArgumentException('Le salaire journalier doit etre paye integralement en un seul paiement.');
+        }
         $maxAllowed = round(max(0, $calculatedAmount - $alreadyPaidOthers), 2);
         if ($paidAmount > $maxAllowed + 0.01) {
             throw new InvalidArgumentException(sprintf(
@@ -624,8 +733,8 @@ class PayrollService
             throw new InvalidArgumentException('Le jour travaille est requis.');
         }
 
-        $date = \DateTimeImmutable::createFromFormat('Y-m-d', trim($day));
-        if (!$date) {
+        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', trim($day));
+        if (!$date || $date->format('Y-m-d') !== trim($day)) {
             throw new InvalidArgumentException('Jour travaille invalide.');
         }
 

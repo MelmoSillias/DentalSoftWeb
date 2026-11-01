@@ -30,6 +30,11 @@ export const fetchEmployeePayrolls = async ({ month, year, employeeId = null }, 
     return Array.isArray(res.data) ? res.data : [];
 };
 
+export const fetchDailyPayroll = async (employeeId, { month, year }, token) => {
+    const res = await http.get(`${apiPrefix}/payrolls/daily/${employeeId}`, { params: { month, year }, ...withHeaders(token) });
+    return res.data;
+};
+
 export const fetchPayrollPaymentMethods = async (token) => {
     const res = await http.get(`${apiPrefix}/payrolls/payment-methods`, withHeaders(token));
     return Array.isArray(res.data) ? res.data : [];

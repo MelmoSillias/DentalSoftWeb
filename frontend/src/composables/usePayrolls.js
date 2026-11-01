@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import { createPayroll, deletePayroll, fetchEmployeePayrolls, fetchPayroll, fetchPayrollContext, fetchPayrollPaymentMethods, fetchPayrollPrintPayload, fetchPayrolls, updatePayroll } from '@/services/rhManagementService';
+import { createPayroll, deletePayroll, fetchDailyPayroll, fetchEmployeePayrolls, fetchPayroll, fetchPayrollContext, fetchPayrollPaymentMethods, fetchPayrollPrintPayload, fetchPayrolls, updatePayroll } from '@/services/rhManagementService';
 
 const payrolls = ref([]);
 const totalRecords = ref(0);
@@ -14,6 +14,7 @@ const getToken = () => localStorage.getItem('token') || localStorage.getItem('au
 
 export function usePayrolls() {
     const fetchEmployees = (filters) => fetchEmployeePayrolls(filters, getToken());
+    const fetchDaily = (employeeId, filters) => fetchDailyPayroll(employeeId, filters, getToken());
     const resetContext = () => {
         contextRequestId += 1;
         paymentContext.value = null;
@@ -160,6 +161,7 @@ export function usePayrolls() {
         fetchOne,
         fetchContext,
         fetchEmployees,
+        fetchDaily,
         resetContext,
         add,
         edit,

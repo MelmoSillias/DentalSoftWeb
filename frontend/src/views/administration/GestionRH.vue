@@ -12,6 +12,7 @@ import DatePicker from 'primevue/datepicker';
 import PanelDatePicker from '@/components/common/PanelDatePicker.vue';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
+import SelectButton from 'primevue/selectbutton';
 import Tag from 'primevue/tag';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
@@ -21,6 +22,7 @@ import LeaveFormDialog from '@/components/administration/LeaveFormDialog.vue';
 import PayrollPaymentDialog from '@/components/administration/PayrollPaymentDialog.vue';
 import PayrollDetailDialog from '@/components/administration/PayrollDetailDialog.vue';
 import EmployeePayrollTable from '@/components/administration/EmployeePayrollTable.vue';
+import DailyPayrollPaymentDialog from '@/components/administration/DailyPayrollPaymentDialog.vue';
 import PrintDataTablePage from '@/components/print/PrintDataTablePage.vue';
 import PrintPayrollSlipPage from '@/components/print/PrintPayrollSlipPage.vue';
 import { useEmployees } from '@/composables/useEmployees';
@@ -63,6 +65,7 @@ const {
     fetchData: fetchPayrolls,
     fetchAll: fetchAllPayrolls,
     fetchEmployees: fetchEmployeePayrolls,
+    fetchDaily: fetchDailyPayroll,
     resetContext: resetPayrollContext,
     fetchPaymentMethods,
     fetchOne: fetchPayrollOne,
@@ -91,10 +94,13 @@ const payrollDetailSaving = ref(false);
 const payrollSaving = ref(false);
 const payrollPrinting = ref(false);
 const payrollView = ref('payments');
-const payrollViewOptions = [{ label: 'Vue des paiements', value: 'payments' }, { label: 'Vue des employés', value: 'employees' }];
+const payrollViewOptions = [{ label: 'Paiements', value: 'payments' }, { label: 'Employés', value: 'employees' }];
 const employeePayrollRows = ref([]);
 const employeePayrollLoading = ref(false);
 const payrollInitialEmployeeId = ref(null);
+const dailyPayrollDialogVisible = ref(false);
+const dailyPayrollPeriod = ref(new Date());
+const dailyPayrollRefreshKey = ref(0);
 let employeePayrollRequestId = 0;
 
 const leaveDialogVisible = ref(false);
@@ -388,7 +394,34 @@ const openPayrollDialog = async (employee = null) => {
     resetPayrollContext();
     payrollInitialEmployeeId.value = Number(employee?.id) || null;
     await fetchPaymentMethods();
+    if (employee?.context?.frequencePaiement === 'journalier' || employee?.frequencePaiement === 'journalier') {
+        dailyPayrollPeriod.value = payrollMonthModel.value || new Date();
+        dailyPayrollDialogVisible.value = true;
+        return;
+    }
     payrollDialogVisible.value = true;
+};
+
+const openDailyPayrollDialog = ({ id, period }) => {
+    payrollInitialEmployeeId.value = Number(id);
+    dailyPayrollPeriod.value = period || payrollMonthModel.value || new Date();
+    payrollDialogVisible.value = false;
+    dailyPayrollDialogVisible.value = true;
+};
+
+const submitDailyPayroll = async (payload) => {
+    payrollSaving.value = true;
+    try {
+        await addPayroll(payload);
+        dailyPayrollRefreshKey.value += 1;
+        toast.add({ severity: 'success', summary: 'Succès', detail: 'Journée intégralement payée.', life: 3000 });
+        await loadPayrolls({ page: 0, rows: payrollRows.value });
+    } catch (err) {
+        dailyPayrollRefreshKey.value += 1;
+        toast.add({ severity: 'error', summary: 'Erreur', detail: err?.response?.data?.message || err?.message || 'Paiement impossible.', life: 4000 });
+    } finally {
+        payrollSaving.value = false;
+    }
 };
 
 const openPayrollDetail = async (row) => {
@@ -576,6 +609,7 @@ const confirmDeleteLeave = (event, row) => {
 };
 
 const closeRhTourDialogs = () => {
+    dailyPayrollDialogVisible.value = false;
     formVisible.value = false;
     leaveDialogVisible.value = false;
     payrollDialogVisible.value = false;
@@ -811,16 +845,16 @@ onBeforeUnmount(() => {
                 <TabPanel value="payroll">
                     <PageSection title="Gestion de la paie">
                         <template #header>
-                            <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end w-full">
-                                <div class="md:col-span-12">
+                            <div class="flex flex-col lg:flex-row gap-3 items-end w-full">
+                                <div class="w-full lg:w-auto lg:shrink-0">
                                     <label class="block text-sm font-medium mb-2">Vue de la paie</label>
-                                    <Select v-model="payrollView" :options="payrollViewOptions" optionLabel="label" optionValue="value" class="w-full md:w-64" />
+                                    <SelectButton v-model="payrollView" :options="payrollViewOptions" optionLabel="label" optionValue="value" :allowEmpty="false" aria-label="Vue de la paie" />
                                 </div>
-                                <div class="md:col-span-4">
+                                <div class="w-full lg:w-44 lg:shrink-0">
                                     <label class="block text-sm font-medium mb-2">Mois / Annee</label>
                                     <DatePicker v-model="payrollMonthModel" view="month" dateFormat="mm/yy" showIcon class="w-full" />
                                 </div>
-                                <div class="md:col-span-5">
+                                <div class="w-full lg:flex-1 min-w-0">
                                     <label class="block text-sm font-medium mb-2">Employe</label>
                                     <Select v-model="payrollEmployeeId" :options="employeeOptions" optionLabel="fullname" optionValue="id" class="w-full" showClear placeholder="Tous les employes">
                                         <template #option="slotProps">
@@ -828,7 +862,7 @@ onBeforeUnmount(() => {
                                         </template>
                                     </Select>
                                 </div>
-                                <div class="md:col-span-3 flex flex-wrap justify-end gap-2">
+                                <div class="flex justify-end gap-2 w-full lg:w-auto lg:shrink-0">
                                     <Button icon="pi pi-print" label="Imprimer" severity="secondary" outlined :loading="payrollPrinting" :disabled="!payrollMonthModel" @click="printPayrollList" />
                                     <Button icon="pi pi-refresh" severity="secondary" outlined @click="loadPayrolls({ page: 0, rows: payrollRows })" />
                                 </div>
@@ -951,7 +985,10 @@ onBeforeUnmount(() => {
             :loading="payrollSaving"
             @request-context="requestPayrollContext"
             @submit="submitPayroll"
+            @open-daily="openDailyPayrollDialog"
         />
+
+        <DailyPayrollPaymentDialog v-model:visible="dailyPayrollDialogVisible" :employees="employeeOptions" :payment-methods="paymentMethods" :initial-employee-id="payrollInitialEmployeeId" :initial-period="dailyPayrollPeriod" :load-context="fetchDailyPayroll" :refresh-key="dailyPayrollRefreshKey" :loading="payrollSaving" @submit="submitDailyPayroll" @detail="openPayrollDetail" @print="printPayrollSlip" />
 
         <PayrollDetailDialog v-model:visible="payrollDetailVisible" :payment="selectedPayroll" :payment-methods="paymentMethods" :loading="payrollDetailSaving" @submit="submitPayrollEdit" @print="printPayrollSlip" />
 

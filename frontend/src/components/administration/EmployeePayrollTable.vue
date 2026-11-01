@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import Button from 'primevue/button';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
@@ -9,6 +9,7 @@ import { formatFrequenceLabel, formatPrimeTypeLabel, formatSalaryTypeLabel } fro
 const props = defineProps({ rows: { type: Array, default: () => [] }, loading: Boolean });
 const emit = defineEmits(['pay', 'detail', 'print', 'remove']);
 const expandedRows = ref({});
+const groupedRows = computed(() => props.rows.map((row) => ({ ...row, frequencyOrder: row.context.frequencePaiement === 'mensuel' ? 0 : 1 })).sort((a, b) => a.frequencyOrder - b.frequencyOrder || a.employeeName.localeCompare(b.employeeName, 'fr')));
 watch(
     () => props.rows,
     () => {
@@ -21,13 +22,27 @@ const parameter = (value, percentage) => (percentage ? `${Number(value || 0)} %`
 </script>
 
 <template>
-    <DataTable v-model:expandedRows="expandedRows" :value="rows" :loading="loading" dataKey="id" paginator :rows="10" :rowsPerPageOptions="[10, 25, 50]">
+    <DataTable
+        v-model:expandedRows="expandedRows"
+        :value="groupedRows"
+        :loading="loading"
+        dataKey="id"
+        rowGroupMode="subheader"
+        groupRowsBy="frequencyOrder"
+        sortField="frequencyOrder"
+        :sortOrder="1"
+        paginator
+        :rows="10"
+        :rowsPerPageOptions="[10, 25, 50]"
+    >
+        <template #groupheader="{ data }"
+            ><div class="font-semibold py-2">{{ data.frequencyOrder === 0 ? 'Employés mensuels' : 'Employés journaliers' }}</div></template
+        >
         <Column expander style="width: 3rem" />
         <Column field="employeeName" header="Employé">
             <template #body="{ data }">
                 <div class="font-semibold">{{ data.employeeName }}</div>
                 <div class="text-xs text-surface-500">{{ data.employeeFonction || '—' }}</div>
-                <div v-if="data.context.period.day" class="text-xs text-surface-500">Jour à payer : {{ date(data.context.period.day) }}</div>
             </template>
         </Column>
         <Column header="Paramètres du salaire">
@@ -39,8 +54,11 @@ const parameter = (value, percentage) => (percentage ? `${Number(value || 0)} %`
         </Column>
         <Column header="Indemnité / INPS">
             <template #body="{ data }"
-                ><div>{{ amount(data.context.indemniteSpeciale) }}</div>
-                <div class="text-xs text-surface-500">INPS : {{ amount(data.context.inps) }}</div></template
+                ><span v-if="data.context.frequencePaiement === 'journalier'">—</span
+                ><template v-else
+                    ><div>{{ amount(data.context.indemniteSpeciale) }}</div>
+                    <div class="text-xs text-surface-500">INPS : {{ amount(data.context.inps) }}</div></template
+                ></template
             >
         </Column>
         <Column header="Net à payer">
@@ -57,12 +75,18 @@ const parameter = (value, percentage) => (percentage ? `${Number(value || 0)} %`
             >
         </Column>
         <Column header="État">
-            <template #body="{ data }"
-                ><Tag :value="data.context.salaryLocked ? (data.context.canPay ? 'Partiellement réglé' : 'Réglé') : 'À calculer au premier paiement'" :severity="data.context.salaryLocked ? (data.context.canPay ? 'warn' : 'success') : 'info'"
+            <template #body="{ data }">
+                <Tag
+                    v-if="data.context.frequencePaiement === 'journalier'"
+                    :value="`${data.context.paidDays} / ${data.context.activityDays} jours payés`"
+                    :severity="data.context.activityDays > 0 && data.context.paidDays === data.context.activityDays ? 'success' : 'info'" />
+                <Tag v-else :value="data.context.salaryLocked ? (data.context.canPay ? 'Partiellement réglé' : 'Réglé') : 'À calculer au premier paiement'" :severity="data.context.salaryLocked ? (data.context.canPay ? 'warn' : 'success') : 'info'"
             /></template>
         </Column>
         <Column header="Actions">
-            <template #body="{ data }"><Button label="Payer" icon="pi pi-wallet" size="small" :disabled="data.context.salaryLocked && !data.context.canPay" @click="emit('pay', data)" /></template>
+            <template #body="{ data }"
+                ><Button :label="data.context.frequencePaiement === 'journalier' ? 'Voir les jours' : 'Payer'" icon="pi pi-wallet" size="small" :disabled="data.context.salaryLocked && !data.context.canPay" @click="emit('pay', data)"
+            /></template>
         </Column>
         <template #expansion="{ data }">
             <div class="p-4 rounded-lg bg-surface-50 dark:bg-surface-900/40">

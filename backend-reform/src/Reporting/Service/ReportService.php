@@ -494,6 +494,44 @@ class ReportService
         ], $rows);
     }
 
+    /** Daily activity uses the same revenue attribution as the period report. */
+    public function dailyPayrollActivities(DateTimeImmutable $from, DateTimeImmutable $to): array
+    {
+        $consultations = $this->loadConsultationsForPeriod($from, $to);
+        $reliquats = $this->loadReliquatPaymentsByDoctor($from, $to, true);
+        $byDoctor = [];
+        $doctors = [];
+        foreach ($consultations as $consultation) {
+            $doctor = $consultation->getMedecin();
+            $date = $consultation->getCreatedAt()?->format('Y-m-d');
+            if (!$doctor || !$date) continue;
+            $doctors[$doctor->getId()] = $doctor;
+            $byDoctor[$doctor->getId()][$date]['consultations'][] = $consultation;
+        }
+        foreach ($reliquats as $doctorId => $payments) {
+            foreach ($payments as $payment) {
+                $date = DateTimeImmutable::createFromFormat('!d/m/Y', $payment['date'] ?? '');
+                if (!$date) continue;
+                $byDoctor[$doctorId][$date->format('Y-m-d')]['payments'][] = $payment;
+                $doctor = ($payment['consultation'] ?? null)?->getMedecin();
+                if ($doctor) $doctors[$doctorId] = $doctor;
+            }
+        }
+        $result = [];
+        foreach ($byDoctor as $doctorId => $days) {
+            $doctor = $doctors[$doctorId] ?? $this->employeRepo->find($doctorId);
+            if (!$doctor) continue;
+            ksort($days);
+            foreach ($days as $date => $activity) {
+                $start = new DateTimeImmutable($date);
+                $stats = $this->computeDoctorStats($doctor, $activity['consultations'] ?? [], $start, $start->setTime(23, 59, 59), $activity['payments'] ?? []);
+                $result[$doctorId][] = ['day' => $date, 'revenueTotal' => round($stats['revenue_total'], 2), 'consultations' => $stats['consultations']];
+            }
+        }
+
+        return $result;
+    }
+
     public function periodicDoctorReports(DateTimeImmutable $from, DateTimeImmutable $to): array
     {
         $consultations = $this->loadConsultationsForPeriod($from, $to);
@@ -1134,7 +1172,7 @@ class ReportService
     /**
      * @return array<int, list<array<string, mixed>>>
      */
-    private function loadReliquatPaymentsByDoctor(DateTimeImmutable $from, DateTimeImmutable $to): array
+    private function loadReliquatPaymentsByDoctor(DateTimeImmutable $from, DateTimeImmutable $to, bool $daily = false): array
     {
         $grouped = [];
         $seenTransactionIds = [];
@@ -1181,7 +1219,9 @@ class ReportService
                 continue;
             }
 
-            if ($this->isConsultationInPeriod($consultation, $from, $to)) {
+            if ($daily
+                ? $consultation->getCreatedAt()?->format('Y-m-d') === $payment->getDate()?->format('Y-m-d')
+                : $this->isConsultationInPeriod($consultation, $from, $to)) {
                 continue;
             }
 
@@ -1240,7 +1280,9 @@ class ReportService
             }
 
             $consultation = $transaction->getConsultation();
-            if ($consultation === null || $this->isConsultationInPeriod($consultation, $from, $to)) {
+            if ($consultation === null || ($daily
+                ? $consultation->getCreatedAt()?->format('Y-m-d') === $transaction->getDateTransaction()?->format('Y-m-d')
+                : $this->isConsultationInPeriod($consultation, $from, $to))) {
                 continue;
             }
 

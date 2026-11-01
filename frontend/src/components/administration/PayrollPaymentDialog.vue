@@ -20,7 +20,7 @@ const props = defineProps({
     initialEmployeeId: { type: Number, default: null },
     initialPeriod: { type: Date, default: null }
 });
-const emit = defineEmits(['update:visible', 'request-context', 'submit']);
+const emit = defineEmits(['update:visible', 'request-context', 'submit', 'open-daily']);
 const localVisible = ref(false);
 const monthModel = ref(new Date());
 const dayModel = ref(new Date());
@@ -101,6 +101,11 @@ watch(
         indemniteSpecialeModel.value = 0;
         inpsModel.value = 0;
         form.value.paidAmount = null;
+        if (visible && employeeId && isJournalier.value) {
+            emit('request-context', { employeeId: null, month, year, day: null });
+            emit('open-daily', { id: employeeId, period: monthModel.value });
+            return;
+        }
         emit('request-context', { employeeId: visible && dayMatchesPeriod.value ? employeeId : null, month, year, day });
     }
 );
