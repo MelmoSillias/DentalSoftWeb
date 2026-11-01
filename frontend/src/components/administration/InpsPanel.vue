@@ -152,10 +152,10 @@ onMounted(load);
 <template>
     <div class="space-y-6" :aria-busy="loading">
         <div class="flex flex-wrap items-end justify-between gap-3">
-            <div class="flex flex-wrap gap-3">
-                <div><label for="inps-year" class="block text-sm font-medium mb-2">Année</label><InputNumber v-model="year" inputId="inps-year" :min="2000" :max="2100" :useGrouping="false" :disabled="dialog || saving" class="w-32" /></div>
-                <div><label for="inps-quarter" class="block text-sm font-medium mb-2">Trimestre</label><Select v-model="quarter" inputId="inps-quarter" :options="quarters" optionLabel="label" optionValue="value" :disabled="dialog || saving" /></div>
-                <Button icon="pi pi-refresh" severity="secondary" outlined :loading="loading" :disabled="dialog || saving" aria-label="Actualiser l’INPS" @click="load" />
+            <div class="grid w-full grid-cols-1 gap-3 sm:w-auto sm:grid-cols-[minmax(8rem,auto)_minmax(10rem,1fr)_auto] sm:items-end">
+                <div class="min-w-0"><label for="inps-year" class="mb-2 block text-sm font-medium">Année</label><InputNumber v-model="year" inputId="inps-year" :min="2000" :max="2100" :useGrouping="false" :disabled="dialog || saving" class="w-full sm:w-32" inputClass="w-full" /></div>
+                <div class="min-w-0"><label for="inps-quarter" class="mb-2 block text-sm font-medium">Trimestre</label><Select v-model="quarter" inputId="inps-quarter" :options="quarters" optionLabel="label" optionValue="value" :disabled="dialog || saving" class="w-full" /></div>
+                <Button class="justify-self-start sm:justify-self-auto" icon="pi pi-refresh" severity="secondary" outlined :loading="loading" :disabled="dialog || saving" aria-label="Actualiser l’INPS" @click="load" />
             </div>
             <div v-if="state" class="flex flex-wrap gap-2">
                 <Button label="Imprimer" icon="pi pi-print" severity="secondary" outlined @click="print()" />
