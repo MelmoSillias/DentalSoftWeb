@@ -199,18 +199,18 @@ onMounted(load);
                 </article>
             </div>
             <PageSection title="Avancement des remises">
-                <div class="flex flex-wrap justify-between gap-3 mb-3">
-                    <Tag :value="status.label" :severity="status.severity" /><Tag :value="state.closed ? 'Trimestre clôturé' : 'Trimestre ouvert'" :severity="state.closed ? 'secondary' : 'info'" />
+                <div class="p-4">
+                        <div class="flex flex-wrap justify-between gap-3 mb-3">
+                            <Tag :value="status.label" :severity="status.severity" /><Tag :value="state.closed ? 'Trimestre clôturé' : 'Trimestre ouvert'" :severity="state.closed ? 'secondary' : 'info'" />
+                        </div>
+                        <ProgressBar :value="progress" />
+                        <p class="text-sm text-surface-500 mt-3">Les remises sont conservées lorsqu’une paie est corrigée. Le solde est recalculé sur les retenues actives du trimestre.</p>
+                        <details v-if="state.audit.length" class="text-sm mt-3">
+                            <summary class="cursor-pointer">Historique des clôtures</summary>
+                            <p v-for="(entry, index) in state.audit" :key="index" class="mt-2">{{ entry.at }} · {{ entry.actor }} · {{ entry.action === 'closed' ? 'Clôture' : 'Réouverture' }} · {{ entry.reason }}</p>
+                        </details>
+                        <Message v-if="state.surplus > 0" severity="warn" :closable="false" class="mt-3">{{ money(state.surplus) }} ont été remis en excédent après correction. Conservez la remise réelle ; sa régularisation doit faire l’objet d’un mouvement justifié.</Message>
                 </div>
-                <ProgressBar :value="progress" />
-                <p class="text-sm text-surface-500 mt-3">Les remises sont conservées lorsqu’une paie est corrigée. Le solde est recalculé sur les retenues actives du trimestre.</p>
-                <details v-if="state.audit.length" class="text-sm mt-3">
-                    <summary class="cursor-pointer">Historique des clôtures</summary>
-                    <p v-for="(entry, index) in state.audit" :key="index" class="mt-2">{{ entry.at }} · {{ entry.actor }} · {{ entry.action === 'closed' ? 'Clôture' : 'Réouverture' }} · {{ entry.reason }}</p>
-                </details>
-                <Message v-if="state.surplus > 0" severity="warn" :closable="false" class="mt-3"
-                    >{{ money(state.surplus) }} ont été remis en excédent après correction. Conservez la remise réelle ; sa régularisation doit faire l’objet d’un mouvement justifié.</Message
-                >
             </PageSection>
             <PageSection title="Retenues par employé" subtitle="Une retenue par employé et par mois, quel que soit le nombre de versements.">
                 <div class="page-table-scroll">
