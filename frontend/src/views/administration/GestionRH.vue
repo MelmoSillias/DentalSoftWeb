@@ -56,7 +56,6 @@ const { employees, totalRecords, loading: employeesLoading, error: employeesErro
 
 const {
     payrolls,
-    totalRecords: payrollTotalRecords,
     loading: payrollLoading,
     contextLoading: payrollContextLoading,
     paymentContext,
@@ -84,7 +83,7 @@ const employeePage = ref(0);
 const employeeRows = ref(15);
 
 const payrollPage = ref(0);
-const payrollRows = ref(10);
+const payrollRows = ref(0);
 const payrollMonthModel = ref(new Date());
 const payrollEmployeeId = ref(null);
 const payrollDialogVisible = ref(false);
@@ -99,7 +98,6 @@ const employeePayrollRows = ref([]);
 const employeePayrollLoading = ref(false);
 const payrollInitialEmployeeId = ref(null);
 const dailyPayrollDialogVisible = ref(false);
-const dailyPayrollPeriod = ref(new Date());
 const dailyPayrollRefreshKey = ref(0);
 let employeePayrollRequestId = 0;
 
@@ -395,16 +393,14 @@ const openPayrollDialog = async (employee = null) => {
     payrollInitialEmployeeId.value = Number(employee?.id) || null;
     await fetchPaymentMethods();
     if (employee?.context?.frequencePaiement === 'journalier' || employee?.frequencePaiement === 'journalier') {
-        dailyPayrollPeriod.value = payrollMonthModel.value || new Date();
         dailyPayrollDialogVisible.value = true;
         return;
     }
     payrollDialogVisible.value = true;
 };
 
-const openDailyPayrollDialog = ({ id, period }) => {
+const openDailyPayrollDialog = ({ id }) => {
     payrollInitialEmployeeId.value = Number(id);
-    dailyPayrollPeriod.value = period || payrollMonthModel.value || new Date();
     payrollDialogVisible.value = false;
     dailyPayrollDialogVisible.value = true;
 };
@@ -876,12 +872,6 @@ onBeforeUnmount(() => {
                             :value="payrolls"
                             :loading="payrollLoading"
                             dataKey="id"
-                            paginator
-                            :rows="payrollRows"
-                            :first="payrollPage * payrollRows"
-                            :totalRecords="payrollTotalRecords"
-                            lazy
-                            @page="(e) => loadPayrolls({ page: e.page, rows: e.rows })"
                         >
                             <Column field="employeeName" header="Employe" />
                             <Column header="Periode">
@@ -988,7 +978,7 @@ onBeforeUnmount(() => {
             @open-daily="openDailyPayrollDialog"
         />
 
-        <DailyPayrollPaymentDialog v-model:visible="dailyPayrollDialogVisible" :employees="employeeOptions" :payment-methods="paymentMethods" :initial-employee-id="payrollInitialEmployeeId" :initial-period="dailyPayrollPeriod" :load-context="fetchDailyPayroll" :refresh-key="dailyPayrollRefreshKey" :loading="payrollSaving" @submit="submitDailyPayroll" @detail="openPayrollDetail" @print="printPayrollSlip" />
+        <DailyPayrollPaymentDialog v-model:visible="dailyPayrollDialogVisible" :employees="employeeOptions" :payment-methods="paymentMethods" :initial-employee-id="payrollInitialEmployeeId" :initial-period="payrollMonthModel" :load-context="fetchDailyPayroll" :refresh-key="dailyPayrollRefreshKey" :loading="payrollSaving" @submit="submitDailyPayroll" @detail="openPayrollDetail" @print="printPayrollSlip" />
 
         <PayrollDetailDialog v-model:visible="payrollDetailVisible" :payment="selectedPayroll" :payment-methods="paymentMethods" :loading="payrollDetailSaving" @submit="submitPayrollEdit" @print="printPayrollSlip" />
 

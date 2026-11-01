@@ -22,7 +22,8 @@ const props = defineProps({
 const emit = defineEmits(['update:visible', 'submit', 'detail', 'print']);
 const localVisible = ref(false);
 const employeeId = ref(null);
-const monthModel = ref(new Date());
+const monthModel = computed(() => props.initialPeriod || new Date());
+const periodLabel = computed(() => monthModel.value.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }));
 const paymentMethodId = ref(null);
 const paidAt = ref(new Date());
 const context = ref(null);
@@ -61,7 +62,6 @@ watch(
         localVisible.value = visible;
         if (visible) {
             employeeId.value = props.initialEmployeeId;
-            monthModel.value = props.initialPeriod ? new Date(props.initialPeriod) : new Date();
             paymentMethodId.value = props.paymentMethods[0]?.id ?? null;
             paidAt.value = new Date();
             pendingDay.value = null;
@@ -98,7 +98,10 @@ const payDay = (day) => {
                     <label class="block text-sm font-medium mb-2">Employé journalier</label
                     ><Select v-model="employeeId" :options="employeeOptions" optionLabel="label" optionValue="value" showClear filter :disabled="loading" class="w-full" placeholder="Sélectionnez un employé" />
                 </div>
-                <div><label class="block text-sm font-medium mb-2">Mois d’activité</label><DatePicker v-model="monthModel" view="month" dateFormat="mm/yy" showIcon :disabled="loading" class="w-full" /></div>
+                <Message severity="info" :closable="false" class="self-end">
+                    <div class="text-xs font-medium">Période sélectionnée sur la page</div>
+                    <div class="font-semibold capitalize">{{ periodLabel }}</div>
+                </Message>
                 <div>
                     <label class="block text-sm font-medium mb-2">Mode de règlement</label
                     ><Select v-model="paymentMethodId" :options="paymentMethods" optionLabel="libelle" optionValue="id" :disabled="loading" class="w-full" placeholder="Sélectionnez un mode" />

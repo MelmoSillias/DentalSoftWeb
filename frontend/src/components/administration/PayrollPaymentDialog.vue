@@ -22,7 +22,8 @@ const props = defineProps({
 });
 const emit = defineEmits(['update:visible', 'request-context', 'submit', 'open-daily']);
 const localVisible = ref(false);
-const monthModel = ref(new Date());
+const monthModel = computed(() => props.initialPeriod || new Date());
+const periodLabel = computed(() => monthModel.value.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }));
 const dayModel = ref(new Date());
 const primeAmountModel = ref(null);
 const indemniteSpecialeModel = ref(0);
@@ -75,7 +76,6 @@ watch(
         if (!visible) return;
         const now = new Date();
         const period = props.initialPeriod ? new Date(props.initialPeriod) : now;
-        monthModel.value = period;
         dayModel.value = new Date(period.getFullYear(), period.getMonth(), period.getFullYear() === now.getFullYear() && period.getMonth() === now.getMonth() ? now.getDate() : 1);
         primeAmountModel.value = null;
         indemniteSpecialeModel.value = 0;
@@ -165,10 +165,10 @@ const submit = () => {
                     <label class="text-sm font-medium">Employé <span class="text-red-500">*</span></label>
                     <Select v-model="form.employeeId" :options="employeeOptions" optionLabel="label" optionValue="value" class="w-full" showClear filter :disabled="loading" placeholder="Sélectionnez un employé" />
                 </div>
-                <div class="space-y-1">
-                    <label class="text-sm font-medium">Mois de paie <span class="text-red-500">*</span></label>
-                    <DatePicker v-model="monthModel" view="month" dateFormat="mm/yy" showIcon class="w-full" :disabled="loading" />
-                </div>
+                <Message severity="info" :closable="false">
+                    <div class="text-xs font-medium">Période sélectionnée sur la page</div>
+                    <div class="font-semibold capitalize">{{ periodLabel }}</div>
+                </Message>
                 <div v-if="isJournalier" class="space-y-1">
                     <label class="text-sm font-medium">Jour travaillé à payer <span class="text-red-500">*</span></label>
                     <DatePicker v-model="dayModel" dateFormat="yy-mm-dd" showIcon class="w-full" :disabled="loading" />

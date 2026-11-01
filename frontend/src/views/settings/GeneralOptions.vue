@@ -66,14 +66,14 @@ const { printComponent } = usePrinter();
 const token = localStorage.getItem('token');
 const auth = useAuthStore();
 const uiSettings = useUiSettingsStore();
-const activeCategory = ref('appearance');
+const activeCategory = ref('cabinet');
 const activeSubSection = ref('overview');
 const settingsDisplayMode = ref('tabs');
 const settingsDisplayModeOptions = [
     { label: 'Page', value: 'page', icon: 'pi pi-align-justify' },
     { label: 'Onglets', value: 'tabs', icon: 'pi pi-objects-column' }
 ];
-const activeSettingsTab = ref('appearance');
+const activeSettingsTab = ref('cabinet:identity');
 let observer = null;
 
 const {
@@ -322,25 +322,13 @@ const securityDialog = reactive({
     payload: {}
 });
 
-const visibleNavigation = computed(() => {
-    if (canAccessWorkflowSettings.value) return navigation;
-    return {
-        appearance: navigation.appearance
-    };
-});
+const visibleNavigation = computed(() => canAccessWorkflowSettings.value ? Object.fromEntries(ADMIN_CATEGORIES.map((key) => [key, navigation[key]])) : {});
 const tabModeSections = computed(() => {
-    const sections = [
-        {
-            id: 'appearance',
-            label: navigation.appearance.label,
-            icon: navigation.appearance.icon
-        }
-    ];
-
     if (!canAccessWorkflowSettings.value) {
-        return sections;
+        return [];
     }
 
+    const sections = [];
     for (const categoryKey of ADMIN_CATEGORIES) {
         const category = navigation[categoryKey];
         for (const section of category.sections) {
@@ -354,7 +342,6 @@ const tabModeSections = computed(() => {
 
     return sections;
 });
-const isAppearanceVisible = computed(() => settingsDisplayMode.value === 'page' || activeSettingsTab.value === 'appearance');
 const isCabinetVisible = computed(() => settingsDisplayMode.value === 'page' || activeSettingsTab.value.startsWith('cabinet:'));
 const isPortalVisible = computed(() => settingsDisplayMode.value === 'page' || activeSettingsTab.value.startsWith('portal:'));
 const isAdministrationVisible = computed(() => settingsDisplayMode.value === 'page' || activeSettingsTab.value.startsWith('administration:'));
@@ -388,12 +375,6 @@ const selectSettingsTab = (tabId) => {
     if (!selected) return;
 
     activeSettingsTab.value = tabId;
-    if (tabId === 'appearance') {
-        activeCategory.value = 'appearance';
-        activeSubSection.value = 'overview';
-        return;
-    }
-
     const colonIndex = tabId.indexOf(':');
     if (colonIndex === -1) return;
 
@@ -403,13 +384,12 @@ const selectSettingsTab = (tabId) => {
 
 const isSectionVisible = (category, sectionId) => {
     if (settingsDisplayMode.value === 'page') return true;
-    if (category === 'appearance') return activeSettingsTab.value === 'appearance';
     return activeSettingsTab.value === `${category}:${sectionId}`;
 };
 
 const scrollToSection = async (category, sectionId) => {
     if (settingsDisplayMode.value === 'tabs') {
-        selectSettingsTab(category === 'appearance' ? 'appearance' : `${category}:${sectionId}`);
+        selectSettingsTab(`${category}:${sectionId}`);
         return;
     }
 
@@ -1351,11 +1331,11 @@ watch(
     canAccessWorkflowSettings,
     async (allowed) => {
         if (!allowed && ADMIN_CATEGORIES.includes(activeCategory.value)) {
-            activeCategory.value = 'appearance';
-            activeSubSection.value = 'overview';
+            activeCategory.value = 'cabinet';
+            activeSubSection.value = 'identity';
         }
         if (!allowed) {
-            activeSettingsTab.value = 'appearance';
+            activeSettingsTab.value = 'cabinet:identity';
         }
         await nextTick();
         setupObserver();
@@ -1368,7 +1348,7 @@ watch(settingsDisplayMode, async () => {
         if (ADMIN_CATEGORIES.includes(activeCategory.value) && canAccessWorkflowSettings.value) {
             selectSettingsTab(`${activeCategory.value}:${activeSubSection.value}`);
         } else {
-            selectSettingsTab('appearance');
+            selectSettingsTab('cabinet:identity');
         }
     }
     await nextTick();
@@ -1417,9 +1397,9 @@ onBeforeUnmount(() => {
             </div>
         </div>
 
-        <div class="settings-body" data-tour="settings-appearance.main">
+        <div class="settings-body" data-tour="settings-general.main">
             <!-- Sidebar Navigation -->
-            <aside v-if="settingsDisplayMode === 'page'" class="settings-sidebar" data-tour="settings-appearance.navigation">
+            <aside v-if="settingsDisplayMode === 'page'" class="settings-sidebar">
                 <div class="settings-nav-card">
                     <nav class="settings-nav">
                         <div v-for="(category, key) in visibleNavigation" :key="key" class="settings-nav-group">
@@ -1468,157 +1448,6 @@ onBeforeUnmount(() => {
                             </TabList>
                         </Tabs>
                     </div>
-
-                    <!-- Appearance Section -->
-                    <div v-show="isAppearanceVisible" class="settings-category">
-                        <div class="settings-category-header">
-                            <div class="settings-category-title">
-                                <i class="pi pi-palette"></i>
-                                <h2>Apparence</h2>
-                            </div>
-                            <Button label="Sauvegarder" icon="pi pi-save" outlined size="small" @click="saveAppearance" />
-                        </div>
-
-                        <!-- Overview -->
-                        <div id="appearance-overview" class="settings-section" data-tour="settings-appearance.theme">
-                            <div class="settings-section-header">
-                                <h3>Aperçu visuel</h3>
-                                <p class="settings-section-description">Vue d'ensemble de votre configuration actuelle</p>
-                            </div>
-                            <div class="stats-grid">
-                                <div class="stat-card">
-                                    <div class="stat-icon"><i class="pi pi-sun"></i></div>
-                                    <div class="stat-info">
-                                        <span class="stat-label">Mode</span>
-                                        <strong class="stat-value">{{ currentThemeLabel }}</strong>
-                                    </div>
-                                </div>
-                                <div class="stat-card">
-                                    <div class="stat-icon"><i class="pi pi-palette"></i></div>
-                                    <div class="stat-info">
-                                        <span class="stat-label">Preset</span>
-                                        <strong class="stat-value">{{ preset }}</strong>
-                                    </div>
-                                </div>
-                                <div class="stat-card">
-                                    <div class="stat-icon"><i class="pi pi-align-left"></i></div>
-                                    <div class="stat-info">
-                                        <span class="stat-label">Typographie</span>
-                                        <strong class="stat-value">{{ fontFamily }} • {{ currentFontSizeLabel }}</strong>
-                                    </div>
-                                </div>
-                                <div class="stat-card">
-                                    <div class="stat-icon"><i class="pi pi-palette"></i></div>
-                                    <div class="stat-info">
-                                        <span class="stat-label">Couleur surface</span>
-                                        <strong class="stat-value">{{ currentSurfaceName }}</strong>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Theme -->
-                        <div id="appearance-theme" class="settings-section">
-                            <div class="settings-section-header">
-                                <h3>Mode d'affichage</h3>
-                                <p class="settings-section-description">Choisissez entre mode clair, sombre ou automatique</p>
-                            </div>
-                            <div class="settings-card">
-                                <SelectButton v-model="themeMode" :options="themeOptions" optionLabel="label" optionValue="value" :allowEmpty="false" />
-                            </div>
-                        </div>
-
-                        <!-- Colors -->
-                        <div id="appearance-colors" class="settings-section" data-tour="settings-appearance.primary">
-                            <div class="settings-section-header">
-                                <h3>Couleurs</h3>
-                                <p class="settings-section-description">Personnalisez la palette de couleurs de l'application</p>
-                            </div>
-                            <div class="settings-card">
-                                <div class="color-section">
-                                    <label class="color-label">Preset</label>
-                                    <SelectButton v-model="preset" :options="presetOptions" :allowEmpty="false" @change="onPresetChange" />
-                                </div>
-                                <Divider />
-                                <div class="color-section">
-                                    <label class="color-label">Couleur principale</label>
-                                    <div class="swatch-grid">
-                                        <button
-                                            v-for="primaryColor in primaryColors"
-                                            :key="primaryColor.name"
-                                            type="button"
-                                            class="swatch"
-                                            :class="{ active: layoutConfig.primary === primaryColor.name }"
-                                            :title="primaryColor.name"
-                                            :style="{ backgroundColor: primaryColor.palette['500'] }"
-                                            @click="updateColors('primary', primaryColor)"
-                                        />
-                                    </div>
-                                </div>
-                                <Divider />
-                                <div class="color-section">
-                                    <label class="color-label">Couleur de surface</label>
-                                    <div class="swatch-grid">
-                                        <button
-                                            v-for="surface in surfaces"
-                                            :key="surface.name"
-                                            type="button"
-                                            class="swatch"
-                                            :class="{ active: currentSurfaceName === surface.name }"
-                                            :title="surface.name"
-                                            :style="{ backgroundColor: surface.palette['500'] }"
-                                            @click="updateColors('surface', surface)"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Typography -->
-                        <div id="appearance-typography" class="settings-section" data-tour="settings-appearance.font-family">
-                            <div class="settings-section-header">
-                                <h3>Typographie</h3>
-                                <p class="settings-section-description">Police et taille du texte</p>
-                            </div>
-                            <div class="settings-card">
-                                <div class="typography-controls">
-                                    <div class="control-group">
-                                        <label>Police</label>
-                                        <Select v-model="fontFamily" :options="fontFamilyOptions" class="control-select" />
-                                    </div>
-                                    <div class="control-group">
-                                        <label>Taille</label>
-                                        <SelectButton v-model="fontSize" :options="fontSizeOptions" optionLabel="label" optionValue="value" :allowEmpty="false" />
-                                    </div>
-                                </div>
-                                <Divider />
-                                <div class="preview-area">
-                                    <p class="preview-label">Aperçu</p>
-                                    <p class="preview-title">DentalSoft Dashboard</p>
-                                    <p class="preview-text">Suivi des rendez-vous, consultations, caisse et administration dans une interface cohérente et lisible.</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Layout -->
-                        <div id="appearance-layout" class="settings-section" data-tour="settings-appearance.layout">
-                            <div class="settings-section-header">
-                                <h3>Disposition</h3>
-                                <p class="settings-section-description">Mode de navigation et comportement du menu (préférences de ce poste)</p>
-                            </div>
-                            <div class="settings-card flex flex-column gap-4">
-                                <div>
-                                    <p class="settings-section-description mb-2">Navigation</p>
-                                    <SelectButton v-model="navigationMode" :options="navigationModeOptions" optionLabel="label" optionValue="value" :allowEmpty="false" @change="onNavigationModeChange" />
-                                </div>
-                                <div v-if="isClassicNavigation">
-                                    <p class="settings-section-description mb-2">Menu latéral (mode classique)</p>
-                                    <SelectButton v-model="menuMode" :options="menuModeOptions" optionLabel="label" optionValue="value" :allowEmpty="false" @change="onMenuModeChange" />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Cabinet -->
                     <div v-if="canAccessWorkflowSettings" v-show="isCabinetVisible" class="settings-category">
                         <div class="settings-category-header">

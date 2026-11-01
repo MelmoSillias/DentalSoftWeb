@@ -19,6 +19,26 @@ watch(
 const amount = (value) => `${Number(value || 0).toLocaleString('fr-FR')} F CFA`;
 const date = (value) => (value ? new Date(value).toLocaleDateString('fr-FR') : '—');
 const parameter = (value, percentage) => (percentage ? `${Number(value || 0)} %` : amount(value));
+const columnCount = 9;
+const hasCalculatedSalary = (row) => row.context.frequencePaiement === 'journalier' || row.context.salaryLocked === true;
+const groupSummaries = computed(() => {
+    const groups = {};
+    for (const row of groupedRows.value) {
+        const group = (groups[row.frequencyOrder] ??= { employees: 0, paidEmployees: 0, calculatedEmployees: 0, net: 0, paid: 0, remaining: 0, paidDays: 0, activityDays: 0 });
+        group.employees++;
+        const paid = Number(row.context.breakdown?.alreadyPaid || 0);
+        if (paid > 0) group.paidEmployees++;
+        group.paid += paid;
+        if (hasCalculatedSalary(row)) {
+            group.calculatedEmployees++;
+            group.net += Number(row.context.calculatedAmount || 0);
+            group.remaining += Number(row.context.breakdown?.remaining || 0);
+        }
+        group.paidDays += Number(row.context.paidDays || 0);
+        group.activityDays += Number(row.context.activityDays || 0);
+    }
+    return groups;
+});
 </script>
 
 <template>
@@ -31,13 +51,46 @@ const parameter = (value, percentage) => (percentage ? `${Number(value || 0)} %`
         groupRowsBy="frequencyOrder"
         sortField="frequencyOrder"
         :sortOrder="1"
-        paginator
-        :rows="10"
-        :rowsPerPageOptions="[10, 25, 50]"
+        :pt="{ rowGroupHeaderCell: { colspan: columnCount }, rowGroupFooterCell: { colspan: columnCount } }"
     >
         <template #groupheader="{ data }"
-            ><div class="font-semibold py-2">{{ data.frequencyOrder === 0 ? 'Employés mensuels' : 'Employés journaliers' }}</div></template
-        >
+            ><div class="flex flex-wrap items-center justify-between gap-3 py-3 px-4 rounded-lg bg-primary-50 dark:bg-primary-950/40 border border-primary-100 dark:border-primary-900">
+                <div class="flex items-center gap-3">
+                    <i :class="['pi text-primary text-lg', data.frequencyOrder === 0 ? 'pi-calendar' : 'pi-sun']" aria-hidden="true" />
+                    <div>
+                        <div class="font-semibold">{{ data.frequencyOrder === 0 ? 'Employés mensuels' : 'Employés journaliers' }}</div>
+                        <div class="text-xs text-surface-500">
+                            {{ data.frequencyOrder === 0 ? 'Salaire calculé au premier paiement' : `${groupSummaries[data.frequencyOrder].paidDays} / ${groupSummaries[data.frequencyOrder].activityDays} jours payés` }}
+                        </div>
+                    </div>
+                </div>
+                <Tag
+                    :value="`${groupSummaries[data.frequencyOrder].paidEmployees} / ${groupSummaries[data.frequencyOrder].employees} employés ayant reçu un paiement`"
+                    :severity="groupSummaries[data.frequencyOrder].paidEmployees === groupSummaries[data.frequencyOrder].employees ? 'success' : 'info'"
+                /></div
+        ></template>
+        <template #groupfooter="{ data }">
+            <div class="flex flex-wrap items-center justify-between gap-4 p-4 rounded-lg bg-surface-100 dark:bg-surface-800">
+                <div>
+                    <div class="font-semibold">Total {{ data.frequencyOrder === 0 ? 'des mensuels' : 'des journaliers' }}</div>
+                    <div v-if="data.frequencyOrder === 0" class="text-xs text-surface-500">{{ groupSummaries[data.frequencyOrder].calculatedEmployees }} / {{ groupSummaries[data.frequencyOrder].employees }} salaires calculés</div>
+                </div>
+                <div class="flex flex-wrap gap-x-8 gap-y-3 text-sm">
+                    <div>
+                        <div class="text-surface-500">Net à payer</div>
+                        <strong>{{ groupSummaries[data.frequencyOrder].calculatedEmployees ? amount(groupSummaries[data.frequencyOrder].net) : '-' }}</strong>
+                    </div>
+                    <div>
+                        <div class="text-surface-500">Déjà versé</div>
+                        <strong class="text-green-600 dark:text-green-400">{{ amount(groupSummaries[data.frequencyOrder].paid) }}</strong>
+                    </div>
+                    <div>
+                        <div class="text-surface-500">Reste à payer</div>
+                        <strong>{{ groupSummaries[data.frequencyOrder].calculatedEmployees ? amount(groupSummaries[data.frequencyOrder].remaining) : '-' }}</strong>
+                    </div>
+                </div>
+            </div>
+        </template>
         <Column expander style="width: 3rem" />
         <Column field="employeeName" header="Employé">
             <template #body="{ data }">
@@ -63,7 +116,7 @@ const parameter = (value, percentage) => (percentage ? `${Number(value || 0)} %`
         </Column>
         <Column header="Net à payer">
             <template #body="{ data }"
-                ><span class="font-semibold">{{ amount(data.context.calculatedAmount) }}</span></template
+                ><span class="font-semibold">{{ hasCalculatedSalary(data) ? amount(data.context.calculatedAmount) : '-' }}</span></template
             >
         </Column>
         <Column header="Déjà versé">
@@ -71,7 +124,7 @@ const parameter = (value, percentage) => (percentage ? `${Number(value || 0)} %`
         </Column>
         <Column header="Reste à payer">
             <template #body="{ data }"
-                ><span class="font-semibold">{{ amount(data.context.breakdown.remaining) }}</span></template
+                ><span class="font-semibold">{{ hasCalculatedSalary(data) ? amount(data.context.breakdown.remaining) : '-' }}</span></template
             >
         </Column>
         <Column header="État">

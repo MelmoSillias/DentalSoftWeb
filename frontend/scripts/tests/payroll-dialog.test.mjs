@@ -130,7 +130,7 @@ test('selecting a daily employee opens the dedicated dialog with the chosen peri
     assert.equal(state.currentContext.value, null);
     assert.equal(state.form.value.paidAmount, null);
     assert.equal(state.canSubmit.value, false);
-    state.monthModel.value = new Date(2026, 10, 1);
+    props.initialPeriod = new Date(2026, 10, 1);
     await vue.nextTick();
     const payload = events.findLast(([name]) => name === 'open-daily')[1];
     assert.equal(payload.id, 8);
@@ -199,8 +199,8 @@ test('daily dialog refuses a paid day and refreshes the paid day count', async (
 
 test('daily dialog ignores responses for a previous month', async (t) => {
     const requests = [];
-    const { state } = await dailyDialog(t, () => new Promise((resolve) => requests.push(resolve)));
-    state.monthModel.value = new Date(2026, 10, 1);
+    const { state, props } = await dailyDialog(t, () => new Promise((resolve) => requests.push(resolve)));
+    props.initialPeriod = new Date(2026, 10, 1);
     await vue.nextTick();
     requests[1]({ month: 11 });
     await vue.nextTick();
@@ -221,6 +221,54 @@ test('employee payroll groups monthly employees before daily employees', () => {
         [2, 1]
     );
     scope.stop();
+});
+
+test('group totals exclude uncalculated monthly salaries and count employees receiving partial payments', (t) => {
+    const rows = [
+        { id: 1, employeeName: 'Uncalculated', context: { frequencePaiement: 'mensuel', salaryLocked: false, calculatedAmount: 90000, breakdown: { alreadyPaid: 0, remaining: 90000 } } },
+        { id: 2, employeeName: 'Partial', context: { frequencePaiement: 'mensuel', salaryLocked: true, calculatedAmount: 100000, breakdown: { alreadyPaid: 20000, remaining: 80000 } } },
+        { id: 3, employeeName: 'Daily partial', context: { frequencePaiement: 'journalier', salaryLocked: false, calculatedAmount: 15000, breakdown: { alreadyPaid: 5000, remaining: 10000 }, paidDays: 1, activityDays: 3 } },
+        { id: 4, employeeName: 'Daily unpaid', context: { frequencePaiement: 'journalier', calculatedAmount: 10000, breakdown: { alreadyPaid: 0, remaining: 10000 }, paidDays: 0, activityDays: 2 } }
+    ];
+    const scope = vue.effectScope();
+    t.after(() => scope.stop());
+    const state = scope.run(() => componentSetup('EmployeePayrollTable.vue', vue.reactive({ rows, loading: false })));
+    assert.equal(state.hasCalculatedSalary(rows[0]), false);
+    assert.equal(state.hasCalculatedSalary(rows[2]), true);
+    assert.deepEqual(state.groupSummaries.value[0], { employees: 2, paidEmployees: 1, calculatedEmployees: 1, net: 100000, paid: 20000, remaining: 80000, paidDays: 0, activityDays: 0 });
+    assert.deepEqual(state.groupSummaries.value[1], { employees: 2, paidEmployees: 1, calculatedEmployees: 2, net: 25000, paid: 5000, remaining: 20000, paidDays: 1, activityDays: 5 });
+});
+
+test('monthly dialog follows the global period and discards the previous salary context', async (t) => {
+    const { state, props, events } = await dialog(t);
+    await hydrate(props, state);
+    props.initialPeriod = new Date(2026, 10, 1);
+    await vue.nextTick();
+    assert.equal(state.periodLabel.value, 'novembre 2026');
+    assert.equal(state.currentContext.value, null);
+    assert.equal(state.canSubmit.value, false);
+    assert.deepEqual(events.findLast(([name]) => name === 'request-context')[1], { employeeId: 7, month: 11, year: 2026, day: null });
+});
+
+test('payment table loads all server pages when pagination is disabled', async () => {
+    let source = readFileSync(new URL('../../src/composables/usePayrolls.js', import.meta.url), 'utf8');
+    const calls = [];
+    const fetchPayments = async (filters) => {
+        calls.push(filters);
+        return { data: Array.from({ length: filters.start === 0 ? 200 : 5 }, (_, index) => ({ id: filters.start + index })), recordsFiltered: 205 };
+    };
+    source = source.replace(/^import .*;\r?\n/gm, '').replace('export function', 'function');
+    const model = new Function('ref', 'fetchPayrolls', 'localStorage', `${source}\nreturn usePayrolls();`)(vue.ref, fetchPayments, { getItem: () => 'token' });
+    await model.fetchData({ rows: 0, month: 10, year: 2026 });
+    assert.equal(model.payrolls.value.length, 205);
+    assert.equal(model.totalRecords.value, 205);
+    assert.deepEqual(
+        calls.map(({ start }) => start),
+        [0, 200]
+    );
+    assert.equal(calls[1].month, 10);
+    assert.equal(model.loading.value, false);
+    assert.equal(model.error.value, null);
 });
 
 test('preview reacts to the current payment and all salary inputs', () => {

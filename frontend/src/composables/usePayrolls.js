@@ -38,6 +38,11 @@ export function usePayrolls() {
         loading.value = true;
         error.value = null;
         try {
+            if (rows === 0) {
+                payrolls.value = await fetchAll({ employeeId, month, year });
+                totalRecords.value = payrolls.value.length;
+                return;
+            }
             const data = await fetchPayrolls(
                 {
                     start: page * rows,
