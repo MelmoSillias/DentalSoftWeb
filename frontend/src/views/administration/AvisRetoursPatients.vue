@@ -265,7 +265,7 @@ onMounted(load);
             </div>
         </template>
 
-        <PageSection title="Liste des avis" subtitle="Filtrez et modérez les retours patients." padded>
+        <PageSection title="Liste des avis" subtitle="Filtrez et modérez les retours patients.">
                 <div class="flex flex-col md:flex-row gap-4 mb-6">
                     <!-- Recherche avec IconField PrimeVue V4 -->
                     <IconField class="flex-1" iconPosition="left">

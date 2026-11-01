@@ -334,7 +334,7 @@ onBeforeUnmount(() => {
         </template>
 
         <template #toolbar>
-            <PageSection title="Recherche" padded tour-id="admin-users.search">
+            <PageSection title="Recherche"  tour-id="admin-users.search">
                 <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
                     <div class="md:col-span-6">
                         <IconField class="p-input-icon-left w-full">

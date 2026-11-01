@@ -198,7 +198,7 @@ onMounted(load);
                     <i class="pi pi-exclamation-triangle page-kpi-icon text-amber-500" />
                 </article>
             </div>
-            <PageSection title="Avancement des remises" padded>
+            <PageSection title="Avancement des remises">
                 <div class="flex flex-wrap justify-between gap-3 mb-3">
                     <Tag :value="status.label" :severity="status.severity" /><Tag :value="state.closed ? 'Trimestre clôturé' : 'Trimestre ouvert'" :severity="state.closed ? 'secondary' : 'info'" />
                 </div>

@@ -346,7 +346,7 @@ onMounted(() => {
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-2 space-y-6">
-                <PageSection title="Informations personnelles" tour-id="admin-employee-details.personal" padded>
+                <PageSection title="Informations personnelles" tour-id="admin-employee-details.personal">
                     <div class="space-y-4">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="space-y-1">
@@ -385,7 +385,7 @@ onMounted(() => {
                     </div>
                 </PageSection>
 
-                <PageSection title="Informations RH" tour-id="admin-employee-details.rh" padded>
+                <PageSection title="Informations RH" tour-id="admin-employee-details.rh" >
                     <div class="space-y-5">
                         <EmployeeSalarySection v-model:form="form" :employee-type="form.type" />
 
@@ -411,7 +411,7 @@ onMounted(() => {
                     </div>
                 </PageSection>
 
-                <PageSection title="Documents administratifs" tour-id="admin-employee-details.documents" padded>
+                <PageSection title="Documents administratifs" tour-id="admin-employee-details.documents" >
                     <div class="space-y-4">
                         <div class="space-y-2">
                             <FileUpload name="administrativeFiles[]" :multiple="true" :customUpload="true" :auto="false" @select="onFilesSelect" @clear="onFilesClear" chooseLabel="Choisir" uploadLabel="Ajouter" cancelLabel="Vider" />
@@ -535,7 +535,7 @@ onMounted(() => {
                     </div>
                 </div>
 
-                <PageSection title="Conges par annee" tour-id="admin-employee-details.conges" padded>
+                <PageSection title="Conges par annee" tour-id="admin-employee-details.conges" >
                     <div class="space-y-4">
                         <div v-if="congesByYear.length" class="space-y-6">
                             <div v-for="group in congesByYear" :key="group.year" class="space-y-3">
