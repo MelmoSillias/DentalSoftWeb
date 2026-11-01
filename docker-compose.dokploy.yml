@@ -1,0 +1,205 @@
+# Une stack par cabinet. Domains Dokploy : frontend:80 et frontendpatient:80.
+# Les services internes ne rejoignent pas le réseau partagé de Dokploy.
+name: dentalsoft-${INSTANCE_ID:?Identifiant unique requis par cabinet et environnement}
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-frontend-environment: &frontend-environment
+  # Alias uniques : éviter de résoudre un ancien service « api » du réseau partagé.
+  API_UPSTREAM: dentalsoft-${INSTANCE_ID:?INSTANCE_ID requis}-api:80
+  MERCURE_UPSTREAM: dentalsoft-${INSTANCE_ID:?INSTANCE_ID requis}-mercure:80
+  NGINX_ENVSUBST_FILTER: ^(API_UPSTREAM|MERCURE_UPSTREAM)$$
+
+services:
+  db:
+    image: mariadb:11.4
+    restart: unless-stopped
+    mem_limit: ${DB_MEMORY_LIMIT:-768M}
+    command:
+      - --innodb-buffer-pool-size=${DB_BUFFER_POOL_SIZE:-128M}
+      - --max-connections=${DB_MAX_CONNECTIONS:-50}
+    environment:
+      MARIADB_DATABASE: ${DB_NAME:-dentalsoft}
+      MARIADB_USER: ${DB_USER:-dentalsoft}
+      MARIADB_PASSWORD: ${DB_PASSWORD:?Renseigner DB_PASSWORD dans Dokploy}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Renseigner DB_ROOT_PASSWORD dans Dokploy}
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: [CMD, healthcheck.sh, --connect, --innodb_initialized]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+    networks: [database]
+    logging: *logging
+
+  api:
+    build:
+      context: ./backend-reform
+      dockerfile: Dockerfile.dokploy
+      args:
+        FRANKENPHP_IMAGE: ${FRANKENPHP_IMAGE:-dunglas/frankenphp:1.13.4-php8.2-bookworm}
+    restart: unless-stopped
+    init: true
+    mem_limit: ${API_MEMORY_LIMIT:-1024M}
+    stop_grace_period: 60s
+    depends_on:
+      db:
+        condition: service_healthy
+      mercure:
+        condition: service_healthy
+    environment:
+      APP_ENV: prod
+      APP_DEBUG: "0"
+      APP_SECRET: ${APP_SECRET:?Renseigner APP_SECRET dans Dokploy}
+      APP_INTERNET_FEATURES_ENABLED: ${APP_INTERNET_FEATURES_ENABLED:-1}
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_NAME: ${DB_NAME:-dentalsoft}
+      DB_USER: ${DB_USER:-dentalsoft}
+      DB_PASSWORD: ${DB_PASSWORD:?Renseigner DB_PASSWORD dans Dokploy}
+      DB_SERVER_VERSION: ${DB_SERVER_VERSION:-11.4.0-MariaDB}
+      JWT_SECRET_KEY: /app/config/jwt/private.pem
+      JWT_PUBLIC_KEY: /app/config/jwt/public.pem
+      JWT_PASSPHRASE: ${JWT_PASSPHRASE:?Renseigner JWT_PASSPHRASE dans Dokploy}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-REMOTE_ADDR}
+      # API même origine : les appels navigateur passent par leur frontend.
+      CORS_ALLOW_ORIGIN: ${CORS_ALLOW_ORIGIN:-a^}
+      MERCURE_URL: http://mercure/.well-known/mercure
+      MERCURE_PUBLIC_URL: ${ADMIN_URL:?Renseigner ADMIN_URL sans slash final}/.well-known/mercure
+      MERCURE_JWT_SECRET: ${MERCURE_JWT_SECRET:?Renseigner MERCURE_JWT_SECRET dans Dokploy}
+      MERCURE_TOPIC_NAMESPACE: ${MERCURE_TOPIC_NAMESPACE:-dentalsoft}
+      MERCURE_PUBLISH_TIMEOUT: ${MERCURE_PUBLISH_TIMEOUT:-0.8}
+      MERCURE_PUBLISH_MAX_DURATION: ${MERCURE_PUBLISH_MAX_DURATION:-1.2}
+      MERCURE_CIRCUIT_COOLDOWN_SECONDS: ${MERCURE_CIRCUIT_COOLDOWN_SECONDS:-60}
+      MESSENGER_TRANSPORT_DSN: ${MESSENGER_TRANSPORT_DSN:-doctrine://default?auto_setup=0}
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-1}
+      ENABLE_EMBEDDED_WORKER: ${ENABLE_EMBEDDED_WORKER:-1}
+      SMS_POLL_INTERVAL: ${SMS_POLL_INTERVAL:-60}
+      SMS_DISPATCH_LIMIT: ${SMS_DISPATCH_LIMIT:-20}
+      MESSENGER_TIME_LIMIT: ${MESSENGER_TIME_LIMIT:-3600}
+      MESSENGER_MEMORY_LIMIT: ${MESSENGER_MEMORY_LIMIT:-128M}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+    volumes:
+      - jwt_keys:/app/config/jwt
+      - uploads:/app/public/uploads
+      - upload_files:/app/public/upload_files
+      - assurance_files:/app/public/assurances
+      - private_uploads:/app/var/uploads
+      - backups:/app/var/backups
+    expose: ["80"]
+    healthcheck:
+      test: [CMD, /healthcheck.sh]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 240s
+    networks:
+      default:
+        aliases: ["dentalsoft-${INSTANCE_ID:?INSTANCE_ID requis}-api"]
+      database:
+    logging: *logging
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile
+      args:
+        FRONTEND_DIR: frontend
+        CABINET: ${CABINET:-default}
+    restart: unless-stopped
+    mem_limit: ${FRONTEND_MEMORY_LIMIT:-128M}
+    environment: *frontend-environment
+    depends_on:
+      api:
+        condition: service_healthy
+    expose: ["80"]
+    healthcheck:
+      test: [CMD, wget, -q, --spider, http://127.0.0.1/healthz]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks: [default, dokploy-network]
+    logging: *logging
+
+  frontendpatient:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile
+      args:
+        FRONTEND_DIR: patient-frontend
+        CABINET: ${CABINET:-default}
+    restart: unless-stopped
+    mem_limit: ${PATIENT_MEMORY_LIMIT:-128M}
+    environment: *frontend-environment
+    depends_on:
+      api:
+        condition: service_healthy
+    expose: ["80"]
+    healthcheck:
+      test: [CMD, wget, -q, --spider, http://127.0.0.1/healthz]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks: [default, dokploy-network]
+    logging: *logging
+
+  mercure:
+    build:
+      context: ./docker/mercure
+    restart: unless-stopped
+    mem_limit: ${MERCURE_MEMORY_LIMIT:-256M}
+    environment:
+      MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_JWT_SECRET:?Renseigner MERCURE_JWT_SECRET dans Dokploy}
+      MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_JWT_SECRET:?Renseigner MERCURE_JWT_SECRET dans Dokploy}
+      MERCURE_CORS_ORIGINS: ${ADMIN_URL:?Renseigner ADMIN_URL} ${PATIENT_URL:?Renseigner PATIENT_URL}
+      MERCURE_HISTORY_SIZE: ${MERCURE_HISTORY_SIZE:-10000}
+    volumes:
+      - mercure_data:/data
+    expose: ["80"]
+    # Readiness du transport, pas uniquement du serveur HTTP.
+    healthcheck:
+      test: [CMD, wget, -q, --spider, http://127.0.0.1:2019/mercure/health/ready]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      default:
+        aliases: ["dentalsoft-${INSTANCE_ID:?INSTANCE_ID requis}-mercure"]
+    logging: *logging
+
+networks:
+  default:
+    name: dentalsoft-${INSTANCE_ID:?INSTANCE_ID requis}-app
+  database:
+    name: dentalsoft-${INSTANCE_ID:?INSTANCE_ID requis}-database
+    internal: true
+  dokploy-network:
+    external: true
+
+# Identité indépendante du nom -p injecté par Dokploy. Ne jamais réutiliser un ID.
+volumes:
+  db_data:
+    name: dentalsoft-${INSTANCE_ID:?INSTANCE_ID requis}-db
+  jwt_keys:
+    name: dentalsoft-${INSTANCE_ID:?INSTANCE_ID requis}-jwt
+  uploads:
+    name: dentalsoft-${INSTANCE_ID:?INSTANCE_ID requis}-uploads
+  upload_files:
+    name: dentalsoft-${INSTANCE_ID:?INSTANCE_ID requis}-upload-files
+  assurance_files:
+    name: dentalsoft-${INSTANCE_ID:?INSTANCE_ID requis}-assurances
+  private_uploads:
+    name: dentalsoft-${INSTANCE_ID:?INSTANCE_ID requis}-private-uploads
+  backups:
+    name: dentalsoft-${INSTANCE_ID:?INSTANCE_ID requis}-backups
+  mercure_data:
+    name: dentalsoft-${INSTANCE_ID:?INSTANCE_ID requis}-mercure

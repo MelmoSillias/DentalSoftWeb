@@ -28,8 +28,7 @@ if [ ! -f "$INPUT" ]; then
 fi
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-ROOT_DIR=$(CDPATH= cd -- "$SCRIPT_DIR/../.." && pwd)
-FIX_DUMP="$ROOT_DIR/cdos_prod/fix_dump.py"
+FIX_DUMP="$SCRIPT_DIR/fix_dump.py"
 
 if [ ! -f "$FIX_DUMP" ]; then
     echo "Script de préparation introuvable : $FIX_DUMP" >&2

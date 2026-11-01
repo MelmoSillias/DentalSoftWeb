@@ -57,7 +57,9 @@ export default defineConfig(({ command }) => ({
                 clientsClaim: true,
                 // skipWaiting volontairement absent : activation seulement après confirmation.
                 navigateFallback: 'index.html',
-                navigateFallbackDenylist: [/^\/api/],
+                navigateFallbackDenylist: process.env.VITE_DOKPLOY === 'true'
+                    ? [/^\/(api|uploads|upload_files|assurances|health)(\/|$)/, /^\/\.well-known\//]
+                    : [/^\/api/],
                 importScripts: ['notification-handler.js']
             },
             manifest: {

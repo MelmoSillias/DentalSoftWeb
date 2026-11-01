@@ -1,0 +1,4 @@
+# Le DSN construit au runtime est déjà encodé : pas d'expansion des %xx.
+doctrine:
+    dbal:
+        url: '%env(DATABASE_URL)%'

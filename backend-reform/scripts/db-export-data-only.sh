@@ -24,8 +24,7 @@ DATABASE="${3:?database requise}"
 OUTPUT="${4:-./data-only-${DATABASE}-$(date +%Y%m%d).sql}"
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-ROOT_DIR=$(CDPATH= cd -- "$SCRIPT_DIR/../.." && pwd)
-FIX_DUMP="$ROOT_DIR/cdos_prod/fix_dump.py"
+FIX_DUMP="$SCRIPT_DIR/fix_dump.py"
 
 RAW=$(mktemp /tmp/dentalsoft-export.XXXXXX.sql) || RAW=$(mktemp dentalsoft-export.XXXXXX.sql)
 cleanup() { rm -f "$RAW"; }

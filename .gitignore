@@ -38,3 +38,9 @@ deploy.bat
 deploy.ps1
 
 /test/
+
+# Données historiques locales, dumps, exécutables et anciens déploiements.
+/archive/local/
+/archive/notes/prompts/
+/.env
+/.env.dokploy

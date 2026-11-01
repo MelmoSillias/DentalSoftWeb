@@ -1,0 +1,22 @@
+{
+    auto_https off
+}
+
+:80 {
+    # Le composant Symfony verrouillé et les clients SSE utilisent le protocole 0.x.
+    # L'image officielle inclut les tags de compatibilité nécessaires.
+    mercure {
+        protocol_version_compatibility 8
+        publisher_jwt {env.MERCURE_PUBLISHER_JWT_KEY} HS256
+        subscriber_jwt {env.MERCURE_SUBSCRIBER_JWT_KEY} HS256
+        cors_origins {$MERCURE_CORS_ORIGINS}
+        transport bolt {
+            path /data/mercure.db
+            size {$MERCURE_HISTORY_SIZE:10000}
+            cleanup_frequency 0.3
+        }
+    }
+    # Pas de compression SSE ni de journalisation des JWT dans les query strings.
+    respond /healthz 200
+    respond "Not Found" 404
+}

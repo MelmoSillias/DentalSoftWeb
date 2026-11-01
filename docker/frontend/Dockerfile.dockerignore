@@ -1,0 +1,16 @@
+# Le contexte partagé des deux frontends ne contient que les sources nécessaires.
+*
+!frontend/
+!frontend/**
+!patient-frontend/
+!patient-frontend/**
+!docker/
+!docker/**
+**/node_modules
+**/dist
+**/.git
+**/.env
+**/.env.*
+**/*.log
+**/*.rar
+**/coverage

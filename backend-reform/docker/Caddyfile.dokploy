@@ -1,0 +1,14 @@
+{
+	frankenphp {
+		num_threads 2
+	}
+}
+
+:80 {
+	root * /app/public
+	encode zstd gzip
+	# Ne jamais exécuter un fichier PHP déposé dans un volume d'uploads.
+	@uploadedPhp path_regexp uploadedPhp (?i)^/(uploads|upload_files|assurances)/.*\.(php|phtml|phar)(/|$)
+	respond @uploadedPhp 404
+	php_server
+}
