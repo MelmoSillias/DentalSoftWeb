@@ -132,10 +132,10 @@ export function usePayrolls() {
         }
     };
 
-    const remove = async (id) => {
+    const remove = async (id, payload = {}) => {
         error.value = null;
         try {
-            return await deletePayroll(id, getToken());
+            return await deletePayroll(id, getToken(), payload);
         } catch (err) {
             error.value = err?.response?.data?.message || err?.message || 'Erreur lors de la suppression.';
             throw err;

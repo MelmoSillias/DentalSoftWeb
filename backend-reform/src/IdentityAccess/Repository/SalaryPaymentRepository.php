@@ -46,6 +46,7 @@ class SalaryPaymentRepository extends ServiceEntityRepository
     public function findLastPaymentForEmployee(Employe $employee): ?SalaryPayment
     {
         return $this->createQueryBuilder('sp')
+            ->andWhere("sp.status = 'active'")
             ->andWhere('sp.employe = :employee')
             ->setParameter('employee', $employee)
             ->orderBy('sp.paidAt', 'DESC')
@@ -57,8 +58,8 @@ class SalaryPaymentRepository extends ServiceEntityRepository
 
     public function findFirstForPeriod(Employe $employee, int $month, int $year, ?string $day = null): ?SalaryPayment
     {
-        $criteria = ['employe' => $employee, 'month' => $month, 'year' => $year, 'frequenceSnapshot' => $employee->getFrequencePaiement()];
-        if ($employee->getFrequencePaiement() === 'journalier') {
+        $criteria = ['employe' => $employee, 'month' => $month, 'year' => $year, 'status' => 'active', 'frequenceSnapshot' => $day ? 'journalier' : 'mensuel'];
+        if ($day) {
             $criteria['workedDay'] = new \DateTimeImmutable($day);
         }
 
@@ -68,6 +69,7 @@ class SalaryPaymentRepository extends ServiceEntityRepository
     public function sumPaidForMonthlyPeriod(Employe $employee, int $month, int $year): float
     {
         $result = $this->createQueryBuilder('sp')
+            ->andWhere("sp.status = 'active'")
             ->select('COALESCE(SUM(sp.paidAmount), 0)')
             ->andWhere('sp.employe = :employee')
             ->andWhere('sp.month = :month')
@@ -86,6 +88,7 @@ class SalaryPaymentRepository extends ServiceEntityRepository
     public function sumPaidForWorkedDay(Employe $employee, \DateTimeInterface $workedDay): float
     {
         $result = $this->createQueryBuilder('sp')
+            ->andWhere("sp.status = 'active'")
             ->select('COALESCE(SUM(sp.paidAmount), 0)')
             ->andWhere('sp.employe = :employee')
             ->andWhere('sp.workedDay = :workedDay')
@@ -102,6 +105,7 @@ class SalaryPaymentRepository extends ServiceEntityRepository
     public function sumPaidBeforePayment(SalaryPayment $payment): float
     {
         $qb = $this->createQueryBuilder('sp')
+            ->andWhere("sp.status = 'active'")
             ->select('COALESCE(SUM(sp.paidAmount), 0)')
             ->andWhere('sp.employe = :employee')
             ->andWhere('sp.frequenceSnapshot = :frequence')
@@ -122,6 +126,14 @@ class SalaryPaymentRepository extends ServiceEntityRepository
         }
 
         return round((float) $qb->getQuery()->getSingleScalarResult(), 2);
+    }
+
+    public function forPeriod(SalaryPayment $payment, bool $includeCancelled = false): array
+    {
+        $criteria = ['employe' => $payment->getEmploye(), 'month' => $payment->getMonth(), 'year' => $payment->getYear(), 'frequenceSnapshot' => $payment->getFrequenceSnapshot()];
+        if ($payment->getWorkedDay()) $criteria['workedDay'] = $payment->getWorkedDay();
+        if (!$includeCancelled) $criteria['status'] = 'active';
+        return $this->findBy($criteria, ['createdAt' => 'ASC', 'id' => 'ASC']);
     }
 
     private function applyFilters($qb, ?int $employeeId, ?int $month, ?int $year): void

@@ -21,6 +21,7 @@ class PayrollService
         private SalaryPaymentRepository $salaryPaymentRepo,
         private ModeDePaiementRepository $modeDePaiementRepo,
         private ReportService $reportService,
+        private ?InpsService $inpsService = null,
     ) {
     }
 
@@ -45,7 +46,8 @@ class PayrollService
             throw new InvalidArgumentException('Employe introuvable.');
         }
 
-        $frequence = $employee->getFrequencePaiement();
+        $first = $this->salaryPaymentRepo->findFirstForPeriod($employee, $month, $year, $day);
+        $frequence = $first?->getFrequenceSnapshot() ?? $employee->getFrequencePaiement();
         if ($frequence === 'journalier') {
             if ($day === null || trim($day) === '') {
                 throw new InvalidArgumentException('Le jour travaille est requis pour un employe en paiement journalier.');
@@ -77,6 +79,8 @@ class PayrollService
                 'day' => $day,
             ],
             ...$computed,
+            'periodFingerprint' => $this->periodFingerprint($employee, $month, $year, $computed),
+            'payments' => array_map(fn ($p) => $this->mapPaymentRow($p), $this->salaryPaymentRepo->findBy(['employe' => $employee, 'month' => $month, 'year' => $year], ['createdAt' => 'ASC', 'id' => 'ASC'])),
         ];
     }
 
@@ -84,7 +88,7 @@ class PayrollService
     {
         $this->validatePeriod($month, $year);
         $employees = $this->employeRepo->findAllEmployees();
-        $payments = $this->salaryPaymentRepo->findBy(['month' => $month, 'year' => $year], ['paidAt' => 'DESC', 'id' => 'DESC']);
+        $payments = $this->salaryPaymentRepo->findBy(['month' => $month, 'year' => $year, 'status' => 'active'], ['paidAt' => 'DESC', 'id' => 'DESC']);
         $byEmployee = [];
         foreach ($payments as $payment) {
             $byEmployee[$payment->getEmploye()->getId()][] = $this->mapPaymentRow($payment);
@@ -93,7 +97,8 @@ class PayrollService
         $rows = [];
         foreach ($employees as $employee) {
             if ($employeeId && $employee->getId() !== $employeeId) continue;
-            if ($employee->getFrequencePaiement() === 'journalier') {
+            $savedFrequency = $byEmployee[$employee->getId()][0]['frequenceSnapshot'] ?? $employee->getFrequencePaiement();
+            if ($savedFrequency === 'journalier') {
                 $start = new \DateTimeImmutable(sprintf('%04d-%02d-01', $year, $month));
                 $dailyActivities ??= $this->reportService->dailyPayrollActivities($start, $start->modify('last day of this month')->setTime(23, 59, 59));
                 $employeePayments = array_values(array_filter($payments, fn (SalaryPayment $payment) => $payment->getEmploye()->getId() === $employee->getId() && $payment->getFrequenceSnapshot() === 'journalier'));
@@ -105,7 +110,7 @@ class PayrollService
                 'id' => $employee->getId(),
                 'employeeName' => $employee->getFullName(),
                 'employeeFonction' => $employee->getFonction(),
-                'frequencyOrder' => $employee->getFrequencePaiement() === 'mensuel' ? 0 : 1,
+                'frequencyOrder' => $savedFrequency === 'mensuel' ? 0 : 1,
                 'context' => $context,
                 'payments' => $byEmployee[$employee->getId()] ?? [],
             ];
@@ -124,7 +129,7 @@ class PayrollService
         }
         $start = new \DateTimeImmutable(sprintf('%04d-%02d-01', $year, $month));
         $activities = $this->reportService->dailyPayrollActivities($start, $start->modify('last day of this month')->setTime(23, 59, 59));
-        $payments = $this->salaryPaymentRepo->findBy(['employe' => $employee, 'month' => $month, 'year' => $year, 'frequenceSnapshot' => 'journalier'], ['createdAt' => 'ASC', 'id' => 'ASC']);
+        $payments = $this->salaryPaymentRepo->findBy(['employe' => $employee, 'month' => $month, 'year' => $year, 'frequenceSnapshot' => 'journalier', 'status' => 'active'], ['createdAt' => 'ASC', 'id' => 'ASC']);
         return $this->buildDailyPayroll($employee, $month, $year, $activities[$employeeId] ?? [], $payments);
     }
 
@@ -187,10 +192,20 @@ class PayrollService
     public function createSalaryPayment(array $payload): array
     {
         $employee = $this->employeRepo->find((int) ($payload['employeeId'] ?? 0));
-        if ($employee && $employee->getFrequencePaiement() === 'journalier') {
+        if ($employee) {
             return $this->em->wrapInTransaction(function () use ($employee, $payload): array {
-                // Serialize payments for this employee, including two requests for the same day.
+                $this->inpsService?->lockOpen((int) ($payload['year'] ?? 0), (int) ($payload['month'] ?? 0));
                 $this->em->lock($employee, LockMode::PESSIMISTIC_WRITE);
+                if (!empty($payload['requestId'])) {
+                    if (!preg_match('/^[a-zA-Z0-9-]{16,64}$/', $payload['requestId'])) throw new InvalidArgumentException('Identifiant de requête invalide.');
+                    $previous = $this->salaryPaymentRepo->findOneBy(['requestId' => $payload['requestId']]);
+                    if ($previous) {
+                        if ($previous->getStatus() !== 'active' || $previous->getEmploye()->getId() !== $employee->getId() || $previous->getYear() !== (int) $payload['year'] || $previous->getMonth() !== (int) $payload['month'] || $previous->getWorkedDay()?->format('Y-m-d') !== ($payload['day'] ?? null) || $previous->getPaidAmount() !== (float) ($payload['paidAmount'] ?? 0) || $previous->getModeDePaiement()?->getId() !== (int) ($payload['paymentMethodId'] ?? 0)) throw new InvalidArgumentException('Identifiant déjà utilisé pour une autre saisie ou un paiement annulé. Rouvrez le formulaire.');
+                        return ['payment' => $this->mapPaymentRow($previous), 'message' => 'Paiement déjà enregistré.'];
+                    }
+                } elseif ($this->inpsService) {
+                    throw new InvalidArgumentException('Identifiant de requête requis. Actualisez le formulaire.');
+                }
                 return $this->createSalaryPaymentRecord($payload);
             });
         }
@@ -221,6 +236,11 @@ class PayrollService
             throw new InvalidArgumentException('Employe introuvable.');
         }
 
+        $existingPeriods = $this->salaryPaymentRepo->findBy(['employe' => $employee, 'year' => $year, 'month' => $month, 'status' => 'active']);
+        foreach ($existingPeriods as $existing) {
+            if ($existing->getFrequenceSnapshot() !== $employee->getFrequencePaiement()) throw new InvalidArgumentException('La fréquence a changé. Régularisez les paiements existants avant de créer une autre paie pour ce mois.');
+        }
+
         if ($employee->getFrequencePaiement() === 'journalier' && ($day === null || $day === '')) {
             throw new InvalidArgumentException('Le jour travaille est requis pour un employe en paiement journalier.');
         }
@@ -240,6 +260,7 @@ class PayrollService
             $computed = [...$activity, 'baseAmount' => $activity['revenueTotal'], 'primeBaseAmount' => $activity['typePrime'] === 'actes' ? $activity['revenueTotal'] : null, 'salaryLocked' => true, 'indemniteSpeciale' => 0, 'inps' => 0, 'breakdown' => ['alreadyPaid' => 0]];
         } else {
             $computed = $this->computeSalaryForPeriod($employee, $month, $year, $day);
+            if ($this->inpsService && ($payload['periodFingerprint'] ?? '') !== $this->periodFingerprint($employee, $month, $year, $computed)) throw new InvalidArgumentException('La paie de cette période a changé. Actualisez le formulaire avant d’enregistrer.');
         }
 
         $primeOverride = isset($payload['primeAmount']) && $payload['primeAmount'] !== '' && $payload['primeAmount'] !== null
@@ -261,7 +282,7 @@ class PayrollService
         $alreadyPaid = (float) ($computed['breakdown']['alreadyPaid'] ?? 0);
         $remaining = round(max(0, $calculatedAmount - $alreadyPaid), 2);
 
-        if ($remaining <= 0.01) {
+        if ($remaining <= 0) {
             throw new InvalidArgumentException('Cette periode est deja entierement reglee.');
         }
 
@@ -270,7 +291,7 @@ class PayrollService
             throw new InvalidArgumentException('Le montant verse doit etre superieur a 0.');
         }
 
-        if ($paidAmount > $remaining + 0.01) {
+        if ($paidAmount > $remaining) {
             throw new InvalidArgumentException(sprintf(
                 'Le montant verse (%.2f) depasse le reste a payer (%.2f).',
                 $paidAmount,
@@ -286,6 +307,7 @@ class PayrollService
         $workedDay = $employee->getFrequencePaiement() === 'journalier' ? $periodStart : null;
 
         $payment = (new SalaryPayment())
+            ->setRequestId($payload['requestId'] ?? null)
             ->setEmploye($employee)
             ->setMonth($month)
             ->setYear($year)
@@ -311,6 +333,7 @@ class PayrollService
 
         $transaction = $this->registerSalaryExpenseTransaction($employee, $payment, $paidAmount, $mode);
         $payment->setTransaction($transaction);
+        $this->audit($payment, 'created', [], 'Premier enregistrement');
 
         $this->em->persist($payment);
         $this->em->flush();
@@ -333,6 +356,40 @@ class PayrollService
 
     public function updateSalaryPayment(int $id, array $payload): array
     {
+        return $this->mutate($id, $payload, fn () => $this->updateSalaryPaymentRecord($id, $payload));
+    }
+
+    private function mutate(int $id, array $payload, callable $operation): array
+    {
+        return $this->em->wrapInTransaction(function () use ($id, $payload, $operation) {
+            $payment = $this->salaryPaymentRepo->find($id);
+            if (!$payment) throw new InvalidArgumentException('Paiement introuvable.');
+            $this->inpsService?->lockOpen($payment->getYear(), $payment->getMonth());
+            $this->em->lock($payment->getEmploye(), LockMode::PESSIMISTIC_WRITE);
+            $this->em->refresh($payment);
+            if ($payment->getStatus() !== 'active') throw new InvalidArgumentException('Ce paiement est déjà annulé.');
+            if ($this->inpsService && (int) ($payload['version'] ?? 0) !== $payment->getVersion()) throw new InvalidArgumentException('Le paiement a changé. Actualisez le détail avant de recommencer.');
+            if ($this->inpsService && trim((string) ($payload['reason'] ?? '')) === '') throw new InvalidArgumentException('Le motif de correction ou d’annulation est requis.');
+            return $operation();
+        });
+    }
+
+    private function audit(SalaryPayment $payment, string $action, array $before, string $reason): void
+    {
+        $payment->recordHistory(['action' => $action, 'before' => $before, 'after' => $this->mapPaymentRow($payment),
+            'transactionId' => $payment->getTransaction()?->getId(), 'reason' => $reason,
+            'actor' => $this->inpsService?->actor() ?? 'system', 'at' => date(DATE_ATOM)]);
+    }
+
+    private function periodFingerprint(Employe $employee, int $month, int $year, array $computed): string
+    {
+        $payments = $this->salaryPaymentRepo->findBy(['employe' => $employee, 'month' => $month, 'year' => $year], ['id' => 'ASC']);
+        return hash('sha256', json_encode([array_map(fn ($p) => [$p->getId(), $p->getVersion(), $p->getStatus()], $payments),
+            $computed['baseSalaryAmount'], $computed['primeAmount'], $computed['indemniteSpeciale'], $computed['inps'], $computed['calculatedAmount']]));
+    }
+
+    private function updateSalaryPaymentRecord(int $id, array $payload): array
+    {
         $payment = $this->salaryPaymentRepo->find($id);
         if (!$payment) {
             throw new InvalidArgumentException('Paiement introuvable.');
@@ -343,26 +400,35 @@ class PayrollService
             throw new InvalidArgumentException('Employe introuvable.');
         }
 
+        $before = $this->mapPaymentRow($payment);
+        $before['transactionId'] = $payment->getTransaction()?->getId();
+        $periodPayments = $this->salaryPaymentRepo->forPeriod($payment);
+        $canRecalculate = $payment->getFrequenceSnapshot() === 'mensuel' && count($periodPayments) === 1 && $periodPayments[0]->getId() === $payment->getId();
+        foreach (['employeeId', 'month', 'year', 'day'] as $field) {
+            if (array_key_exists($field, $payload)) throw new InvalidArgumentException('L’employé et la période d’un paiement ne sont pas modifiables.');
+        }
+
         $primeOverride = isset($payload['primeAmount']) && $payload['primeAmount'] !== '' && $payload['primeAmount'] !== null
             ? $this->normalizeAmount($payload['primeAmount'], 'Montant prime')
             : null;
 
-        if ($primeOverride !== null && $payment->getPrimeTypeSnapshot() !== 'fixe') {
+        if ($primeOverride !== null && $primeOverride !== $payment->getPrimeAmount() && $payment->getPrimeTypeSnapshot() !== 'fixe') {
             throw new InvalidArgumentException('Le montant de prime ne peut etre modifie que pour une prime fixe.');
         }
 
-        $baseSalaryAmount = $payment->getBaseSalaryAmount();
+        $baseSalaryAmount = array_key_exists('baseSalaryAmount', $payload) ? $this->normalizeAmount($payload['baseSalaryAmount'], 'Salaire de base') : $payment->getBaseSalaryAmount();
         $primeAmount = $primeOverride ?? $payment->getPrimeAmount();
         $indemniteSpeciale = array_key_exists('indemniteSpeciale', $payload) ? $this->normalizeAmount($payload['indemniteSpeciale'], 'Indemnite speciale') : $payment->getIndemniteSpeciale();
         $inps = array_key_exists('inps', $payload) ? $this->normalizeAmount($payload['inps'], 'INPS') : $payment->getInps();
         if (
-            $primeAmount !== $payment->getPrimeAmount() || $indemniteSpeciale !== $payment->getIndemniteSpeciale() || $inps !== $payment->getInps()
+            !$canRecalculate && ($baseSalaryAmount !== $payment->getBaseSalaryAmount() || $primeAmount !== $payment->getPrimeAmount() || $indemniteSpeciale !== $payment->getIndemniteSpeciale() || $inps !== $payment->getInps())
         ) {
             throw new InvalidArgumentException('Le calcul mensuel est fige apres le premier paiement.');
         }
         $grossAmount = round($baseSalaryAmount + $primeAmount + $indemniteSpeciale, 2);
         if ($inps > $grossAmount) throw new InvalidArgumentException('La retenue INPS ne peut depasser le salaire brut.');
         $calculatedAmount = round($grossAmount - $inps, 2);
+        $this->inpsService?->assertCorrectionConfirmed($payment, $inps, $payload);
 
         $paidAmount = isset($payload['paidAmount']) && $payload['paidAmount'] !== ''
             ? $this->normalizeAmount($payload['paidAmount'], 'Montant verse')
@@ -377,7 +443,7 @@ class PayrollService
             throw new InvalidArgumentException('Le salaire journalier doit etre paye integralement en un seul paiement.');
         }
         $maxAllowed = round(max(0, $calculatedAmount - $alreadyPaidOthers), 2);
-        if ($paidAmount > $maxAllowed + 0.01) {
+        if ($paidAmount > $maxAllowed) {
             throw new InvalidArgumentException(sprintf(
                 'Le montant verse (%.2f) depasse le reste autorise (%.2f).',
                 $paidAmount,
@@ -400,6 +466,7 @@ class PayrollService
         }
 
         $payment
+            ->setBaseSalaryAmount($baseSalaryAmount)
             ->setPrimeAmount($primeAmount)
             ->setIndemniteSpeciale($indemniteSpeciale)
             ->setInps($inps)
@@ -407,15 +474,13 @@ class PayrollService
             ->setPaidAmount($paidAmount);
 
         $mode = $payment->getModeDePaiement();
-        if ($mode) {
-            $transaction = $payment->getTransaction();
-            if ($transaction) {
-                $transaction
-                    ->setMontant((string) round($paidAmount))
-                    ->setDateTransaction($payment->getPaidAt() ?? new \DateTimeImmutable())
-                    ->setModeDePaiement($mode);
-            }
+        $financialChange = $before['paidAmount'] !== $paidAmount || $before['paidAt'] !== $payment->getPaidAt()?->format('Y-m-d') || ($before['paymentMethod']['id'] ?? null) !== $mode?->getId();
+        if ($financialChange && $mode) {
+            $payment->getTransaction()?->cancel('Remplacée : ' . ($payload['reason'] ?? 'Correction de paie'));
+            $payment->setTransaction($this->registerSalaryExpenseTransaction($employee, $payment, $paidAmount, $mode));
         }
+
+        $this->audit($payment, 'updated', $before, $payload['reason'] ?? 'Correction');
 
         $this->em->flush();
 
@@ -436,22 +501,29 @@ class PayrollService
         ], $methods);
     }
 
-    public function deleteSalaryPayment(int $id): array
+    public function deleteSalaryPayment(int $id, array $payload = []): array
+    {
+        return $this->mutate($id, $payload, fn () => $this->cancelSalaryPaymentRecord($id, $payload));
+    }
+
+    private function cancelSalaryPaymentRecord(int $id, array $payload): array
     {
         $payment = $this->salaryPaymentRepo->find($id);
         if (!$payment) {
             throw new InvalidArgumentException('Paiement introuvable.');
         }
 
-        $transaction = $payment->getTransaction();
-        if ($transaction) {
-            $this->em->remove($transaction);
-        }
-
-        $this->em->remove($payment);
+        $others = $this->salaryPaymentRepo->forPeriod($payment);
+        if (count($others) > 1 && $others[0]->getId() === $payment->getId()) throw new InvalidArgumentException('Annulez les autres paiements avant d’annuler le premier.');
+        if ($this->inpsService && ($payload['entryErrorConfirmed'] ?? false) !== true) throw new InvalidArgumentException('Confirmez une erreur de saisie. Si l’argent a réellement été versé, conservez le paiement.');
+        if (count($others) === 1) $this->inpsService?->assertCorrectionConfirmed($payment, 0, $payload);
+        $before = $this->mapPaymentRow($payment);
+        $payment->getTransaction()?->cancel($payload['reason'] ?? 'Annulation de paie');
+        $payment->cancel();
+        $this->audit($payment, 'cancelled', $before, $payload['reason'] ?? 'Annulation');
         $this->em->flush();
 
-        return ['message' => 'Paiement supprime.'];
+        return ['message' => 'Paiement annulé. La trace de trésorerie est conservée.'];
     }
 
     public function getPrintPayload(int $id): array
@@ -466,6 +538,7 @@ class PayrollService
 
         return [
             'id' => $payment->getId(),
+            'status' => $payment->getStatus(),
             'employee' => [
                 'nom' => $employee?->getNom(),
                 'prenom' => $employee?->getPrenom(),
@@ -508,8 +581,16 @@ class PayrollService
 
     private function mapPaymentDetail(SalaryPayment $payment): array
     {
+        $active = $this->salaryPaymentRepo->forPeriod($payment);
+        $inps = $this->inpsService?->overview($payment->getYear(), (int) ceil($payment->getMonth() / 3));
         return [
             ...$this->mapPaymentRow($payment),
+            'history' => $payment->getHistory(),
+            'payments' => array_map(fn ($p) => $this->mapPaymentRow($p), $this->salaryPaymentRepo->forPeriod($payment, true)),
+            'canRecalculate' => $payment->getStatus() === 'active' && $payment->getFrequenceSnapshot() === 'mensuel' && count($active) === 1,
+            'canCancel' => $payment->getStatus() === 'active' && !(count($active) > 1 && $active[0]->getId() === $payment->getId()),
+            'maxAllowed' => round(max(0, $payment->getCalculatedAmount() - array_sum(array_map(fn ($p) => $p->getId() === $payment->getId() ? 0 : $p->getPaidAmount(), $active))), 2),
+            'inpsState' => $inps ? array_intersect_key($inps, array_flip(['remitted', 'due', 'surplus', 'remaining', 'fingerprint', 'closed'])) : null,
             'employee' => [
                 'id' => $payment->getEmploye()?->getId(),
                 'fullname' => $payment->getEmploye()?->getFullName(),
@@ -527,6 +608,8 @@ class PayrollService
 
         return [
             'id' => $payment->getId(),
+            'status' => $payment->getStatus(),
+            'version' => $payment->getVersion(),
             'employeeId' => $employee?->getId(),
             'employeeName' => trim(($employee?->getPrenom() ?? '') . ' ' . ($employee?->getNom() ?? '')),
             'employeeFonction' => $employee?->getFonction(),
@@ -583,11 +666,9 @@ class PayrollService
 
     private function computeSalaryForPeriod(Employe $employee, int $month, int $year, ?string $day = null): array
     {
-        [$periodStart, $periodEnd] = $this->buildPeriodBounds($employee, $month, $year, $day);
-
         $firstPayment = $this->salaryPaymentRepo->findFirstForPeriod($employee, $month, $year, $day);
         if ($firstPayment) {
-            $alreadyPaid = $this->computeAlreadyPaid($employee, $month, $year, $day, $periodStart);
+            $alreadyPaid = $firstPayment->getFrequenceSnapshot() === 'journalier' ? $this->salaryPaymentRepo->sumPaidForWorkedDay($employee, $firstPayment->getWorkedDay()) : $this->salaryPaymentRepo->sumPaidForMonthlyPeriod($employee, $month, $year);
             $remaining = round(max(0, $firstPayment->getCalculatedAmount() - $alreadyPaid), 2);
 
             return [
@@ -614,11 +695,12 @@ class PayrollService
                     'alreadyPaid' => $alreadyPaid,
                     'remaining' => $remaining,
                 ],
-                'canPay' => $remaining > 0.01,
-                'blockReason' => $remaining > 0.01 ? null : 'Cette periode est deja entierement reglee.',
+                'canPay' => $remaining > 0,
+                'blockReason' => $remaining > 0 ? null : 'Cette periode est deja entierement reglee.',
             ];
         }
 
+        [$periodStart, $periodEnd] = $this->buildPeriodBounds($employee, $month, $year, $day);
         $salaryType = (string) ($employee->getTypeSalaire() ?? 'non_defini');
         $salaryValue = $employee->getValeurSalaire();
         $frequence = $employee->getFrequencePaiement();
@@ -659,7 +741,7 @@ class PayrollService
 
         $alreadyPaid = $this->computeAlreadyPaid($employee, $month, $year, $day, $periodStart);
         $remaining = round(max(0, $total - $alreadyPaid), 2);
-        $canPay = $remaining > 0.01;
+        $canPay = $remaining > 0;
 
         return [
             'periodStart' => $periodStart->format('Y-m-d'),
@@ -762,7 +844,7 @@ class PayrollService
             throw new InvalidArgumentException(sprintf('Le champ "%s" doit etre numerique.', $field));
         }
 
-        if ((float) $value < 0) {
+        if (!is_finite((float) $value) || (float) $value < 0) {
             throw new InvalidArgumentException(sprintf('Le champ "%s" ne peut etre negatif.', $field));
         }
 
@@ -775,8 +857,8 @@ class PayrollService
             return new \DateTimeImmutable('today');
         }
 
-        $date = \DateTimeImmutable::createFromFormat('Y-m-d', trim($value));
-        if (!$date) {
+        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', trim($value));
+        if (!$date || $date->format('Y-m-d') !== trim($value)) {
             throw new InvalidArgumentException('Date de paiement invalide.');
         }
 
@@ -798,7 +880,8 @@ class PayrollService
         );
 
         $transaction = (new Transaction())
-            ->setMontant((string) round($paidAmount))
+            ->setSource('payroll')
+            ->setMontant((string) $paidAmount)
             ->setType('Depense')
             ->setMotif('Paiement salaire')
             ->setDescription(trim($description))

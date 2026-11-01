@@ -8,14 +8,33 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: TransactionRepository::class)]
+#[ORM\Table(name: '`transaction`')]
 class Transaction
 {
+    #[ORM\Version]
+    #[ORM\Column(type: Types::INTEGER)]
+    private int $version = 1;
+
+    #[ORM\Column(length: 32, nullable: true)]
+    private ?string $source = null;
+
+    public function getSource(): ?string { return $this->source; }
+    public function setSource(?string $source): static { $this->source = $source; return $this; }
+    public function isSourceManaged(): bool { return in_array($this->source, ['payroll', 'inps'], true); }
+    public function cancel(string $reason): void
+    {
+        $this->validationStatus = 'cancelled';
+        $this->validated = false;
+        $this->validationComment = $reason;
+        // Preserve the original validation date for the audit trail.
+    }
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 0)]
+    #[ORM\Column(type: Types::DECIMAL, precision: 12, scale: 2)]
     private ?string $montant = null;
 
     #[ORM\Column(length: 20)]

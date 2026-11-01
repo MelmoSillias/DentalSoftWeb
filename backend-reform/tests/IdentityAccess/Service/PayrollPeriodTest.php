@@ -46,6 +46,7 @@ class PayrollPeriodTest extends TestCase
         $reports = $this->createMock(ReportService::class);
         if ($first) $reports->expects(self::never())->method('periodicDoctorReports');
         $manager = $this->createMock(EntityManagerInterface::class);
+        $manager->method('wrapInTransaction')->willReturnCallback(fn ($callback) => $callback());
         return [new PayrollService($manager, $employees, $payments, $methods, $reports), $payments, $reports, $manager];
     }
 

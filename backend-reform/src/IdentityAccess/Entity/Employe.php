@@ -107,7 +107,7 @@ class Employe
     #[ORM\OneToMany(mappedBy: 'employe', targetEntity: Conge::class, cascade: ['persist', 'remove'])]
     private Collection $conges;
 
-    #[ORM\OneToMany(mappedBy: 'employe', targetEntity: SalaryPayment::class, cascade: ['persist', 'remove'])]
+    #[ORM\OneToMany(mappedBy: 'employe', targetEntity: SalaryPayment::class, cascade: ['persist'])]
     private Collection $salaryPayments;
 
 

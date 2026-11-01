@@ -11,6 +11,27 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Entity(repositoryClass: SalaryPaymentRepository::class)]
 class SalaryPayment
 {
+    #[ORM\Column(length: 20, options: ['default' => 'active'])]
+    private string $status = 'active';
+
+    #[ORM\Column(type: Types::JSON)]
+    private array $history = [];
+
+    #[ORM\Version]
+    #[ORM\Column(type: Types::INTEGER)]
+    private int $version = 1;
+
+    #[ORM\Column(length: 64, nullable: true, unique: true)]
+    private ?string $requestId = null;
+
+    public function getStatus(): string { return $this->status; }
+    public function cancel(): void { $this->status = 'cancelled'; }
+    public function getHistory(): array { return $this->history; }
+    public function recordHistory(array $entry): void { $this->history[] = $entry; }
+    public function getVersion(): int { return $this->version; }
+    public function getRequestId(): ?string { return $this->requestId; }
+    public function setRequestId(?string $id): self { $this->requestId = $id; return $this; }
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: Types::INTEGER)]

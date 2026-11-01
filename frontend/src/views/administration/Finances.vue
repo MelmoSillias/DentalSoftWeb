@@ -69,6 +69,11 @@ const breadcrumbHome = { icon: 'pi pi-home', to: '/dashboard' };
 const breadcrumbItems = [{ label: 'Administration' }, { label: 'Finances' }];
 
 const activeTab = ref('transactions');
+const treasuryTable = ref('cross-table');
+const treasuryTableOptions = [
+    { label: 'Tableau croisé', value: 'cross-table' },
+    { label: 'Historique des transactions', value: 'history' }
+];
 const transactionDialogVisible = ref(false);
 const draftTransaction = ref(null);
 const modeDialogVisible = ref(false);
@@ -125,7 +130,8 @@ const transactionStatusOptions = [
     { label: 'Tous les statuts', value: 'all' },
     { label: 'En attente', value: 'pending' },
     { label: 'Validées', value: 'validated' },
-    { label: 'Rejetées', value: 'rejected' }
+    { label: 'Rejetées', value: 'rejected' },
+    { label: 'Annulées', value: 'cancelled' }
 ];
 
 const transactionTypeOptions = [
@@ -170,6 +176,8 @@ const formatLocalDateForApi = (value) => {
 const resolveTransactionStatus = (row) => {
     const rawStatus = normalizeText(row?.validationStatus || row?.status || row?.validation_status || '');
     const validated = row?.validated ?? row?.isValidated ?? row?.is_validated;
+
+    if (rawStatus === 'cancelled') return { key: 'cancelled', label: 'Annulée', severity: 'secondary' };
 
     if (rawStatus.includes('reject')) {
         return { key: 'rejected', label: 'Rejetée', severity: 'danger' };
@@ -256,7 +264,7 @@ const transactionPeriodLabel = computed(() => {
 });
 
 const periodTransactionTotals = computed(() => {
-    const rows = transactionsView.value.filter((row) => row.statusKey !== 'rejected');
+    const rows = transactionsView.value.filter((row) => !['rejected', 'cancelled'].includes(row.statusKey));
     const revenues = rows.filter((row) => row.typeKey === 'revenue');
     const expenses = rows.filter((row) => row.typeKey === 'expense');
     const sumAmount = (list) => list.reduce((sum, row) => sum + Number(row.amountValue || 0), 0);
@@ -598,11 +606,11 @@ const validationStatusData = computed(() => {
     });
 
     return {
-        labels: ['En attente', 'Validées', 'Rejetées'],
+        labels: ['En attente', 'Validées', 'Rejetées', 'Annulées'],
         datasets: [
             {
-                data: [counts.pending, counts.validated, counts.rejected],
-                backgroundColor: ['#f59e0b', '#10b981', '#f43f5e'],
+                data: [counts.pending, counts.validated, counts.rejected, counts.cancelled || 0],
+                backgroundColor: ['#f59e0b', '#10b981', '#f43f5e', '#64748b'],
                 borderWidth: 0
             }
         ]
@@ -1062,6 +1070,7 @@ const resetTourDialogs = () => {
 
 const capturePageState = () => ({
     activeTab: activeTab.value,
+    treasuryTable: treasuryTable.value,
     selectedYear: selectedYear.value,
     transactionRange: cloneValue(transactionRange.value),
     transactionSearch: transactionSearch.value,
@@ -1078,6 +1087,7 @@ const capturePageState = () => ({
 const restorePageState = async (state) => {
     if (!state) return;
     setActiveTab(state.activeTab || 'transactions');
+    treasuryTable.value = state.treasuryTable || 'cross-table';
     selectedYear.value = state.selectedYear || today.getFullYear();
     transactionRange.value = cloneValue(state.transactionRange) || [startOfMonth, today];
     transactionSearch.value = state.transactionSearch || '';
@@ -1135,6 +1145,9 @@ const cleanupGuidedTourDemo = async () => {
 
 const switchTourTab = async (value) => {
     setActiveTab(value);
+    if (value === 'transactions') {
+        treasuryTable.value = 'history';
+    }
     resetTourDialogs();
     await nextTick();
     await waitForTourUi(220);
@@ -1263,7 +1276,7 @@ onBeforeUnmount(() => {
 
         <Tabs :value="activeTab" @update:value="setActiveTab">
             <TabList data-tour="admin-finances.tabs">
-                <Tab value="transactions">Transactions</Tab>
+                <Tab value="transactions">Trésorerie</Tab>
                 <Tab value="payment-methods">Mode de paiement</Tab>
                 <Tab value="insurances">Assurances</Tab>
                 <Tab value="fixed-charges">Charges fixes</Tab>
@@ -1273,24 +1286,26 @@ onBeforeUnmount(() => {
             <TabPanels class="mt-4">
                 <TabPanel value="transactions">
                     <div class="space-y-6">
-                        <FinanceCrossTable title="Tableau croisé Revenus / Dépenses" subtitle="Synthèse hebdomadaire des transactions validées à partir de leur date de validation." data-tour="admin-finances.cross-table" />
+                        <SelectButton v-model="treasuryTable" :options="treasuryTableOptions" optionLabel="label" optionValue="value" :allowEmpty="false" aria-label="Tableau de trésorerie à afficher" class="treasury-table-selector w-full sm:w-auto" />
 
-                        <section data-tour="admin-finances.transactions" class="overflow-hidden rounded-2xl border border-surface-200/70 bg-surface-0/80 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80">
+                        <FinanceCrossTable v-show="treasuryTable === 'cross-table'" title="Tableau croisé Revenus / Dépenses" subtitle="Synthèse hebdomadaire des transactions validées à partir de leur date de validation." data-tour="admin-finances.cross-table" />
+
+                        <section v-show="treasuryTable === 'history'" data-tour="admin-finances.transactions" class="overflow-hidden rounded-2xl border border-surface-200/70 bg-surface-0/80 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80">
                             <div class="border-b border-surface-200/50 bg-gradient-to-r from-surface-50/50 to-surface-0/30 px-5 py-4 dark:border-surface-700/50 dark:from-surface-900/50 dark:to-surface-800/30 md:px-6">
-                                <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-                                    <div>
+                                <div class="flex flex-col gap-3">
+                                    <div class="flex items-center justify-between gap-3">
                                         <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">Historique des transactions</h2>
-                                        <p class="text-sm text-surface-500 dark:text-surface-400">Filtre par période, type, recherche libre et statut en pied de tableau.</p>
+                                        <div class="flex shrink-0 items-center gap-2">
+                                            <Button icon="pi pi-print" severity="secondary" outlined aria-label="Imprimer les transactions" title="Imprimer les transactions" @click="printTransactions" />
+                                            <Button icon="pi pi-refresh" severity="secondary" outlined aria-label="Actualiser les transactions" title="Actualiser les transactions" @click="loadTransactions" />
+                                        </div>
                                     </div>
 
-                                    <div class="grid w-full gap-3 md:grid-cols-2 xl:w-auto xl:grid-cols-[minmax(16rem,1fr)_auto_minmax(18rem,1fr)_auto]">
-                                        <PanelDatePicker v-model="transactionRange" dateFormat="dd/mm/yy" showIcon class="w-full min-w-0" inputClass="w-full" />
-                                        <SelectButton v-model="transactionTypeFilter" :options="transactionTypeOptions" optionLabel="label" optionValue="value" class="w-full min-w-0" />
-                                        <InputText v-model="transactionSearch" placeholder="Rechercher une transaction" class="w-full min-w-0" />
-                                        <div class="flex gap-2">
-                                            <Button icon="pi pi-print" severity="secondary" outlined @click="printTransactions" />
-                                            <Button icon="pi pi-refresh" severity="secondary" outlined @click="loadTransactions" />
-                                        </div>
+                                    <div class="transaction-filters grid min-w-0 grid-cols-2 items-center gap-2 lg:grid-cols-[minmax(15rem,1fr)_auto_minmax(10rem,0.7fr)_minmax(12rem,1fr)]">
+                                        <PanelDatePicker v-model="transactionRange" dateFormat="dd/mm/yy" showIcon class="col-span-2 w-full min-w-0 lg:col-span-1" inputClass="w-full" />
+                                        <SelectButton v-model="transactionTypeFilter" :options="transactionTypeOptions" optionLabel="label" optionValue="value" aria-label="Type de transaction" class="transaction-type-filter w-full min-w-0" />
+                                        <Select v-model="transactionStatusFilter" :options="transactionStatusOptions" optionLabel="label" optionValue="value" aria-label="Statut des transactions" class="w-full min-w-0" />
+                                        <InputText v-model="transactionSearch" placeholder="Rechercher une transaction" aria-label="Rechercher une transaction" class="col-span-2 w-full min-w-0 lg:col-span-1" />
                                     </div>
                                 </div>
                             </div>
@@ -1331,17 +1346,15 @@ onBeforeUnmount(() => {
                                     <template #body="{ data }">
                                         <Tag :value="data.statusLabel" :severity="data.statusSeverity" />
                                     </template>
-                                    <template #footer>
-                                        <Select v-model="transactionStatusFilter" :options="transactionStatusOptions" optionLabel="label" optionValue="value" placeholder="Tous les statuts" class="w-full min-w-0" />
-                                    </template>
                                 </Column>
                                 <Column header="Actions" style="width: 220px">
                                     <template #body="{ data }">
                                         <div class="flex gap-1" data-tour="admin-finances.validation">
                                             <Button v-if="data.canEdit || data.isManual" icon="pi pi-pencil" text severity="info" title="Modifier" @click="openEditTransaction(data)" />
-                                            <Button v-if="data.statusKey === 'pending'" icon="pi pi-check" text severity="success" title="Valider" @click="handleValidateTransaction(data)" />
-                                            <Button v-if="data.statusKey === 'pending'" icon="pi pi-times" text severity="danger" title="Rejeter" @click="handleRejectTransaction(data)" />
-                                            <Button icon="pi pi-trash" text severity="danger" title="Supprimer" @click="handleDeleteTransaction(data)" />
+                                            <Button v-if="data.statusKey === 'pending' && !data.sourceManaged" icon="pi pi-check" text severity="success" title="Valider" @click="handleValidateTransaction(data)" />
+                                            <Button v-if="data.statusKey === 'pending' && !data.sourceManaged" icon="pi pi-times" text severity="danger" title="Rejeter" @click="handleRejectTransaction(data)" />
+                                            <Button v-if="!data.sourceManaged" icon="pi pi-trash" text severity="danger" title="Supprimer" @click="handleDeleteTransaction(data)" />
+                                            <span v-else class="text-xs text-surface-500">Gérée depuis {{ data.motif === 'Paiement salaire' ? 'la paie' : 'INPS' }}</span>
                                         </div>
                                     </template>
                                 </Column>
@@ -1645,6 +1658,28 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.treasury-table-selector :deep(.p-togglebutton) {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.treasury-table-selector :deep(.p-togglebutton-label) {
+    white-space: normal;
+}
+
+.transaction-type-filter :deep(.p-togglebutton) {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-inline: 0.375rem;
+}
+
+@media (max-width: 639px) {
+    .transaction-filters :deep(.p-togglebutton-label),
+    .transaction-filters :deep(.p-select-label) {
+        font-size: 0.75rem;
+    }
+}
+
 .assurance-table-logo {
     display: flex;
     align-items: center;

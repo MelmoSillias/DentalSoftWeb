@@ -55,10 +55,15 @@ export const updatePayroll = async (id, payload, token) => {
     return res.data;
 };
 
-export const deletePayroll = async (id, token) => {
-    const res = await http.delete(`${apiPrefix}/payrolls/${id}`, withHeaders(token));
+export const deletePayroll = async (id, token, payload = {}) => {
+    const res = await http.delete(`${apiPrefix}/payrolls/${id}`, { ...withHeaders(token), data: payload });
     return res.data;
 };
+
+export const fetchInps = async (params, token) => (await http.get(`${apiPrefix}/inps`, { params, ...withHeaders(token) })).data;
+export const createInpsRemittance = async (payload, token) => (await http.post(`${apiPrefix}/inps/remittances`, payload, withHeaders(token))).data;
+export const cancelInpsRemittance = async (id, payload, token) => (await http.post(`${apiPrefix}/inps/remittances/${id}/cancel`, payload, withHeaders(token))).data;
+export const setInpsClosure = async (year, quarter, payload, token) => (await http.put(`${apiPrefix}/inps/${year}/${quarter}/closure`, payload, withHeaders(token))).data;
 
 export const fetchPayrollPrintPayload = async (id, token) => {
     const res = await http.get(`${apiPrefix}/payrolls/${id}/print`, withHeaders(token));

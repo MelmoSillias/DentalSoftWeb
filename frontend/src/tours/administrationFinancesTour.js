@@ -32,7 +32,7 @@ function buildOverviewSteps(ctx) {
             group: GROUP,
             target: '[data-tour="admin-finances.tabs"]',
             title: 'Organisation par onglets',
-            content: 'Transactions pour le suivi quotidien, Mode de paiement pour les comptes, Graphiques pour l analyse globale.'
+            content: 'Tresorerie pour choisir entre le tableau croise et l historique des transactions, Mode de paiement pour les comptes, Graphiques pour l analyse globale.'
         }
     ]);
 }

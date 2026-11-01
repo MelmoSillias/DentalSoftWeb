@@ -44,7 +44,8 @@ const logsSearch = ref('');
 const manualTemplateCode = ref(null);
 const newApprovedSenderName = ref('');
 const loadErrorMessage = ref('');
-const queueDialogVisible = ref(false);
+const queueScheduleDialogVisible = ref(false);
+const queueScheduling = ref(false);
 const queueActionDialogVisible = ref(false);
 const queueActionMode = ref(null);
 const queueActionItem = ref(null);
@@ -58,7 +59,7 @@ const queueDetailsLogs = ref([]);
 let guidedTourDemoActive = false;
 let guidedTourPageState = null;
 
-const hasOpenDialogs = computed(() => queueDialogVisible.value || queueActionDialogVisible.value || queueDetailsDialogVisible.value);
+const hasOpenDialogs = computed(() => queueScheduleDialogVisible.value || queueActionDialogVisible.value || queueDetailsDialogVisible.value);
 
 const switchTab = async (tab) => {
     activeTab.value = tab;
@@ -164,6 +165,14 @@ const applySmsTourMockData = () => {
         status: item.status,
         source: 'tour-mock'
     }));
+    smsStats.queue = {
+        pendingDue: smsQueue.value.filter((item) => item.status === 'pending').length,
+        pendingScheduled: 0,
+        sending: 0,
+        failedDue: 0,
+        failedScheduled: 0,
+        failedExhausted: 0
+    };
     smsTemplates.value = fetchSmsTemplatesTourMock().map((item) => ({
         code: item.key,
         name: item.label,
@@ -379,7 +388,17 @@ const submitQueueAction = async () => {
     }
 };
 
-const totalCharacters = computed(() => smsTemplates.value.reduce((sum, template) => sum + String(template?.content || '').length, 0));
+const pendingSmsCount = computed(() => (smsStats.queue.pendingDue || 0) + (smsStats.queue.pendingScheduled || 0));
+const failedSmsCount = computed(() => (smsStats.queue.failedDue || 0) + (smsStats.queue.failedScheduled || 0) + (smsStats.queue.failedExhausted || 0));
+const submitScheduledSms = async () => {
+    if (queueScheduling.value) return;
+    queueScheduling.value = true;
+    try {
+        if (await scheduleQueuedSmsAction()) queueScheduleDialogVisible.value = false;
+    } finally {
+        queueScheduling.value = false;
+    }
+};
 const recommendedContract = computed(() => providerOverview.value.contracts.find((item) => item.isRecommended) || providerOverview.value.contracts[0] || null);
 const isOrangeProvider = computed(() => smsConfig.provider === 'orange');
 const isAfrikSmsProvider = computed(() => smsConfig.provider === 'afriksms');
@@ -754,11 +773,11 @@ const retryLoadSmsSettings = async () => {
                                     </div>
                                     <div class="page-kpi-card border-amber-200/50 bg-gradient-to-br from-amber-50 to-amber-100/50 dark:border-amber-800/50 dark:from-amber-900/20 dark:to-amber-800/20">
                                         <div>
-                                            <p class="page-kpi-label text-amber-700 dark:text-amber-300">Templates actifs</p>
-                                            <p class="page-kpi-value text-amber-900 dark:text-amber-100">{{ smsTemplates.length }}</p>
-                                            <p class="sms-kpi-meta text-amber-700/80 dark:text-amber-300/80">{{ totalCharacters }} caractères cumulés</p>
+                                            <p class="page-kpi-label text-amber-700 dark:text-amber-300">SMS programmés en attente</p>
+                                            <p class="page-kpi-value text-amber-900 dark:text-amber-100">{{ pendingSmsCount }}</p>
+                                            <p class="sms-kpi-meta text-amber-700/80 dark:text-amber-300/80">En attente d’envoi</p>
                                         </div>
-                                        <i class="pi pi-file page-kpi-icon text-amber-500"></i>
+                                        <i class="pi pi-clock page-kpi-icon text-amber-500"></i>
                                     </div>
                                 </div>
 
@@ -1082,40 +1101,48 @@ const retryLoadSmsSettings = async () => {
                     </TabPanel>
 
                     <TabPanel value="queue">
-                        <div class="sms-grid-queue" data-tour="sms-settings.queue">
-                            <PageSection title="Planifier un SMS" subtitle="Ajoute un message directement dans la file avec une date d’envoi et une répétition bornée.">
-                                <template #headerActions>
-                                    <Button label="Programmer" icon="pi pi-clock" @click="scheduleQueuedSmsAction" />
-                                </template>
-                                <div class="sms-pad sms-fields">
-                                    <FloatLabel variant="on">
-                                        <InputText id="queue-phone" v-model="queuedSms.phone" class="w-full" />
-                                        <label for="queue-phone">Numéro destinataire <span class="sms-required">*</span></label>
-                                    </FloatLabel>
-
-                                    <FloatLabel variant="on">
-                                        <DatePicker id="queue-send-at" v-model="queuedSms.sendAt" showTime hourFormat="24" dateFormat="dd/mm/yy" class="w-full" />
-                                        <label for="queue-send-at">Date et heure d’envoi</label>
-                                    </FloatLabel>
-
-                                    <div class="space-y-2">
-                                        <label class="sms-field-label">Répétition</label>
-                                        <Select v-model="queuedSms.recurrence" :options="queueRecurrenceOptions" optionLabel="label" optionValue="value" class="w-full" />
+                        <div class="sms-stack" data-tour="sms-settings.queue">
+                            <div class="page-kpi-grid">
+                                <div class="page-kpi-card">
+                                    <div>
+                                        <p class="page-kpi-label">En attente</p>
+                                        <p class="page-kpi-value">{{ pendingSmsCount }}</p>
+                                        <p class="sms-kpi-meta">{{ smsStats.queue.pendingScheduled || 0 }} à venir · {{ smsStats.queue.pendingDue || 0 }} à traiter</p>
                                     </div>
-
-                                    <FloatLabel variant="on">
-                                        <Textarea id="queue-message" v-model="queuedSms.message" rows="6" autoResize class="w-full" />
-                                        <label for="queue-message">Message à programmer <span class="sms-required">*</span></label>
-                                    </FloatLabel>
+                                    <i class="pi pi-clock page-kpi-icon text-amber-500"></i>
                                 </div>
-                            </PageSection>
+                                <div class="page-kpi-card">
+                                    <div>
+                                        <p class="page-kpi-label">En cours d’envoi</p>
+                                        <p class="page-kpi-value">{{ smsStats.queue.sending || 0 }}</p>
+                                        <p class="sms-kpi-meta">Traitement en cours</p>
+                                    </div>
+                                    <i class="pi pi-spinner page-kpi-icon text-blue-500"></i>
+                                </div>
+                                <div class="page-kpi-card">
+                                    <div>
+                                        <p class="page-kpi-label">Envoyés</p>
+                                        <p class="page-kpi-value">{{ smsStats.queue.sent || 0 }}</p>
+                                        <p class="sms-kpi-meta">Total de la file</p>
+                                    </div>
+                                    <i class="pi pi-check-circle page-kpi-icon text-emerald-500"></i>
+                                </div>
+                                <div class="page-kpi-card">
+                                    <div>
+                                        <p class="page-kpi-label">En échec</p>
+                                        <p class="page-kpi-value">{{ failedSmsCount }}</p>
+                                        <p class="sms-kpi-meta">{{ smsStats.queue.failedExhausted || 0 }} avec tentatives épuisées</p>
+                                    </div>
+                                    <i class="pi pi-exclamation-circle page-kpi-icon text-red-500"></i>
+                                </div>
+                            </div>
 
-                            <PageSection title="File d’attente SMS" subtitle="Suivi">
+                            <PageSection title="File d’attente SMS" subtitle="Les 100 derniers SMS · statistiques sur toute la file">
                                 <template #headerActions>
                                     <div class="sms-inline-actions">
                                         <Tag severity="contrast" :value="`${smsQueue.length} élément(s)`" />
                                         <Button label="Rafraîchir" icon="pi pi-refresh" severity="secondary" outlined size="small" :loading="queueRefreshing" @click="refreshSmsQueue" />
-                                        <Button label="Agrandir" icon="pi pi-external-link" severity="secondary" outlined size="small" @click="queueDialogVisible = true" />
+                                        <Button label="Programmer un SMS" icon="pi pi-plus" size="small" @click="queueScheduleDialogVisible = true" />
                                     </div>
                                 </template>
 
@@ -1146,6 +1173,7 @@ const retryLoadSmsSettings = async () => {
                                     <Column header="Actions" class="whitespace-nowrap">
                                         <template #body="{ data }">
                                             <div class="flex flex-wrap gap-2">
+                                                <Button icon="pi pi-eye" label="Détails" size="small" severity="secondary" outlined @click="openQueueDetails(data)" />
                                                 <Button
                                                     v-if="data.status === 'pending'"
                                                     icon="pi pi-calendar"
@@ -1185,52 +1213,41 @@ const retryLoadSmsSettings = async () => {
                         </div>
 
                         <AppDialog
-                            v-model:visible="queueDialogVisible"
-                            title="File SMS étendue"
-                            icon="pi pi-list"
-                            icon-tone="info"
-                            size="full"
-                            :show-footer="false"
+                            v-model:visible="queueScheduleDialogVisible"
+                            title="Programmer un SMS"
+                            subtitle="Sans date, le SMS sera envoyé dès que possible."
+                            icon="pi pi-clock"
+                            size="md"
+                            confirm-label="Programmer"
+                            confirm-icon="pi pi-calendar-plus"
+                            :loading="queueScheduling"
+                            :closable="!queueScheduling"
+                            :dismissable-mask="!queueScheduling"
+                            :close-on-escape="!queueScheduling"
+                            :confirm-disabled="queueScheduling || !queuedSms.phone.trim() || !queuedSms.message.trim()"
+                            @confirm="submitScheduledSms"
                         >
-                            <DataTable :value="smsQueue" paginator :rows="20" :rowsPerPageOptions="[20, 50, 100]" dataKey="id" responsiveLayout="scroll" stripedRows showGridlines class="text-sm">
-                                <template #empty>
-                                    <div class="sms-empty">Aucun SMS en file pour le moment.</div>
-                                </template>
-                                <Column field="createdAt" header="Créé le" class="whitespace-nowrap" />
-                                <Column field="sendAt" header="Prévu le" class="whitespace-nowrap">
-                                    <template #body="{ data }">{{ formatDateTime(data.sendAt) }}</template>
-                                </Column>
-                                <Column field="patient" header="Patient">
-                                    <template #body="{ data }">{{ data.patient || '—' }}</template>
-                                </Column>
-                                <Column field="phone" header="Numéro" class="whitespace-nowrap" />
-                                <Column field="message" header="Message">
-                                    <template #body="{ data }">
-                                        <span class="block max-w-xl whitespace-normal break-words">{{ data.message }}</span>
-                                    </template>
-                                </Column>
-                                <Column field="status" header="Statut" class="whitespace-nowrap">
-                                    <template #body="{ data }">
-                                        <Tag :severity="queueStatusSeverity(data.status)" :value="queueStatusLabel(data.status)" />
-                                    </template>
-                                </Column>
-                                <Column field="source" header="Source" class="whitespace-nowrap" />
-                                <Column field="lastError" header="Dernière erreur">
-                                    <template #body="{ data }">
-                                        <span class="block max-w-md whitespace-normal break-words text-xs sms-error">{{ data.lastError || '—' }}</span>
-                                    </template>
-                                </Column>
-                                <Column header="Actions" class="whitespace-nowrap">
-                                    <template #body="{ data }">
-                                        <div class="flex flex-wrap gap-2">
-                                            <Button icon="pi pi-eye" label="Détails" size="small" severity="secondary" outlined @click="openQueueDetails(data)" />
-                                            <Button v-if="data.status === 'pending'" icon="pi pi-calendar" label="Reprogrammer" size="small" severity="secondary" outlined @click="openQueueActionDialog('reschedule', data)" />
-                                            <Button v-if="data.status === 'pending'" icon="pi pi-times" label="Annuler" size="small" severity="danger" outlined @click="openQueueActionDialog('cancel', data)" />
-                                            <Button v-if="data.status === 'failed'" icon="pi pi-refresh" label="Renvoyer" size="small" severity="warning" outlined @click="openQueueActionDialog('retry', data)" />
-                                        </div>
-                                    </template>
-                                </Column>
-                            </DataTable>
+                                <div class="sms-fields">
+                                    <FloatLabel variant="on">
+                                        <InputText id="queue-phone" v-model="queuedSms.phone" class="w-full" />
+                                        <label for="queue-phone">Numéro destinataire <span class="sms-required">*</span></label>
+                                    </FloatLabel>
+
+                                    <FloatLabel variant="on">
+                                        <DatePicker id="queue-send-at" v-model="queuedSms.sendAt" showTime hourFormat="24" dateFormat="dd/mm/yy" class="w-full" />
+                                        <label for="queue-send-at">Date et heure d’envoi</label>
+                                    </FloatLabel>
+
+                                    <div class="space-y-2">
+                                        <label class="sms-field-label">Répétition</label>
+                                        <Select v-model="queuedSms.recurrence" :options="queueRecurrenceOptions" optionLabel="label" optionValue="value" class="w-full" />
+                                    </div>
+
+                                    <FloatLabel variant="on">
+                                        <Textarea id="queue-message" v-model="queuedSms.message" rows="6" autoResize class="w-full" />
+                                        <label for="queue-message">Message à programmer <span class="sms-required">*</span></label>
+                                    </FloatLabel>
+                                </div>
                         </AppDialog>
 
                         <AppDialog
@@ -1620,8 +1637,7 @@ const retryLoadSmsSettings = async () => {
     gap: 1rem;
 }
 
-.sms-grid-2,
-.sms-grid-queue {
+.sms-grid-2 {
     display: grid;
     grid-template-columns: 1fr;
     gap: var(--page-content-gap);
@@ -1632,9 +1648,6 @@ const retryLoadSmsSettings = async () => {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .sms-grid-queue {
-        grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.6fr);
-    }
 }
 
 .sms-pad {

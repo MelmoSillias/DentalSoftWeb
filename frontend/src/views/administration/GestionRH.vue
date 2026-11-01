@@ -21,6 +21,8 @@ import AppDialog from '@/components/layout/AppDialog.vue';
 import LeaveFormDialog from '@/components/administration/LeaveFormDialog.vue';
 import PayrollPaymentDialog from '@/components/administration/PayrollPaymentDialog.vue';
 import PayrollDetailDialog from '@/components/administration/PayrollDetailDialog.vue';
+import InpsPanel from '@/components/administration/InpsPanel.vue';
+import PayrollPaymentGroups from '@/components/administration/PayrollPaymentGroups.vue';
 import EmployeePayrollTable from '@/components/administration/EmployeePayrollTable.vue';
 import DailyPayrollPaymentDialog from '@/components/administration/DailyPayrollPaymentDialog.vue';
 import PrintDataTablePage from '@/components/print/PrintDataTablePage.vue';
@@ -88,6 +90,7 @@ const payrollMonthModel = ref(new Date());
 const payrollEmployeeId = ref(null);
 const payrollDialogVisible = ref(false);
 const payrollDetailVisible = ref(false);
+const payrollCancelMode = ref(false);
 const selectedPayroll = ref(null);
 const payrollDetailSaving = ref(false);
 const payrollSaving = ref(false);
@@ -186,11 +189,6 @@ const monthLabel = (month, year) => {
     if (!month || !year) return '-';
     const date = new Date(year, month - 1, 1);
     return date.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
-};
-
-const payrollPeriodLabel = (row) => {
-    if (row?.workedDay) return formatDate(row.workedDay);
-    return monthLabel(row?.month, row?.year);
 };
 
 const loadEmployees = async () => {
@@ -420,7 +418,8 @@ const submitDailyPayroll = async (payload) => {
     }
 };
 
-const openPayrollDetail = async (row) => {
+const openPayrollDetail = async (row, cancel = false) => {
+    payrollCancelMode.value = cancel === true;
     try {
         await fetchPaymentMethods();
         selectedPayroll.value = await fetchPayrollOne(row.id);
@@ -437,6 +436,7 @@ const submitPayrollEdit = async (payload) => {
         await editPayroll(selectedPayroll.value.id, payload);
         toast.add({ severity: 'success', summary: 'Succes', detail: 'Paiement mis a jour.', life: 3000 });
         selectedPayroll.value = await fetchPayrollOne(selectedPayroll.value.id);
+        payrollDetailVisible.value = false;
         await loadPayrolls({ page: payrollPage.value, rows: payrollRows.value });
     } catch (err) {
         toast.add({ severity: 'error', summary: 'Erreur', detail: err?.response?.data?.message || err?.message || 'Mise a jour impossible.', life: 4000 });
@@ -463,23 +463,18 @@ const submitPayroll = async (payload) => {
     }
 };
 
-const confirmDeletePayroll = (event, row) => {
-    confirm.require({
-        target: event?.currentTarget,
-        message: `Supprimer le paiement de ${row.employeeName} (${monthLabel(row.month, row.year)}) ?`,
-        icon: 'pi pi-exclamation-triangle',
-        acceptLabel: 'Supprimer',
-        rejectLabel: 'Annuler',
-        accept: async () => {
-            try {
-                await removePayroll(row.id);
-                toast.add({ severity: 'success', summary: 'Succes', detail: 'Paiement supprime.', life: 3000 });
-                await loadPayrolls({ page: payrollPage.value, rows: payrollRows.value });
-            } catch (err) {
-                toast.add({ severity: 'error', summary: 'Erreur', detail: err?.response?.data?.message || err?.message || 'Suppression impossible.', life: 4000 });
-            }
-        }
-    });
+const confirmDeletePayroll = (event, row) => openPayrollDetail(row, true);
+const cancelPayroll = async (payload) => {
+    if (!selectedPayroll.value?.id || payrollDetailSaving.value) return;
+    payrollDetailSaving.value = true;
+    try {
+        await removePayroll(selectedPayroll.value.id, payload);
+        payrollDetailVisible.value = false;
+        toast.add({ severity: 'success', summary: 'Paie', detail: 'Paiement annul?. Historique conserv?.', life: 3000 });
+        await loadPayrolls({ page: payrollPage.value, rows: payrollRows.value });
+    } catch (err) {
+        toast.add({ severity: 'error', summary: 'Paie', detail: err?.response?.data?.message || 'Annulation impossible.', life: 5000 });
+    } finally { payrollDetailSaving.value = false; }
 };
 
 const printPayrollList = async () => {
@@ -487,7 +482,7 @@ const printPayrollList = async () => {
     payrollPrinting.value = true;
     const period = monthLabel(payrollMonth.value, payrollYear.value);
     try {
-        const payments = await fetchAllPayrolls({ employeeId: payrollEmployeeId.value, month: payrollMonth.value, year: payrollYear.value });
+        const payments = (await fetchAllPayrolls({ employeeId: payrollEmployeeId.value, month: payrollMonth.value, year: payrollYear.value })).filter((payment) => payment.status !== 'cancelled');
         const rows = payments.map((payment) => ({
             employee: payment.employeeName || '-',
             netSalary: formatAmount(payment.calculatedAmount),
@@ -519,7 +514,7 @@ const printPayrollSlip = async (row) => {
     try {
         const data = await fetchPayrollPrintPayload(row?.id ?? row);
         await printComponent(PrintPayrollSlipPage, {
-            title: 'Bulletin de paie',
+            title: data.status === 'cancelled' ? 'Bulletin de paie ? ANNUL?' : 'Bulletin de paie',
             docId: data.id,
             periodLabel: data.period?.day ? formatDate(data.period.day) : monthLabel(data.period?.month, data.period?.year),
             employeeName: data.employee?.fullname,
@@ -731,6 +726,7 @@ onBeforeUnmount(() => {
             <TabList>
                 <Tab value="employees">Employes</Tab>
                 <Tab value="payroll">Gestion de la paie</Tab>
+                <Tab value="inps">INPS</Tab>
                 <Tab value="leaves">Gestion des conges</Tab>
             </TabList>
 
@@ -867,44 +863,12 @@ onBeforeUnmount(() => {
 
                         <div class="page-table-scroll">
                         <EmployeePayrollTable v-if="payrollView === 'employees'" :rows="employeePayrollRows" :loading="employeePayrollLoading" @pay="openPayrollDialog" @detail="openPayrollDetail" @print="printPayrollSlip" @remove="confirmDeletePayroll" />
-                        <DataTable
-                            v-else
-                            :value="payrolls"
-                            :loading="payrollLoading"
-                            dataKey="id"
-                        >
-                            <Column field="employeeName" header="Employe" />
-                            <Column header="Periode">
-                                <template #body="{ data }">{{ payrollPeriodLabel(data) }}</template>
-                            </Column>
-                            <Column field="calculatedAmount" header="Salaire net">
-                                <template #body="{ data }">{{ formatAmount(data.calculatedAmount) }}</template>
-                            </Column>
-                            <Column field="paidAmount" header="Montant verse">
-                                <template #body="{ data }"
-                                    ><span class="font-semibold">{{ formatAmount(data.paidAmount) }}</span></template
-                                >
-                            </Column>
-                            <Column header="Mode">
-                                <template #body="{ data }">{{ data.paymentMethod?.libelle || '—' }}</template>
-                            </Column>
-                            <Column field="paidAt" header="Date">
-                                <template #body="{ data }">{{ formatDate(data.paidAt) }}</template>
-                            </Column>
-                            <Column header="Actions" style="min-width: 140px">
-                                <template #body="{ data }">
-                                    <div class="flex items-center gap-2">
-                                        <Button icon="pi pi-eye" text rounded severity="info" v-tooltip.top="'Voir / modifier'" @click="openPayrollDetail(data)" />
-                                        <Button icon="pi pi-print" text rounded severity="secondary" v-tooltip.top="'Imprimer le bulletin'" @click="printPayrollSlip(data)" />
-                                        <Button icon="pi pi-trash" text rounded severity="danger" @click="(event) => confirmDeletePayroll(event, data)" />
-                                    </div>
-                                </template>
-                            </Column>
-                        </DataTable>
+                        <PayrollPaymentGroups v-else :payments="payrolls" :loading="payrollLoading" @detail="openPayrollDetail" @print="printPayrollSlip" @remove="confirmDeletePayroll" />
                         </div>
                     </PageSection>
                 </TabPanel>
 
+                <TabPanel value="inps"><InpsPanel v-if="activeTab === 'inps'" /></TabPanel>
                 <TabPanel value="leaves">
                     <PageSection title="Gestion des congés">
                         <template #header>
@@ -980,7 +944,7 @@ onBeforeUnmount(() => {
 
         <DailyPayrollPaymentDialog v-model:visible="dailyPayrollDialogVisible" :employees="employeeOptions" :payment-methods="paymentMethods" :initial-employee-id="payrollInitialEmployeeId" :initial-period="payrollMonthModel" :load-context="fetchDailyPayroll" :refresh-key="dailyPayrollRefreshKey" :loading="payrollSaving" @submit="submitDailyPayroll" @detail="openPayrollDetail" @print="printPayrollSlip" />
 
-        <PayrollDetailDialog v-model:visible="payrollDetailVisible" :payment="selectedPayroll" :payment-methods="paymentMethods" :loading="payrollDetailSaving" @submit="submitPayrollEdit" @print="printPayrollSlip" />
+        <PayrollDetailDialog v-model:visible="payrollDetailVisible" :initial-cancel="payrollCancelMode" @cancel-payment="cancelPayroll" :payment="selectedPayroll" :payment-methods="paymentMethods" :loading="payrollDetailSaving" @submit="submitPayrollEdit" @print="printPayrollSlip" />
 
         <LeaveFormDialog v-model:visible="leaveDialogVisible" :mode="leaveMode" :leave="selectedLeave" :employees="employeeOptions" :loading="leaveSaving" @submit="submitLeave" />
 

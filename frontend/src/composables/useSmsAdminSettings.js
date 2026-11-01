@@ -69,6 +69,7 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
     });
 
     const smsStats = reactive({
+        queue: {},
         balance: {
             sentToday: 0,
             sentMonth: 0,
@@ -127,6 +128,7 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
     const maxPeriodByType = computed(() => Math.max(1, ...periodByType.value.map(([, value]) => Number(value) || 0)));
 
     const applyStatsPayload = (stats) => {
+        smsStats.queue = stats.queue || {};
         smsStats.balance = stats.balance || smsStats.balance;
         smsStats.dailyConsumption = stats.dailyConsumption || {};
         smsStats.monthlyConsumption = stats.monthlyConsumption || {};
@@ -239,7 +241,9 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
     const refreshSmsQueue = async () => {
         queueRefreshing.value = true;
         try {
-            smsQueue.value = await fetchSmsQueue({ limit: 100 }, token);
+            const [queue, stats] = await Promise.all([fetchSmsQueue({ limit: 100 }, token), fetchSmsStats(token)]);
+            smsQueue.value = queue;
+            smsStats.queue = stats.queue || {};
         } catch (error) {
             logAppError('useSmsAdminSettings', error);
             toast.add({ severity: 'error', summary: 'File SMS', detail: extractApiError(error, 'Rafraîchissement de la file impossible.'), life: 3500 });
@@ -409,6 +413,7 @@ export function useSmsAdminSettings(token, toast, extractApiError) {
                 queuedSms.recurrence = 'none';
                 await refreshSmsData();
             }
+            return Boolean(res.success);
         } catch (error) {
             logAppError('useSmsAdminSettings', error);
             toast.add({ severity: 'error', summary: 'Programmation SMS', detail: extractApiError(error, 'Programmation impossible.'), life: 5500 });

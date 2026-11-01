@@ -156,7 +156,7 @@ class RHController extends AbstractController
                     'libelle' => $payment->getModeDePaiement()->getLibelle(),
                 ] : null,
             ],
-            $employee->getSalaryPayments()->toArray()
+            array_values(array_filter($employee->getSalaryPayments()->toArray(), static fn (SalaryPayment $payment) => $payment->getStatus() === 'active'))
         );
 
         usort(

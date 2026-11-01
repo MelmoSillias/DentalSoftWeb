@@ -7,6 +7,8 @@ import InputNumber from 'primevue/inputnumber';
 import Select from 'primevue/select';
 import Textarea from 'primevue/textarea';
 import Message from 'primevue/message';
+import DataTable from 'primevue/datatable';
+import Column from 'primevue/column';
 import SalaryPreviewPanel from '@/components/administration/SalaryPreviewPanel.vue';
 
 const props = defineProps({
@@ -80,7 +82,7 @@ watch(
         primeAmountModel.value = null;
         indemniteSpecialeModel.value = 0;
         inpsModel.value = 0;
-        form.value = { employeeId: props.initialEmployeeId, paidAmount: null, paidAt: now, paymentMethodId: props.paymentMethods[0]?.id ?? null, note: '' };
+        form.value = { employeeId: props.initialEmployeeId, paidAmount: null, paidAt: now, paymentMethodId: props.paymentMethods[0]?.id ?? null, note: '', requestId: crypto.randomUUID() };
     },
     { immediate: true }
 );
@@ -97,6 +99,7 @@ watch([selectedMonth, selectedYear], ([month, year]) => {
 watch(
     () => [localVisible.value, form.value.employeeId, selectedMonth.value, selectedYear.value, selectedDay.value],
     ([visible, employeeId, month, year, day]) => {
+        form.value.requestId = crypto.randomUUID();
         primeAmountModel.value = null;
         indemniteSpecialeModel.value = 0;
         inpsModel.value = 0;
@@ -128,6 +131,8 @@ const close = () => {
 const submit = () => {
     if (!canSubmit.value) return;
     const payload = {
+        requestId: form.value.requestId,
+        periodFingerprint: currentContext.value?.periodFingerprint,
         employeeId: form.value.employeeId,
         month: selectedMonth.value,
         year: selectedYear.value,
@@ -215,6 +220,7 @@ const submit = () => {
                 />
             </div>
         </div>
+        <div v-if="currentContext?.payments?.length" class="mt-5"><h4 class="font-semibold mb-2">Paiements existants de la période</h4><div class="page-table-scroll"><DataTable :value="currentContext.payments" dataKey="id" size="small"><Column field="paidAt" header="Date" /><Column header="Montant"><template #body="{ data }">{{ Number(data.paidAmount).toLocaleString('fr-FR') }} F CFA</template></Column><Column header="Mode"><template #body="{ data }">{{ data.paymentMethod?.libelle }}</template></Column><Column header="Statut"><template #body="{ data }">{{ data.status === 'cancelled' ? 'Annulé' : 'Actif' }}</template></Column></DataTable></div></div>
         <template #footer>
             <div class="flex justify-end gap-2 w-full">
                 <Button label="Annuler" text severity="secondary" :disabled="loading" @click="close" />

@@ -30,6 +30,7 @@ const context = ref(null);
 const contextLoading = ref(false);
 const error = ref('');
 const pendingDay = ref(null);
+const paymentRequests = new Map();
 let requestId = 0;
 const employeeOptions = computed(() =>
     props.employees.filter((employee) => employee.frequencePaiement === 'journalier').map((employee) => ({ label: employee.fullname || `${employee.prenom || ''} ${employee.nom || ''}`.trim(), value: employee.id }))
@@ -86,8 +87,15 @@ watch(
 const payDay = (day) => {
     if (!paymentReady.value || pendingDay.value || !day.canPay || day.hasPayment) return;
     pendingDay.value = day.day;
-    emit('submit', { employeeId: employeeId.value, month: month.value, year: year.value, day: day.day, paidAmount: day.calculatedAmount, paidAt: localDate(paidAt.value), paymentMethodId: paymentMethodId.value });
+    const key = `${employeeId.value}:${day.day}`;
+    if (!paymentRequests.has(key)) paymentRequests.set(key, crypto.randomUUID());
+    emit('submit', { requestId: paymentRequests.get(key), employeeId: employeeId.value, month: month.value, year: year.value, day: day.day, paidAmount: day.calculatedAmount, paidAt: localDate(paidAt.value), paymentMethodId: paymentMethodId.value });
 };
+watch(context, (value) => {
+    for (const day of value?.days || []) {
+        if (day.hasPayment) paymentRequests.delete(`${employeeId.value}:${day.day}`);
+    }
+});
 </script>
 
 <template>

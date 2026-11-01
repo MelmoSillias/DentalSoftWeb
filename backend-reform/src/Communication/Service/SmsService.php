@@ -272,6 +272,7 @@ final class SmsService
                 'sentMonth' => $this->logRepository->countSentBetween($monthStart, $monthEnd),
                 'totalSent' => $this->logRepository->countTotalSent(),
             ],
+            'queue' => $this->queueRepository->getProcessingSnapshot(),
             'dailyConsumption' => $this->logRepository->dailySentSeries(7),
             'monthlyConsumption' => $this->logRepository->monthlySentSeries(6),
             'period' => [

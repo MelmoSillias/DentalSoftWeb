@@ -7,8 +7,10 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route('/api/payrolls')]
+#[IsGranted('ROLE_ADMIN')]
 class PayrollController extends AbstractController
 {
     public function __construct(private PayrollService $payrollService)
@@ -145,10 +147,10 @@ class PayrollController extends AbstractController
     }
 
     #[Route('/{id}', name: 'api_payrolls_delete', methods: ['DELETE'])]
-    public function delete(int $id): JsonResponse
+    public function delete(int $id, Request $request): JsonResponse
     {
         try {
-            return $this->json($this->payrollService->deleteSalaryPayment($id));
+            return $this->json($this->payrollService->deleteSalaryPayment($id, $request->toArray()));
         } catch (\InvalidArgumentException $exception) {
             return $this->json(['message' => $exception->getMessage()], 404);
         }

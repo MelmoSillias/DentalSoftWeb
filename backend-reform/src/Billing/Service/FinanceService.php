@@ -45,6 +45,7 @@ class FinanceService
         $monthlyExpenses = array_fill(0, 12, 0.0);
 
         foreach ($transactions as $transaction) {
+            if ($transaction->getValidationStatus() === 'cancelled') continue;
             $month = (int) $transaction->getDateTransaction()->format('n') - 1;
             if ($transaction->getType() === 'Revenue') {
                 $monthlyRevenues[$month] += $transaction->getMontant();
@@ -99,6 +100,7 @@ class FinanceService
             $sortie = 0;
 
             foreach ($mode->getTransactions() as $t) {
+                if ($t->getValidationStatus() === 'cancelled') continue;
                 if ($t->getDateTransaction()->format('Y') !== $targetYear) {
                     continue;
                 }
@@ -137,6 +139,7 @@ class FinanceService
             $totalOut = 0;
 
             foreach ($mode->getTransactions() as $t) {
+                if ($t->getValidationStatus() === 'cancelled') continue;
                 if ($t->getDateTransaction()->format('Y') !== $targetYear) {
                     continue;
                 }
@@ -198,6 +201,7 @@ class FinanceService
             $soldes  = array_fill(0, 12, 0);
 
             foreach ($mode->getTransactions() as $t) {
+                if ($t->getValidationStatus() === 'cancelled') continue;
                 if ($t->getDateTransaction()->format('Y') !== $targetYear) {
                     continue;
                 }
@@ -253,6 +257,7 @@ class FinanceService
         foreach ($this->modeRepo->findActifs() as $mode) {
             $solde = 0;
             foreach ($mode->getTransactions() as $transaction) {
+                if ($transaction->getValidationStatus() === 'cancelled') continue;
                 if ($transaction->getType() === 'Revenue') {
                     $solde += $transaction->getMontant();
                 } else {
@@ -617,6 +622,8 @@ class FinanceService
             return ['error' => 'Transaction introuvable', 'status' => 404];
         }
 
+        if ($transaction->isSourceManaged()) return ['error' => 'Cette transaction se gère depuis la paie ou l’onglet INPS.', 'status' => 400];
+
         if ($status === 'validated') {
             $transaction->markValidated($validatedAt);
             $transaction->setValidationComment(null);
@@ -640,6 +647,8 @@ class FinanceService
         if (!$transaction) {
             return ['error' => 'Transaction introuvable', 'status' => 404];
         }
+
+        if ($transaction->isSourceManaged()) return ['error' => 'Cette trace de trésorerie doit être conservée. Utilisez la paie ou INPS.', 'status' => 400];
 
         $devis = $this->detachTransactionPayment($transaction);
         if ($devis === null) {
@@ -685,6 +694,7 @@ class FinanceService
 
         $transactions = $this->transactionRepo->findValidatedBetweenByTypes($from, $to, $this->resolveTransactionTypeAliases($typeKey));
         foreach ($transactions as $transaction) {
+            if ($transaction->getValidationStatus() === 'cancelled') continue;
             if (!$transaction instanceof Transaction) {
                 continue;
             }
@@ -774,7 +784,7 @@ class FinanceService
 
     private function isManualTransaction(Transaction $transaction): bool
     {
-        return $transaction->getFacture() === null
+        return !$transaction->isSourceManaged() && $transaction->getFacture() === null
             && $transaction->getPaiement() === null
             && $transaction->getConsultation() === null
             && $transaction->getLotFactureAssurance() === null;
@@ -803,6 +813,7 @@ class FinanceService
             'rolePaiement' => $transaction->getRolePaiement(),
             'isManual' => $isManual,
             'canEdit' => $isManual,
+            'sourceManaged' => $transaction->isSourceManaged(),
             'lotFactureAssurance' => $lot ? [
                 'id' => $lot->getId(),
                 'description' => $lot->getDescription(),

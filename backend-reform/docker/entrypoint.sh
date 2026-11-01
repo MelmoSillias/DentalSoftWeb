@@ -7,8 +7,7 @@ chown -R www-data:www-data var public/uploads 2>/dev/null || chmod -R 777 var pu
 if [ "${APP_ENV:-prod}" = "prod" ]; then
     if [ "${RUN_MIGRATIONS:-1}" = "1" ]; then
         echo "[entrypoint] doctrine:migrations:migrate"
-        php bin/console doctrine:migrations:migrate --no-interaction --env=prod \
-            || echo "[entrypoint] migrate failed (verifier DATABASE_URL)"
+        php bin/console doctrine:migrations:migrate --no-interaction --env=prod
     fi
 
     # Échec bloquant : avec set -e, un warmup raté empêche FrankenPHP de démarrer.

@@ -201,17 +201,21 @@ const openDayOverview = (week, weekday) => {
     <div>
         <section :class="['overflow-hidden rounded-2xl border border-surface-200/70 bg-surface-0/80 shadow-xl backdrop-blur-sm dark:border-surface-700/50 dark:bg-surface-800/80', className]">
             <div class="border-b border-surface-200/50 bg-gradient-to-r from-surface-50/50 to-surface-0/30 px-5 py-4 dark:border-surface-700/50 dark:from-surface-900/50 dark:to-surface-800/30 md:px-6">
-                <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-                    <div>
-                        <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">{{ title }}</h2>
-                        <p class="text-sm text-surface-500 dark:text-surface-400">{{ subtitle }}</p>
+                <div class="flex flex-col gap-3">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-100 md:text-xl">{{ title }}</h2>
+                            <p class="text-sm text-surface-500 dark:text-surface-400">{{ subtitle }}</p>
+                        </div>
+                        <div class="flex shrink-0 items-center gap-2">
+                            <Button icon="pi pi-print" severity="secondary" outlined aria-label="Imprimer le tableau croisé" title="Imprimer le tableau croisé" @click="printCrossTable" />
+                            <Button icon="pi pi-refresh" severity="secondary" outlined aria-label="Actualiser le tableau croisé" title="Actualiser le tableau croisé" @click="loadCrossTable" />
+                        </div>
                     </div>
 
-                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-                        <DatePicker v-model="monthPicker" view="month" dateFormat="mm/yy" showIcon class="w-full sm:w-40" inputClass="w-full" />
-                        <SelectButton v-model="selectedType" :options="typeOptions" optionLabel="label" optionValue="value" :allowEmpty="false" />
-                        <Button icon="pi pi-print" severity="secondary" outlined class="ml-2" @click="printCrossTable" />
-                        <Button icon="pi pi-refresh" severity="secondary" outlined @click="loadCrossTable" />
+                    <div class="cross-table-filters grid min-w-0 grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] items-center gap-2 sm:flex">
+                        <DatePicker v-model="monthPicker" view="month" dateFormat="mm/yy" showIcon aria-label="Mois du tableau croisé" class="w-full min-w-0 sm:w-40" inputClass="w-full min-w-0" />
+                        <SelectButton v-model="selectedType" :options="typeOptions" optionLabel="label" optionValue="value" :allowEmpty="false" aria-label="Type de transaction" class="cross-table-type-filter w-full min-w-0 sm:w-auto" />
                     </div>
                 </div>
             </div>
@@ -292,6 +296,18 @@ const openDayOverview = (week, weekday) => {
 </template>
 
 <style scoped>
+.cross-table-type-filter :deep(.p-togglebutton) {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-inline: 0.5rem;
+}
+
+@media (max-width: 639px) {
+    .cross-table-filters :deep(.p-togglebutton-label) {
+        font-size: 0.75rem;
+    }
+}
+
 :deep(table td) {
     height: 6.5rem !important;
 }
