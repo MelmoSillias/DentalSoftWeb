@@ -6,7 +6,9 @@ const defaultFilePrefix = 'http://localhost:8000';
 
 // Préfixe API: VITE_API_PREFIX > config cabinet > fallback localhost
 export const apiPrefix = import.meta.env.VITE_DOKPLOY === 'true'
-    ? '/api'
+    // URL absolue de la même origine : Axios ne rajoute pas sa baseURL aux
+    // appels déjà préfixés, et new URL() fonctionne dans les tableaux de bord.
+    ? `${window.location.origin}/api`
     : cabinetConfig.viteApiPrefix || import.meta.env.VITE_API_PREFIX || defaultApiPrefix;
 
 // Préfixe fichiers: VITE_FILE_PREFIX > config cabinet > fallback localhost
