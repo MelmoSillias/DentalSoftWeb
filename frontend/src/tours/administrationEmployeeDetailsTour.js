@@ -9,8 +9,25 @@ const TASKS = [
     { id: 'manage-documents', label: 'Gerer les documents', icon: 'pi pi-file', mockScenario: 'static' }
 ];
 
+function normalizeEmployeeSteps(ctx, steps) {
+    const targetTabs = {
+        personal: 'personal',
+        rh: 'rh',
+        documents: 'documents',
+        summary: 'personal',
+        conges: 'conges'
+    };
+    return normalizeTourSteps(
+        steps.map((step) => {
+            const target = step.target?.match(/admin-employee-details\.([a-z-]+)/)?.[1];
+            const tab = targetTabs[target];
+            return tab ? { ...step, beforeEnter: async () => ctx.switchEmployeeTab?.(tab) } : step;
+        })
+    );
+}
+
 function buildOverviewSteps(ctx) {
-    return normalizeTourSteps([
+    return normalizeEmployeeSteps(ctx, [
         {
             group: GROUP,
             target: '[data-tour="admin-employee-details.header"]',
@@ -39,7 +56,7 @@ function buildOverviewSteps(ctx) {
             group: GROUP,
             target: '[data-tour="admin-employee-details.summary"]',
             title: 'Cartes de synthese',
-            content: 'Les cartes de droite affichent un resume rapide du profil, du type et de la remuneration actuelle.'
+            content: 'Les cartes de l onglet Informations personnelles affichent un resume du profil, du type et de la remuneration actuelle.'
         }
     ]);
 }
@@ -47,7 +64,7 @@ function buildOverviewSteps(ctx) {
 export const administrationEmployeeDetailsRegistry = createTourRegistry(GROUP, TASKS, {
     overview: buildOverviewSteps,
     'edit-info': (ctx) =>
-        normalizeTourSteps([
+        normalizeEmployeeSteps(ctx, [
             {
                 group: GROUP,
                 target: '[data-tour="admin-employee-details.personal"]',
@@ -68,7 +85,7 @@ export const administrationEmployeeDetailsRegistry = createTourRegistry(GROUP, T
             }
         ]),
     'manage-documents': (ctx) =>
-        normalizeTourSteps([
+        normalizeEmployeeSteps(ctx, [
             {
                 group: GROUP,
                 target: '[data-tour="admin-employee-details.documents"]',

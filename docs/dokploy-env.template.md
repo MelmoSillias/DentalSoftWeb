@@ -3,6 +3,11 @@
 Une application **Docker Compose** et une stack par cabinet, construite depuis la
 racine avec [docker-compose.dokploy.yml](../docker-compose.dokploy.yml).
 
+Pour reprendre un cabinet déjà en production, suivre la
+[feuille de route de migration avec conservation des données et fichiers](migration-individuel-vers-compose.md)
+avant de démarrer la nouvelle API. Elle couvre les secrets existants, les volumes,
+la sauvegarde finale, la bascule et le retour arrière.
+
 ## Installation
 
 1. Créer un service **Docker Compose** Dokploy relié au dépôt, contexte `.` et

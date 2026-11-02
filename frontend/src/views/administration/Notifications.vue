@@ -269,6 +269,7 @@ onBeforeUnmount(() => {
             <PageSection
                 title="Configuration de l'envoi"
                 :subtitle="`${selectedCount} destinataire(s) sélectionné(s)`"
+                padded
                 tour-id="admin-notifications.action-bar"
             >
                 <template #headerActions>
@@ -289,7 +290,7 @@ onBeforeUnmount(() => {
             <!-- Left Panel - User Selection -->
             <div class="lg:col-span-2 space-y-6">
                 <!-- Search Section -->
-                <PageSection title="Sélection des destinataires" tour-id="admin-notifications.users" >
+                <PageSection title="Sélection des destinataires" tour-id="admin-notifications.users" padded>
                     <div>
                         <div class="relative mb-5">
                             <IconField>
@@ -354,7 +355,7 @@ onBeforeUnmount(() => {
                     </div>
                 </PageSection>
 
-                <PageSection title="Sélection rapide par type" tour-id="admin-notifications.types" >
+                <PageSection title="Sélection rapide par type" tour-id="admin-notifications.types" padded>
                     <div>
                         <div class="flex flex-wrap gap-2 mb-4">
                             <Button
@@ -380,7 +381,7 @@ onBeforeUnmount(() => {
             </div>
 
             <div class="space-y-6">
-                <PageSection title="Contenu du message" tour-id="admin-notifications.message" >
+                <PageSection title="Contenu du message" tour-id="admin-notifications.message" padded>
                     <div class="space-y-5">
                         <!-- Priority -->
                         <div>
@@ -487,7 +488,7 @@ onBeforeUnmount(() => {
                     </div>
                 </PageSection>
 
-                <PageSection :title="`Destinataires sélectionnés (${selectedCount})`" tour-id="admin-notifications.recipients" >
+                <PageSection :title="`Destinataires sélectionnés (${selectedCount})`" tour-id="admin-notifications.recipients" padded>
                     <div>
                         <div v-if="selectedCount === 0" class="text-center py-8">
                             <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-surface-100 dark:bg-surface-800 mb-4">
