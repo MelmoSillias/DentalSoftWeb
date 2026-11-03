@@ -168,9 +168,8 @@ class LotFactureAssuranceService
             return ['error' => 'Facture assurance introuvable', 'status' => 404];
         }
 
-        $consultation = $facture->getConsultation();
-        if (!$consultation || $consultation->getStatut() !== 1) {
-            return ['error' => 'La consultation doit etre cloturee avant affectation au lot', 'status' => 400];
+        if (!$facture->isReadyForBilling() || $facture->computeTotals()['montantAssureur'] <= 0) {
+            return ['error' => 'La facture doit être active et avoir une part assurance avant affectation au lot', 'status' => 400];
         }
 
         if ($facture->isRecouvre()) {
@@ -354,7 +353,7 @@ class LotFactureAssuranceService
 
         $transaction = new Transaction();
         $transaction->setType('Revenue');
-        $transaction->setMontant((string) round($montant));
+        $transaction->setMontant((string) round($montant, 2));
         $transaction->setDateTransaction(\DateTime::createFromInterface($dateTransaction));
         $transaction->setMotif('Remboursement assurance');
         $transaction->setDescription(sprintf(
@@ -365,6 +364,8 @@ class LotFactureAssuranceService
         ));
         $transaction->setModeDePaiement($mode);
         $transaction->setLotFactureAssurance($lot);
+        // Keep the in-memory inverse side current for partial-refund totals.
+        $lot->getTransactions()->add($transaction);
         $transaction->setRolePaiement('insurance_lot');
         $transaction->markValidated($dateTransaction);
 
@@ -541,10 +542,12 @@ class LotFactureAssuranceService
     {
         $result = $this->factureAssuranceRepository->createQueryBuilder('f')
             ->leftJoin('f.consultation', 'c')->addSelect('c')
-            ->leftJoin('c.patient', 'p')->addSelect('p')
+            ->leftJoin('f.patient', 'p')->addSelect('p')
+            ->leftJoin('f.serviceCabinet', 'sc')->addSelect('sc')
             ->andWhere('f.assurance = :assurance')
             ->andWhere('f.lotFactureAssurance IS NULL')
-            ->andWhere('c.statut = 1')
+            ->andWhere('c.statut = 1 OR sc.statut = :serviceActive')
+            ->setParameter('serviceActive', 'effectue')
             ->andWhere('f.isRecouvre = false')
             ->setParameter('assurance', $assurance)
             ->orderBy('f.dateFacture', 'DESC')
@@ -564,6 +567,8 @@ class LotFactureAssuranceService
 
         return [
             'id' => $facture->getId(),
+            'origin' => $facture->getServiceCabinet() !== null ? 'service_cabinet' : 'consultation',
+            'serviceId' => $facture->getServiceCabinet()?->getId(),
             'consultationId' => $consultation?->getId(),
             'factureId' => $consultation?->getFacture()?->getId(),
             'patient' => $patient?->getFullName(),
@@ -577,7 +582,7 @@ class LotFactureAssuranceService
             'restePatient' => $restePatient,
             'tauxCouverture' => $facture->getCoverageRate(),
             'canPay' => $restePatient > 0,
-            'canModify' => $patientPaid <= 0,
+            'canModify' => $facture->getServiceCabinet() === null && $patientPaid <= 0,
         ];
     }
 
@@ -603,9 +608,11 @@ class LotFactureAssuranceService
             ->select('COUNT(f.id)')
             ->from(FactureAssurance::class, 'f')
             ->leftJoin('f.consultation', 'c')
+            ->leftJoin('f.serviceCabinet', 'sc')
             ->andWhere('f.assurance = :assurance')
             ->andWhere('f.lotFactureAssurance IS NULL')
-            ->andWhere('c.statut = 1')
+            ->andWhere('c.statut = 1 OR sc.statut = :serviceActive')
+            ->setParameter('serviceActive', 'effectue')
             ->setParameter('assurance', $assurance)
             ->getQuery()
             ->getSingleScalarResult();
@@ -691,7 +698,7 @@ class LotFactureAssuranceService
                 continue;
             }
             $totals = $facture->computeTotals();
-            $patient = $facture->getConsultation()?->getPatient();
+            $patient = $facture->getPatient();
             $patientPaid = $this->resolvePatientPaidAmount($facture);
             $restePatient = max(0.0, (float) ($totals['montantPatient'] ?? 0.0) - $patientPaid);
             $snapshot = $facture->getAssuranceSnapshot() ?: [];
@@ -701,6 +708,9 @@ class LotFactureAssuranceService
 
             $factures[] = [
                 'id' => $facture->getId(),
+                'origin' => $facture->getServiceCabinet() !== null ? 'service_cabinet' : 'consultation',
+                'serviceId' => $facture->getServiceCabinet()?->getId(),
+                'designation' => $facture->getServiceCabinet()?->getDesignation(),
                 'consultationId' => $facture->getConsultation()?->getId(),
                 'factureId' => $facture->getConsultation()?->getFacture()?->getId(),
                 'patient' => $patient?->getFullName(),
@@ -745,6 +755,9 @@ class LotFactureAssuranceService
 
     private function canModifyClaim(FactureAssurance $facture, LotFactureAssurance $lot): bool
     {
+        if ($facture->getServiceCabinet() !== null) {
+            return false;
+        }
         if ($this->normalizeStatut($lot->getStatut()) !== self::STATUT_OUVERT) {
             return false;
         }

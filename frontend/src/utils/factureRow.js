@@ -6,7 +6,7 @@ import { isInsuranceFactureRow } from '@/composables/usePayTabsDialog';
 
 export { isInsuranceFactureRow };
 
-export const isValidatedEmptyFacture = (row) => row?.isRegle && Number(row?.montant) === 0 && Number(row?.reste) === 0;
+export const isValidatedEmptyFacture = (row) => row?.isRegle && Number(row?.montantTotal ?? row?.montant) === 0 && Number(row?.reste) === 0;
 
 export const computePriorReliquat = (row) => {
     const prior = Number(row?.priorReliquat);
@@ -31,7 +31,7 @@ export const computeFactureStatus = (row) => {
         if (isValidatedEmptyFacture(row) || row?.insuranceStatus === 'validated_empty') {
             return { label: 'Validée', severity: 'info' };
         }
-        return { label: 'Payé', severity: 'success' };
+        return { label: isInsuranceFactureRow(row) ? 'Part patient réglée' : 'Payé', severity: 'success' };
     }
     if (!row?.isRegle && reste === 0) return { label: 'Vide non validé', severity: 'secondary' };
     if (reste === montant) return { label: 'Impayé', severity: 'danger' };

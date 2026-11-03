@@ -41,6 +41,14 @@ export const payCabinetFacture = async (factureId, payload, token) => {
     return res.data;
 };
 
+export const payCabinetServiceInvoice = async (invoice, payload, token) => {
+    if (invoice?.insurance?.hasInsurance) {
+        const res = await http.post(`${apiPrefix}/assurances/claims/${invoice.id}/patient-pay`, payload, { headers: authHeaders(token) });
+        return res.data;
+    }
+    return payCabinetFacture(invoice.id, payload, token);
+};
+
 export const fetchCabinetInvoicePrintData = async (factureId, token) => {
     const res = await http.get(`${apiPrefix}/prints/factures-cabinet/${factureId}`, { headers: authHeaders(token) });
     return res.data;

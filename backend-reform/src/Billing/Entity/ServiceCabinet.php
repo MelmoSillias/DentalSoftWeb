@@ -52,6 +52,20 @@ class ServiceCabinet
     #[ORM\OneToOne(mappedBy: 'service', targetEntity: FactureCabinet::class, cascade: ['persist'])]
     private ?FactureCabinet $facture = null;
 
+    #[ORM\OneToOne(mappedBy: 'serviceCabinet', targetEntity: FactureAssurance::class, cascade: ['persist'])]
+    private ?FactureAssurance $factureAssurance = null;
+
+    public function getFactureAssurance(): ?FactureAssurance { return $this->factureAssurance; }
+
+    public function setFactureAssurance(?FactureAssurance $facture): static
+    {
+        if ($facture !== null && $this->facture !== null) {
+            throw new \LogicException('Ce service possède déjà une facture cabinet.');
+        }
+        $this->factureAssurance = $facture;
+        return $this;
+    }
+
     public function getId(): ?int
     {
         return $this->id;
@@ -178,6 +192,9 @@ class ServiceCabinet
 
     public function setFacture(?FactureCabinet $facture): static
     {
+        if ($facture !== null && $this->factureAssurance !== null) {
+            throw new \LogicException('Ce service possède déjà une facture assurance.');
+        }
         $this->facture = $facture;
 
         return $this;

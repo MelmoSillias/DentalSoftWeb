@@ -45,7 +45,7 @@ class FinanceService
         $monthlyExpenses = array_fill(0, 12, 0.0);
 
         foreach ($transactions as $transaction) {
-            if ($transaction->getValidationStatus() === 'cancelled') continue;
+            if (!$transaction->isValidated()) continue;
             $month = (int) $transaction->getDateTransaction()->format('n') - 1;
             if ($transaction->getType() === 'Revenue') {
                 $monthlyRevenues[$month] += $transaction->getMontant();
@@ -100,7 +100,7 @@ class FinanceService
             $sortie = 0;
 
             foreach ($mode->getTransactions() as $t) {
-                if ($t->getValidationStatus() === 'cancelled') continue;
+                if (!$t->isValidated()) continue;
                 if ($t->getDateTransaction()->format('Y') !== $targetYear) {
                     continue;
                 }
@@ -139,7 +139,7 @@ class FinanceService
             $totalOut = 0;
 
             foreach ($mode->getTransactions() as $t) {
-                if ($t->getValidationStatus() === 'cancelled') continue;
+                if (!$t->isValidated()) continue;
                 if ($t->getDateTransaction()->format('Y') !== $targetYear) {
                     continue;
                 }
@@ -201,7 +201,7 @@ class FinanceService
             $soldes  = array_fill(0, 12, 0);
 
             foreach ($mode->getTransactions() as $t) {
-                if ($t->getValidationStatus() === 'cancelled') continue;
+                if (!$t->isValidated()) continue;
                 if ($t->getDateTransaction()->format('Y') !== $targetYear) {
                     continue;
                 }
@@ -257,7 +257,7 @@ class FinanceService
         foreach ($this->modeRepo->findActifs() as $mode) {
             $solde = 0;
             foreach ($mode->getTransactions() as $transaction) {
-                if ($transaction->getValidationStatus() === 'cancelled') continue;
+                if (!$transaction->isValidated()) continue;
                 if ($transaction->getType() === 'Revenue') {
                     $solde += $transaction->getMontant();
                 } else {
@@ -694,7 +694,7 @@ class FinanceService
 
         $transactions = $this->transactionRepo->findValidatedBetweenByTypes($from, $to, $this->resolveTransactionTypeAliases($typeKey));
         foreach ($transactions as $transaction) {
-            if ($transaction->getValidationStatus() === 'cancelled') continue;
+            if (!$transaction->isValidated()) continue;
             if (!$transaction instanceof Transaction) {
                 continue;
             }

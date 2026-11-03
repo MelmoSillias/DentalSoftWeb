@@ -30,8 +30,11 @@ function formatFcfa(amount) {
 }
 
 const patientsItems = (patients) => [
-    { label: 'Nouveaux', value: patients.newPatients ?? 0, severity: 'info' },
-    { label: 'Retours', value: patients.returningPatients ?? 0, severity: 'success' }
+    { label: 'Nouvelles inscriptions', value: patients.newPatients ?? 0, severity: 'info' },
+    { label: 'Patients distincts reçus', value: patients.uniquePatientsSeen ?? 0, severity: 'info' },
+    { label: 'Nouvellement inscrits et reçus', value: patients.newPatientsSeen ?? 0, severity: 'info' },
+    { label: 'Déjà inscrits et reçus', value: patients.returningPatients ?? 0, severity: 'success' },
+    { label: 'Consultations supplémentaires', value: patients.repeatConsultations ?? 0, severity: 'secondary' }
 ];
 
 const consultationsItems = (consultations) => [
@@ -64,8 +67,12 @@ const roomUsageItems = (roomUsage) =>
 const servicesCabinetItems = (services) => [
     { label: 'Services réalisés', value: services.count ?? 0, severity: 'info' },
     { label: 'Facturé', value: formatFcfa(services.facture), severity: 'warn' },
-    { label: 'Encaissé', value: formatFcfa(services.encaisse), severity: 'success' },
-    { label: 'Reste à encaisser', value: formatFcfa(services.reste), severity: 'danger' }
+    { label: 'Part patient', value: formatFcfa(services.partPatient), severity: 'info' },
+    { label: 'Part assurance', value: formatFcfa(services.partAssurance), severity: 'info' },
+    { label: 'Paiements patients reçus — tous modes', value: formatFcfa(services.encaisse), severity: 'success' },
+    { label: 'Dont prestations de la période', value: formatFcfa(services.encaissePrestationsPeriode), severity: 'success' },
+    { label: 'Dont prestations hors période', value: formatFcfa(services.encaisseHorsPeriode), severity: 'success' },
+    { label: 'Part patient non encaissée dans la période', value: formatFcfa(services.reste), severity: 'danger' }
 ];
 
 const pieOptions = computed(() => {
@@ -99,10 +106,10 @@ const barOptions = computed(() => {
 const patientsChartData = computed(() => {
     const documentStyle = getComputedStyle(document.documentElement);
     return {
-        labels: ['Nouveaux', 'Retours'],
+        labels: ['Nouvellement inscrits et reçus', 'Déjà inscrits et reçus'],
         datasets: [
             {
-                data: [props.patients.newPatients || 0, props.patients.returningPatients || 0],
+                data: [props.patients.newPatientsSeen || 0, props.patients.returningPatients || 0],
                 backgroundColor: [documentStyle.getPropertyValue('--p-primary-500'), documentStyle.getPropertyValue('--p-emerald-500')]
             }
         ]

@@ -109,6 +109,7 @@ class ReportService
 
         $total = 0.0;
         foreach ($transactions as $tx) {
+            if (!$tx->isValidated()) continue;
             if (!$this->isRevenueTransactionType($tx->getType())) {
                 continue;
             }
@@ -124,7 +125,7 @@ class ReportService
 
     public function getReceptionStats(DateTimeImmutable $from, DateTimeImmutable $to): array
     {
-        $cacheKey = 'report.reception.stats.' . $from->format('Ymd') . '.' . $to->format('Ymd');
+        $cacheKey = 'report.reception.stats.v2.' . $from->format('Ymd') . '.' . $to->format('Ymd');
 
         return $this->remember($cacheKey, 120, function () use ($from, $to) {
             $fromMutable = \DateTime::createFromImmutable($from);
@@ -161,7 +162,12 @@ class ReportService
                 'newPatients' => $patientStats['newPatients'] ?? 0,
                 'totalConsultations' => $consultStats['total'] ?? 0,
                 'pendingConsultations' => $pendingConsultations,
-                'totalAppointments' => $pendingAppointments,
+                'totalAppointments' => $appointmentStats['scheduled'] ?? 0,
+                'pendingAppointments' => $pendingAppointments,
+                'confirmedAppointments' => $appointmentStats['confirmed'] ?? 0,
+                'cancelledAppointments' => $appointmentStats['cancelled'] ?? 0,
+                'paidConsultations' => $consultStats['paid'] ?? 0,
+                'freeConsultations' => $consultStats['free'] ?? 0,
                 'absentAppointments' => $appointmentStats['cancelled'] ?? 0,
                 'paidInvoices' => $consultStats['paid'] ?? 0,
                 'cashRevenue' => round((float) ($globalStats['inCash'] ?? 0), 2),
@@ -214,7 +220,7 @@ class ReportService
      */
     public function globalStats(?string $from, ?string $to): array
     {
-        $cacheKey = sprintf('report.globalStats.%s.%s', $from ?? 'none', $to ?? 'none');
+        $cacheKey = sprintf('report.globalStats.v2.%s.%s', $from ?? 'none', $to ?? 'none');
 
         return $this->remember($cacheKey, 120, function () use ($from, $to) {
             $fromDate = $from ? DateTimeImmutable::createFromFormat('Y-m-d', $from)?->setTime(0, 0) : null;
@@ -233,8 +239,10 @@ class ReportService
 
             $capitalTotal = $inCash = $revenueTotal = $expenseTotal = 0.0;
             $capitalBreakdown = [];
+            $insuranceRefunds = 0.0;
 
             foreach ($transactions as $tx) {
+                if (!$tx->isValidated()) continue;
                 $signed = $this->signedAmount($tx);
                 $mode   = (string) ($tx->getModeDePaiement()?->getType() ?? 'Inconnu');
 
@@ -246,6 +254,7 @@ class ReportService
                 }
                 if ($this->isRevenueTransactionType($tx->getType())) {
                     $revenueTotal += (float) $tx->getMontant();
+                    if ($tx->getRolePaiement() === 'insurance_lot') $insuranceRefunds += (float) $tx->getMontant();
                 } elseif ($this->isExpenseTransactionType($tx->getType())) {
                     $expenseTotal += (float) $tx->getMontant();
                 }
@@ -262,6 +271,8 @@ class ReportService
                 'revenueTotal'      => $revenueTotal,
                 'expenseTotal'      => $expenseTotal,
                 'resultTotal'       => $revenueTotal - $expenseTotal,
+                'insuranceRefundsCollected' => round($insuranceRefunds, 2),
+                'insuranceOutstandingCurrent' => $this->insuranceOutstandingCurrent(),
                 'servicesCabinet'   => $servicesCabinet,
                 'employeesTotal'    => $this->employeRepo->count(['deletedAt' => null]),
                 'payrollFixed'      => array_sum(array_map(
@@ -278,6 +289,38 @@ class ReportService
                 ],
             ];
         });
+    }
+
+    /** Current insurer receivables, across all periods; partial refunds stay at lot level. */
+    private function insuranceOutstandingCurrent(): float
+    {
+        $claims = $this->em->createQueryBuilder()
+            ->select('f', 'l', 't', 's', 'c', 'a')
+            ->from(FactureAssurance::class, 'f')
+            ->leftJoin('f.consultation', 'c')->leftJoin('c.actes', 'a')
+            ->leftJoin('f.serviceCabinet', 's')
+            ->leftJoin('f.lotFactureAssurance', 'l')->leftJoin('l.transactions', 't')
+            ->andWhere('c.statut = 1 OR s.statut = :active')->setParameter('active', 'effectue')
+            ->getQuery()->getResult();
+        $unassigned = 0.0;
+        $lots = [];
+        foreach ($claims as $claim) {
+            if ($claim->isRecouvre()) continue;
+            $amount = (float) $claim->computeTotals()['montantAssureur'];
+            $lot = $claim->getLotFactureAssurance();
+            if ($lot === null) { $unassigned += $amount; continue; }
+            $key = $lot->getId();
+            if (!isset($lots[$key])) $lots[$key] = ['amount' => 0.0, 'lot' => $lot];
+            $lots[$key]['amount'] += $amount;
+        }
+        foreach ($lots as $entry) {
+            $refunded = 0.0;
+            foreach ($entry['lot']->getTransactions() as $tx) {
+                if ($tx->isValidated() && $tx->getRolePaiement() === 'insurance_lot') $refunded += (float) $tx->getMontant();
+            }
+            $unassigned += max(0.0, $entry['amount'] - $refunded);
+        }
+        return round($unassigned, 2);
     }
 
     public function employeesDistribution(): array
@@ -404,7 +447,7 @@ class ReportService
 
     public function periodicPatients(?\DateTime $from, ?\DateTime $to): array
     {
-        $cacheKey = 'report.periodicPatients.' . ($from?->format('Ymd') ?? '') . '.' . ($to?->format('Ymd') ?? '');
+        $cacheKey = 'report.periodicPatients.v2.' . ($from?->format('Ymd') ?? '') . '.' . ($to?->format('Ymd') ?? '');
 
         return $this->remember($cacheKey, 180, function () use ($from, $to) {
             $qb = $this->patientRepo->createQueryBuilder('p')
@@ -430,6 +473,9 @@ class ReportService
                     ->andWhere('c.CreatedAt >= :from')
                     ->andWhere('p2.dateInscription < :from')
                     ->setParameter('from', $from);
+            } else {
+                // An unbounded period has no registrations preceding its start.
+                $returningQb->andWhere('1 = 0');
             }
             if ($to) {
                 $returningQb->andWhere('c.CreatedAt <= :to')->setParameter('to', $to);
@@ -437,9 +483,24 @@ class ReportService
 
             $returningPatients = (int) $returningQb->getQuery()->getSingleScalarResult();
 
+            $seenQb = $this->consultRepo->createQueryBuilder('c')
+                ->select('COUNT(DISTINCT p.id) AS patients, COUNT(c.id) AS visits')
+                ->join('c.patient', 'p')->andWhere('p.deletedAt IS NULL');
+            if ($from) $seenQb->andWhere('c.CreatedAt >= :from')->setParameter('from', $from);
+            if ($to) $seenQb->andWhere('c.CreatedAt <= :to')->setParameter('to', $to);
+            $seen = $seenQb->getQuery()->getSingleResult();
+            $newSeenQb = clone $seenQb;
+            $newSeenQb->select('COUNT(DISTINCT p.id)');
+            if ($from) $newSeenQb->andWhere('p.dateInscription >= :from');
+            if ($to) $newSeenQb->andWhere('p.dateInscription <= :to');
+            $newPatientsSeen = (int) $newSeenQb->getQuery()->getSingleScalarResult();
+
             return [
                 'newPatients'       => $newPatients,
                 'returningPatients' => $returningPatients,
+                'uniquePatientsSeen' => (int) $seen['patients'],
+                'newPatientsSeen' => $newPatientsSeen,
+                'repeatConsultations' => max(0, (int) $seen['visits'] - (int) $seen['patients']),
             ];
         });
     }
@@ -455,6 +516,7 @@ class ReportService
 
         $byDay = [];
         foreach ($transactions as $tx) {
+            if (!$tx->isValidated()) continue;
             $date = $tx->getDateTransaction()?->format('Y-m-d');
             if (!$date) {
                 continue;
@@ -580,6 +642,9 @@ class ReportService
                 'totalRevenue' => $totalRemuneration,
                 'afterFees' => $totalRemuneration - $totalSalaries,
                 'totalSalaries' => $totalSalaries,
+                'totalPatientRemaining' => array_sum(array_column($doctorStats, 'reliquat')),
+                'totalCollectedCurrentActivities' => array_sum(array_column($doctorStats, 'revenue')),
+                'totalCollectedPriorActivities' => array_sum(array_column($doctorStats, 'revenue_reliquats')),
                 'totalConsultations' => $consultationCount,
                 'servicesCabinet' => $servicesCabinet,
                 'totalCabinetApport' => $servicesCabinet['facture'],
@@ -869,6 +934,7 @@ class ReportService
         $revenueConsultations = $revenueActes = 0.0;
         $newPatients = $returningPatients = 0;
         $seenPatientIds = [];
+        $repeatConsultations = $unknownRegistrationPatients = 0;
         $actesList = [];
 
         foreach ($consultations as $consultation) {
@@ -900,9 +966,12 @@ class ReportService
             if ($patientId !== null) {
                 if (!isset($seenPatientIds[$patientId])) {
                     $seenPatientIds[$patientId] = true;
-                    $newPatients++;
+                    $registeredAt = $consultation->getPatient()?->getDateInscription();
+                    if ($registeredAt !== null && $registeredAt >= $from && $registeredAt <= $to) $newPatients++;
+                    elseif ($registeredAt !== null && $registeredAt < $from) $returningPatients++;
+                    else $unknownRegistrationPatients++;
                 } else {
-                    $returningPatients++;
+                    $repeatConsultations++;
                 }
             }
 
@@ -947,6 +1016,9 @@ class ReportService
             'consultations' => count($consultations),
             'new_patients' => $newPatients,
             'returning_patients' => $returningPatients,
+            'unique_patients' => count($seenPatientIds),
+            'repeat_consultations' => $repeatConsultations,
+            'patients_without_registration_date' => $unknownRegistrationPatients,
             'revenue' => $revenue,
             'revenue_consultations' => $revenueConsultations,
             'revenue_actes' => $revenueActes,

@@ -8,7 +8,8 @@ const copyStyles = (sourceDocument, targetDocument) => {
     });
 };
 
-const injectPrintBaseStyles = (targetDocument) => {
+const injectPrintBaseStyles = (targetDocument, options = {}) => {
+    const pageSize = options.orientation === 'landscape' ? 'A4 landscape' : 'A4';
     const style = targetDocument.createElement('style');
     style.type = 'text/css';
     style.textContent = `
@@ -22,7 +23,7 @@ const injectPrintBaseStyles = (targetDocument) => {
 
         @media print {
             @page {
-                size: A4;
+                size: ${pageSize};
                 margin: 14mm 14mm 22mm 14mm;
             }
 
@@ -164,7 +165,7 @@ export const usePrinter = () => {
         target.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8" /><title>${title}</title></head><body></body></html>`);
         target.document.close();
         copyStyles(document, target.document);
-        injectPrintBaseStyles(target.document);
+        injectPrintBaseStyles(target.document, options);
 
         const container = target.document.createElement('div');
         container.style.width = options.width || '100%';

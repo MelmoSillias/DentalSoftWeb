@@ -3,6 +3,7 @@ import { useToast } from 'primevue/usetoast';
 import { useAuthStore } from '@/stores/auth';
 import { apiPrefix } from '@/config';
 import http from '@/service/http';
+import { overviewFinancials } from '@/utils/reportOverview';
 
 function toIsoDate(value) {
     if (!value) return null;
@@ -212,6 +213,8 @@ export function useRapports() {
             expenseTotal: data.expenseTotal || 0,
             resultTotal: data.resultTotal ?? (Number(data.revenueTotal || 0) - Number(data.expenseTotal || 0)),
             servicesCabinet: data.servicesCabinet || { count: 0, facture: 0, encaisse: 0, reste: 0 },
+            insuranceRefundsCollected: data.insuranceRefundsCollected ?? 0,
+            insuranceOutstandingCurrent: data.insuranceOutstandingCurrent ?? 0,
             appointmentsTotal: data.appointmentsTotal || 0,
             employeesTotal: data.employeesTotal || 0,
             payrollFixed: data.payrollFixed || 0,
@@ -267,6 +270,7 @@ export function useRapports() {
     async function fetchAdminPeriodicPatients(from, to) {
         const data = await fetchJson('/report/periodic/patients', { from, to });
         adminPeriodicPatients.value = {
+            ...data,
             newPatients: data.newPatients ?? 0,
             returningPatients: data.returningPatients ?? 0
         };
@@ -360,6 +364,7 @@ export function useRapports() {
         const data = await fetchJson('/report/periodic/doctor-reports', { from, to });
         target.value = {
             kpi: {
+                ...data.kpi,
                 totalApport: data.kpi?.totalApport || 0,
                 totalPartAssurance: data.kpi?.totalPartAssurance || 0,
                 totalPaidCash: data.kpi?.totalPaidCash || data.kpi?.totalPaid || 0,
@@ -385,18 +390,15 @@ export function useRapports() {
         const payrollFixed = Number(adminGlobalStats.value.payrollFixed || 0);
         const kpi = adminDoctorReports.value?.kpi || {};
         const servicesCabinet = adminGlobalStats.value.servicesCabinet || {};
-        const cabinetBilled = Number(servicesCabinet.facture || 0);
-        const cabinetCollected = Number(servicesCabinet.encaisse || 0);
-        const billedTotal = Number(kpi.totalApport || 0) + cabinetBilled;
-        const insuranceBilledTotal = Number(kpi.totalPartAssurance || 0);
 
         adminGlobalStats.value = {
             ...adminGlobalStats.value,
             patientsNew: adminPeriodicPatients.value?.newPatients ?? 0,
-            billedTotal,
-            normalBilledTotal: Number(kpi.totalApport || 0) - insuranceBilledTotal,
-            insuranceBilledTotal,
-            collectedTotal: Number(kpi.totalPaidCash || kpi.totalPaid || 0) + cabinetCollected,
+            ...overviewFinancials(kpi, servicesCabinet),
+            uniquePatientsSeen: adminPeriodicPatients.value?.uniquePatientsSeen ?? 0,
+            newPatientsSeen: adminPeriodicPatients.value?.newPatientsSeen ?? 0,
+            returningPatientsSeen: adminPeriodicPatients.value?.returningPatients ?? 0,
+            repeatConsultations: adminPeriodicPatients.value?.repeatConsultations ?? 0,
             payrollPercentage,
             payrollTotal: payrollFixed + payrollPercentage
         };
@@ -459,6 +461,7 @@ export function useRapports() {
                 ...data,
                 fullName,
                 stats: {
+                    ...data.stats,
                     patientsTotal: data.stats?.patientsTotal || 0,
                     totalConsultations: data.stats?.totalConsultations || 0,
                     consultationsEnAttente: data.stats?.consultationsEnAttente || 0,
@@ -516,6 +519,7 @@ export function useRapports() {
         try {
             const stats = await fetchJson('/report/reception-stats', { date });
             receptionStats.value = {
+                ...stats,
                 newPatients: stats.newPatients || 0,
                 totalConsultations: stats.totalConsultations || 0,
                 pendingConsultations: stats.pendingConsultations || 0,

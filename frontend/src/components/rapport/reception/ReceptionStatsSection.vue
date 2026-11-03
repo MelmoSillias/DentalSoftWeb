@@ -24,30 +24,25 @@ const buildItems = (stats) => [
     { key: 'consults', label: 'Consultations', value: stats.totalConsultations ?? 0, icon: 'pi pi-briefcase' },
     { key: 'pending', label: 'Consultations en attente', value: stats.pendingConsultations ?? 0, icon: 'pi pi-clock' },
     { key: 'appointments', label: 'Rendez-vous planifiés', value: stats.totalAppointments ?? 0, icon: 'pi pi-calendar' },
-    { key: 'absent', label: 'Absences patients', value: stats.absentAppointments ?? 0, icon: 'pi pi-user-minus' },
-    { key: 'paid', label: 'Factures payées', value: stats.paidInvoices ?? 0, icon: 'pi pi-receipt' },
-    { key: 'cash', label: 'Encaissé', value: formatFcfa(stats.cashRevenue), icon: 'pi pi-money-bill' },
-    { key: 'total', label: 'Montant encaissé (total)', value: formatFcfa(stats.totalRevenue), icon: 'pi pi-chart-bar' }
+    { key: 'pendingAppointments', label: 'Rendez-vous en attente', value: stats.pendingAppointments ?? 0, icon: 'pi pi-clock' },
+    { key: 'confirmedAppointments', label: 'Rendez-vous confirmés', value: stats.confirmedAppointments ?? 0, icon: 'pi pi-check-circle' },
+    { key: 'cancelledAppointments', label: 'Rendez-vous annulés', value: stats.cancelledAppointments ?? 0, icon: 'pi pi-calendar-times' },
+    { key: 'paid', label: 'Consultations payantes', value: stats.paidConsultations ?? 0, icon: 'pi pi-receipt' },
+    { key: 'free', label: 'Consultations gratuites', value: stats.freeConsultations ?? 0, icon: 'pi pi-heart' },
+    { key: 'cash', label: 'Entrées validées en espèces', value: formatFcfa(stats.cashRevenue), icon: 'pi pi-money-bill' },
+    { key: 'total', label: 'Entrées validées — tous modes', value: formatFcfa(stats.totalRevenue), icon: 'pi pi-chart-bar' }
 ];
 
 const chartData = computed(() => {
     const documentStyle = getComputedStyle(document.documentElement);
+    const volumes = buildItems(props.stats).filter((item) => !['cash', 'total'].includes(item.key));
     return {
-        labels: ['Nouveaux patients', 'Consultations', 'Consultations en attente', 'Rendez-vous planifiés', 'Absences', 'Factures payées', 'Encaissé', 'Montant encaissé (total)'],
+        labels: volumes.map((item) => item.label),
         datasets: [
             {
-                label: 'Statistiques',
+                label: 'Volumes d’activité',
                 backgroundColor: documentStyle.getPropertyValue('--p-primary-500'),
-                data: [
-                    props.stats.newPatients || 0,
-                    props.stats.totalConsultations || 0,
-                    props.stats.pendingConsultations || 0,
-                    props.stats.totalAppointments || 0,
-                    props.stats.absentAppointments || 0,
-                    props.stats.paidInvoices || 0,
-                    props.stats.cashRevenue || 0,
-                    props.stats.totalRevenue || 0
-                ]
+                data: volumes.map((item) => item.value)
             }
         ]
     };

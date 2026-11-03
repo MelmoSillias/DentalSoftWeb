@@ -30,19 +30,22 @@ class InsuranceClaimService
     {
         $qb = $this->factureAssuranceRepository->createQueryBuilder('f')
             ->leftJoin('f.consultation', 'c')->addSelect('c')
-            ->leftJoin('c.patient', 'p')->addSelect('p')
+            ->leftJoin('f.patient', 'p')->addSelect('p')
+            ->leftJoin('f.serviceCabinet', 'sc')->addSelect('sc')
+            ->andWhere('sc.id IS NULL OR sc.statut = :serviceActive')
+            ->setParameter('serviceActive', 'effectue')
             ->leftJoin('f.assurance', 'a')->addSelect('a')
             ->leftJoin('f.lotFactureAssurance', 'l')->addSelect('l')
             ->orderBy('f.dateFacture', 'DESC')
             ->addOrderBy('f.id', 'DESC');
 
         if ($closedOnly) {
-            $qb->andWhere('c.statut = 1');
+            $qb->andWhere('c.statut = 1 OR sc.statut = :serviceActive');
         }
 
         if ($status !== null && $status !== '' && $status !== 'all') {
             if ($status === 'ready') {
-                $qb->andWhere('c.statut = 1')->andWhere('f.lotFactureAssurance IS NULL')->andWhere('f.isRecouvre = false');
+                $qb->andWhere('c.statut = 1 OR sc.statut = :serviceActive')->andWhere('f.lotFactureAssurance IS NULL')->andWhere('f.isRecouvre = false');
             } elseif ($status === 'open') {
                 $qb->andWhere('c.statut = 0');
             } else {
@@ -104,8 +107,8 @@ class InsuranceClaimService
         }
 
         $consultation = $facture->getConsultation();
-        if (!$consultation || $consultation->getStatut() !== 1) {
-            return ['error' => 'La consultation doit etre cloturee avant encaissement', 'status' => 400];
+        if (!$facture->isReadyForBilling()) {
+            return ['error' => 'La consultation doit être clôturée ou le service cabinet actif avant encaissement', 'status' => 400];
         }
 
         $mode = $this->modeRepository->find($modeId);
@@ -153,7 +156,7 @@ class InsuranceClaimService
         $paiement->setDate(\DateTime::createFromInterface($dateTransaction));
         $facture->addPaiement($paiement);
 
-        $patientName = $consultation->getPatient()?->getFullName() ?? '';
+        $patientName = $facture->getPatient()?->getFullName() ?? '';
 
         $transaction = new Transaction();
         $transaction->setType('Revenue');
@@ -214,6 +217,10 @@ class InsuranceClaimService
 
     public function canModifyFactureAssurance(FactureAssurance $facture): bool
     {
+        // Cabinet services are edited through their own form, never as medical acts.
+        if ($facture->getServiceCabinet() !== null) {
+            return false;
+        }
         $lot = $facture->getLotFactureAssurance();
         if ($lot !== null) {
             $statut = $lot->getStatut();
@@ -244,9 +251,13 @@ class InsuranceClaimService
         $patientRemaining = max(0.0, (float) ($montants['montantPatient'] ?? 0.0) - $patientPaidAmount);
         $lot = $facture->getLotFactureAssurance();
         $status = $this->resolveDerivedStatus($facture);
+        $snapshot = $facture->getAssuranceSnapshot();
 
         $data = [
             'id' => $facture->getId(),
+            'origin' => $facture->getServiceCabinet() !== null ? 'service_cabinet' : 'consultation',
+            'serviceId' => $facture->getServiceCabinet()?->getId(),
+            'designation' => $facture->getServiceCabinet()?->getDesignation(),
             'consultationId' => $consultation?->getId(),
             'factureId' => $facture->getId(),
             'dateFacture' => $facture->getDateFacture()?->format('Y-m-d H:i:s'),
@@ -255,9 +266,9 @@ class InsuranceClaimService
             'telephone' => $patient?->getTelephone(),
             'assurance' => [
                 'id' => $facture->getAssurance()?->getId(),
-                'nom' => $facture->getAssurance()?->getNom(),
-                'code' => $facture->getAssurance()?->getCode(),
-                'logoPath' => $facture->getAssurance()?->getLogoPath(),
+                'nom' => $snapshot['nom'] ?? $facture->getAssurance()?->getNom(),
+                'code' => $snapshot['code'] ?? $facture->getAssurance()?->getCode(),
+                'logoPath' => $snapshot['logoPath'] ?? $facture->getAssurance()?->getLogoPath(),
             ],
             'tauxCouverture' => $facture->getCoverageRate(),
             'montantTotal' => (float) ($montants['montantTotal'] ?? 0.0),
@@ -272,9 +283,9 @@ class InsuranceClaimService
             'lotStatut' => $lot?->getStatut() === 'recouvre' ? 'rembourse' : $lot?->getStatut(),
             'lotDescription' => $lot?->getDescription(),
             'availableActions' => [
-                'canCollectPatient' => $patientRemaining > 0,
+                'canCollectPatient' => $facture->isReadyForBilling() && $patientRemaining > 0,
                 'canModify' => $this->canModifyFactureAssurance($facture),
-                'canAssignLot' => $lot === null && ($consultation?->getStatut() === 1),
+                'canAssignLot' => $lot === null && $facture->isReadyForBilling() && $claimAmount > 0,
                 'canChangeLot' => $lot !== null && $lot->getStatut() === 'ouvert',
             ],
         ];

@@ -37,7 +37,7 @@ const formatMoney = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FC
 </script>
 
 <template>
-    <PrintA4Page :logo-src="logoSrc">
+    <PrintA4Page :logo-src="logoSrc" orientation="landscape">
         <template #header>
             <PrintDocumentHeader title="Encaissements paiements devis" :date="end" :doc-id="periodId" />
         </template>

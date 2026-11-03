@@ -20,8 +20,15 @@ class FactureAssurance
     private ?int $id = null;
 
     #[ORM\OneToOne(inversedBy: 'factureAssurance')]
-    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
     private ?Consultation $consultation = null;
+
+    #[ORM\OneToOne(inversedBy: 'factureAssurance', targetEntity: ServiceCabinet::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
+    private ?ServiceCabinet $serviceCabinet = null;
+
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $serviceSnapshot = null;
 
     #[ORM\ManyToOne(targetEntity: Patient::class)]
     #[ORM\JoinColumn(nullable: false)]
@@ -77,9 +84,39 @@ class FactureAssurance
 
     public function setConsultation(?Consultation $consultation): static
     {
+        if ($consultation !== null && $this->serviceCabinet !== null) {
+            throw new \LogicException('Une facture assurance ne peut avoir qu’une origine.');
+        }
         $this->consultation = $consultation;
 
         return $this;
+    }
+
+    public function getServiceCabinet(): ?ServiceCabinet { return $this->serviceCabinet; }
+
+    public function setServiceCabinet(?ServiceCabinet $service): static
+    {
+        if ($service !== null && ($this->consultation !== null || $service->getFacture() !== null)) {
+            throw new \LogicException('Ce service possède déjà une facture.');
+        }
+        $this->serviceCabinet = $service;
+        if ($service !== null) {
+            $service->setFactureAssurance($this);
+        }
+        return $this;
+    }
+
+    public function setServiceSnapshot(array $snapshot): static
+    {
+        $this->serviceSnapshot = $snapshot;
+        return $this;
+    }
+
+    public function isReadyForBilling(): bool
+    {
+        return $this->serviceCabinet !== null
+            ? !$this->serviceCabinet->isAnnule()
+            : $this->consultation?->getStatut() === 1;
     }
 
     public function getPatient(): ?Patient
@@ -241,6 +278,9 @@ class FactureAssurance
      */
     public function buildActeLignes(): array
     {
+        if ($this->serviceCabinet !== null) {
+            return $this->serviceSnapshot === null ? [] : [$this->serviceSnapshot];
+        }
         $consultation = $this->getConsultation();
         if (!$consultation) {
             return [];
@@ -323,6 +363,10 @@ class FactureAssurance
 
         $rate = $this->coverageRate === null ? null : max(0.0, min(100.0, (float) $this->coverageRate));
         $assureur = $rate === null ? 0.0 : max(0.0, min($total, ($total * $rate) / 100));
+        if ($this->serviceCabinet !== null) {
+            $total = round($total, 2);
+            $assureur = round($assureur, 2);
+        }
         $patient = max(0.0, $total - $assureur);
 
         return [

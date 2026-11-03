@@ -5,7 +5,7 @@ import InputNumber from 'primevue/inputnumber';
 import Select from 'primevue/select';
 import { computed, ref, watch } from 'vue';
 import { useToast } from 'primevue/usetoast';
-import { payCabinetFacture } from '@/services/cabinetServices';
+import { payCabinetServiceInvoice } from '@/services/cabinetServices';
 import { useAuthStore } from '@/stores/auth';
 import { usePaymentMethodsStore } from '@/stores/paymentMethods';
 import { getDefaultClassicMethod, getPaymentMethodDefinition } from '@/utils/paymentMethodUtils';
@@ -88,8 +88,8 @@ const submit = async () => {
 
     try {
         saving.value = true;
-        await payCabinetFacture(
-            facture.value.id,
+        await payCabinetServiceInvoice(
+            facture.value,
             {
                 modeId: form.value.modeId,
                 montant,
@@ -117,7 +117,7 @@ const submit = async () => {
 <template>
     <AppDialog
         v-model:visible="visible"
-        title="Payer le service cabinet"
+        title="Payer la part patient du service cabinet"
         :subtitle="subtitle"
         icon="pi pi-wallet"
         icon-tone="success"
@@ -133,7 +133,7 @@ const submit = async () => {
         <div class="flex flex-col gap-4">
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <div class="rounded-xl border border-blue-200 bg-blue-50/70 p-3 dark:border-blue-800 dark:bg-blue-950/20">
-                    <p class="text-xs text-surface-500">Montant</p>
+                    <p class="text-xs text-surface-500">Part patient</p>
                     <p class="text-sm font-semibold">{{ formatMoney(facture?.montant ?? service?.montant) }}</p>
                 </div>
                 <div class="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 dark:border-emerald-800 dark:bg-emerald-950/20">
@@ -141,10 +141,12 @@ const submit = async () => {
                     <p class="text-sm font-semibold">{{ formatMoney(facture?.partPatientPayee) }}</p>
                 </div>
                 <div class="rounded-xl border border-amber-200 bg-amber-50/70 p-3 dark:border-amber-800 dark:bg-amber-950/20">
-                    <p class="text-xs text-surface-500">Reste</p>
+                    <p class="text-xs text-surface-500">Reste patient</p>
                     <p class="text-sm font-semibold">{{ formatMoney(reste) }}</p>
                 </div>
             </div>
+
+            <p v-if="facture?.insurance?.hasInsurance" class="text-sm text-surface-500">Part assurance : {{ formatMoney(facture.montantAssureur) }}. Son remboursement est suivi dans les lots assurance.</p>
 
             <div class="flex flex-col gap-1">
                 <label class="text-sm font-medium">Mode de paiement</label>

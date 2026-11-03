@@ -1,4 +1,5 @@
 <script setup>
+import { cabinetServiceInsuranceLabel } from '@/utils/cabinetServiceInsurance';
 import PrintDevisBody from '@/components/print/PrintDevisBody.vue';
 import PrintReceiptBody from '@/components/print/PrintReceiptBody.vue';
 import PrintTicketBody from '@/components/print/PrintTicketBody.vue';
@@ -1214,6 +1215,11 @@ const handleCancelWithConfirm = (event, consultation) => {
                     <div class="space-y-2 rounded-xl border border-surface-200 p-4 text-sm dark:border-surface-700">
                         <div class="flex justify-between"><span class="text-surface-500">Date</span><strong>{{ formatDateTime(selectedCabinetService.createdAt || selectedCabinetService.date) }}</strong></div>
                         <div class="flex justify-between"><span class="text-surface-500">Montant</span><strong>{{ formatFcfa(selectedCabinetService.montant) }}</strong></div>
+                        <template v-if="selectedCabinetService.coveredByInsurance">
+                            <div class="flex justify-between"><span class="text-surface-500">Part patient</span><strong>{{ formatFcfa(selectedCabinetService.facture?.montantPatient) }}</strong></div>
+                            <div class="flex justify-between"><span class="text-surface-500">Part assurance</span><strong>{{ formatFcfa(selectedCabinetService.facture?.montantAssureur) }}</strong></div>
+                            <p class="text-xs text-surface-500">{{ cabinetServiceInsuranceLabel(selectedCabinetService) }}</p>
+                        </template>
                         <div class="flex justify-between"><span class="text-surface-500">Réglé</span><strong>{{ formatFcfa(selectedCabinetService.facture?.partPatientPayee ?? 0) }}</strong></div>
                         <div class="flex justify-between"><span class="text-surface-500">Reste</span><strong>{{ formatFcfa(selectedCabinetService.facture?.reste ?? selectedCabinetService.montant) }}</strong></div>
                         <div v-if="selectedCabinetService.observation" class="border-t border-surface-200 pt-2 dark:border-surface-700"><span class="text-surface-500">Note</span><p class="mt-1">{{ selectedCabinetService.observation }}</p></div>

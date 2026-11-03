@@ -22,7 +22,7 @@ function formatFcfa(amount) {
 const consultationsItems = (period) => [
     { label: 'Gratuites', value: period.freeConsultations ?? 0, severity: 'info' },
     { label: 'Payantes', value: period.paidConsultations ?? 0, severity: 'secondary' },
-    { label: 'Total', value: period.paidConsultations ?? 0, severity: 'success' }
+    { label: 'Total', value: Number(period.paidConsultations ?? 0) + Number(period.freeConsultations ?? 0), severity: 'success' }
 ];
 
 const appointmentsItems = (period) => [
@@ -36,18 +36,21 @@ const appointmentsItems = (period) => [
 const apportItems = (period) => [{ label: 'Montant facturé', value: formatFcfa(period.apportTotal || 0), severity: 'success' }];
 
 const revenueItems = (period) => [
+    { label: 'Paiements patients reçus — tous modes', value: formatFcfa(period.revenueCash || 0), severity: 'success' },
+    { label: 'Dont activité de la période', value: formatFcfa(period.revenue || 0), severity: 'success' },
+    { label: 'Part assurance rémunérée', value: formatFcfa(period.revenueAssurance || 0), severity: 'info' },
     {
         label: 'Reliquats encaissés',
         value: formatFcfa(period.revenueReliquats || 0),
         severity: 'warn'
     },
     {
-        label: 'Total encaissé',
+        label: 'Base de rémunération (assurance incluse)',
         value: formatFcfa(period.revenueTotal || 0),
         severity: 'success'
     },
     {
-        label: 'Réliquat patient',
+        label: 'Part patient non encaissée dans la période',
         value: formatFcfa(period.reliquat || 0),
         severity: 'danger'
     }
@@ -129,10 +132,10 @@ const revenueChartData = computed(() => {
     const documentStyle = getComputedStyle(document.documentElement);
     const period = props.period || {};
     return {
-        labels: ['Total encaissé', 'Réliquat patient'],
+        labels: ['Paiements patients sur l’activité de la période', 'Part patient non encaissée dans la période'],
         datasets: [
             {
-                data: [period.revenueTotal || 0, period.reliquat || 0],
+                data: [period.revenue || 0, period.reliquat || 0],
                 backgroundColor: [documentStyle.getPropertyValue('--p-emerald-500'), documentStyle.getPropertyValue('--p-amber-500')]
             }
         ]
@@ -144,7 +147,7 @@ const revenueChartData = computed(() => {
     <section class="space-y-4">
         <div>
             <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0">Détails périodiques</h3>
-            <p class="text-sm text-surface-500 dark:text-surface-400">Synthèse de la période sélectionnée</p>
+            <p class="text-sm text-surface-500 dark:text-surface-400">Le reste compare la part patient facturée sur la période aux paiements reçus pendant cette période. Les paiements ultérieurs ne le réduisent pas. La part assurance est incluse dans la base de rémunération sans attendre son remboursement.</p>
         </div>
 
         <div class="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
@@ -178,7 +181,7 @@ const revenueChartData = computed(() => {
                     </div>
                 </template>
             </ValueListCard>
-            <ValueListCard title="Encaissements" :items="revenueItems(period)" :loading="loading" :show-chart="showReliquatsChart">
+            <ValueListCard title="Paiements et base de rémunération" :items="revenueItems(period)" :loading="loading" :show-chart="showReliquatsChart">
                 <template #actions>
                     <ToggleButton v-model="showReliquatsChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-pie" offIcon="pi pi-list" />
                 </template>

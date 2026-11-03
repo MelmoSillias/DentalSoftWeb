@@ -3,6 +3,7 @@
 namespace App\Billing\Service;
 
 use App\Billing\Entity\FactureCabinet;
+use App\Billing\Entity\FactureAssurance;
 use App\Billing\Entity\Paiement;
 use App\Billing\Entity\ServiceCabinet;
 use App\Billing\Entity\Transaction;
@@ -24,6 +25,8 @@ class CabinetServiceBillingService
         private ModeDePaiementRepository $modeRepo,
         private PatientRepository $patientRepo,
         private FicheMedicaleRepository $ficheRepo,
+        private InsuranceClaimService $insuranceClaims,
+        private \App\Billing\Service\Workflow\InsuredInvoiceWorkflowService $insuredWorkflow,
     ) {
     }
 
@@ -36,6 +39,12 @@ class CabinetServiceBillingService
         $patient = $this->patientRepo->find($patientId);
         if (!$patient instanceof Patient) {
             return ['error' => 'Patient introuvable', 'status' => 404];
+        }
+
+        $covered = filter_var($payload['coveredByInsurance'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $profile = $patient->getAssuranceProfile();
+        if ($covered && (!$profile?->getAssurance()?->isActif() || $profile->getCoverageRate() === null || $profile->getCoverageRate() <= 0 || $profile->getCoverageRate() > 100)) {
+            return ['error' => 'Une assurance active et un taux de couverture entre 0 et 100 % sont requis.', 'status' => 400];
         }
 
         $designation = trim((string) ($payload['designation'] ?? $payload['description'] ?? ''));
@@ -64,11 +73,28 @@ class CabinetServiceBillingService
         $service->setNote($note === '' ? null : $note);
         $service->setStatut(ServiceCabinet::STATUT_EFFECTUE);
 
-        $facture = new FactureCabinet();
-        $facture->setService($service);
-        $facture->setDateFacture($date);
-        $facture->setMontant($montant);
-        $facture->setIsReglee(false);
+        if ($covered) {
+            $assurance = $profile->getAssurance();
+            $facture = (new FactureAssurance())
+                ->setServiceCabinet($service)
+                ->setPatient($patient)
+                ->setAssurance($assurance)
+                ->setCoverageRate($profile->getCoverageRate())
+                ->setDateFacture($date)
+                ->setInsuranceStatus('ready')
+                ->setAssuranceSnapshot([
+                    'code' => $assurance->getCode(), 'nom' => $assurance->getNom(),
+                    'logoPath' => $assurance->getLogoPath(), 'website' => $assurance->getWebsite(),
+                    'email' => $assurance->getEmail(), 'formData' => $profile->getFormData(),
+                ])
+                ->setServiceSnapshot($this->serviceLine($service));
+        } else {
+            $facture = new FactureCabinet();
+            $facture->setService($service);
+            $facture->setDateFacture($date);
+            $facture->setMontant($montant);
+            $facture->setIsReglee(false);
+        }
 
         $this->em->persist($service);
         $this->em->persist($facture);
@@ -154,7 +180,17 @@ class CabinetServiceBillingService
             return ['error' => 'Ce service cabinet est annulé', 'status' => 400];
         }
 
-        $hasPayments = ($service->getFacture()?->getPaiements()->count() ?? 0) > 0;
+        $insured = $service->getFactureAssurance();
+        if (array_key_exists('coveredByInsurance', $payload) && filter_var($payload['coveredByInsurance'], FILTER_VALIDATE_BOOLEAN) !== ($insured !== null)) {
+            return ['error' => 'La prise en charge est figée. Annulez le service non payé et recréez-le pour la changer.', 'status' => 400];
+        }
+        if ($insured?->getLotFactureAssurance() !== null || $insured?->isRecouvre()) {
+            return ['error' => 'Retirez le service de son lot ouvert avant modification. Un lot envoyé ou remboursé est verrouillé.', 'status' => 400];
+        }
+        $hasPayments = (($insured ?? $service->getFacture())?->getPaiements()->count() ?? 0) > 0;
+        if ($insured !== null && $hasPayments) {
+            return ['error' => 'Ce service assuré a déjà des paiements et ne peut plus être modifié.', 'status' => 400];
+        }
 
         $designation = array_key_exists('designation', $payload) || array_key_exists('description', $payload)
             ? trim((string) ($payload['designation'] ?? $payload['description'] ?? ''))
@@ -195,6 +231,11 @@ class CabinetServiceBillingService
         $service->setQuantite($quantite);
         $service->setPrix($prix);
         $service->setMontant($montant);
+
+        if ($insured !== null) {
+            $insured->setServiceSnapshot($this->serviceLine($service));
+            $insured->setDateFacture($service->getDateRealisation());
+        }
 
         $facture = $service->getFacture();
         if ($facture instanceof FactureCabinet && !$hasPayments) {
@@ -237,7 +278,11 @@ class CabinetServiceBillingService
             return ['success' => true, 'data' => $this->mapService($service)];
         }
 
-        $paid = $service->getFacture()?->computePaidAmount() ?? 0.0;
+        $insured = $service->getFactureAssurance();
+        if ($insured?->getLotFactureAssurance() !== null || $insured?->isRecouvre()) {
+            return ['error' => 'Ce service est dans un lot assurance. Retirez-le du lot ouvert avant annulation.', 'status' => 400];
+        }
+        $paid = $insured?->computePatientPaidAmount() ?? $service->getFacture()?->computePaidAmount() ?? 0.0;
         if ($paid > 0.0) {
             return ['error' => 'Ce service a déjà des paiements. Annulation impossible.', 'status' => 400];
         }
@@ -389,10 +434,24 @@ class CabinetServiceBillingService
 
         $facture = 0.0;
         $reste = 0.0;
+        $patientBilled = $insurerBilled = $cohortCollected = $currentRemaining = 0.0;
         foreach ($services as $service) {
+            $insuranceTotals = $service->getFactureAssurance()?->computeTotals();
             $amount = (float) ($service->getFacture()?->getMontant() ?? $service->getMontant());
             $facture += $amount;
-            $reste += (float) ($service->getFacture()?->computeReste() ?? $amount);
+            $patientShare = $insuranceTotals['montantPatient'] ?? $amount;
+            $patientBilled += $patientShare;
+            $insurerBilled += $insuranceTotals['montantAssureur'] ?? 0.0;
+            $periodPaid = 0.0;
+            foreach (($service->getFactureAssurance() ?? $service->getFacture())?->getPaiements() ?? [] as $payment) {
+                $status = $payment->getTransaction()?->getValidationStatus();
+                if (($status === null || $status === 'validated') && $payment->getDate() >= $from && $payment->getDate() <= $to) $periodPaid += $payment->getMontant();
+            }
+            $cohortCollected += $periodPaid;
+            $reste += max(0.0, $patientShare - $periodPaid);
+            $currentRemaining += $insuranceTotals !== null
+                ? max(0.0, $insuranceTotals['montantPatient'] - $service->getFactureAssurance()->computePatientPaidAmount())
+                : (float) ($service->getFacture()?->computeReste() ?? $amount);
         }
 
         $encaisse = 0.0;
@@ -401,7 +460,12 @@ class CabinetServiceBillingService
             ->select('p', 't')
             ->from(Paiement::class, 'p')
             ->leftJoin('p.transaction', 't')
-            ->andWhere('p.factureCabinet IS NOT NULL')
+            ->leftJoin('p.factureAssurance', 'fa')
+            ->leftJoin('fa.serviceCabinet', 'isc')
+            ->leftJoin('p.factureCabinet', 'fc')
+            ->leftJoin('fc.service', 'csc')
+            ->andWhere('p.factureCabinet IS NOT NULL OR fa.serviceCabinet IS NOT NULL')
+            ->andWhere('isc.statut = :active OR csc.statut = :active')->setParameter('active', ServiceCabinet::STATUT_EFFECTUE)
             ->andWhere('p.date BETWEEN :from AND :to')
             ->setParameter('from', $fromDate)
             ->setParameter('to', $toDate)
@@ -421,6 +485,11 @@ class CabinetServiceBillingService
             'facture' => round($facture, 2),
             'encaisse' => round($encaisse, 2),
             'reste' => round($reste, 2),
+            'partPatient' => round($patientBilled, 2),
+            'partAssurance' => round($insurerBilled, 2),
+            'encaissePrestationsPeriode' => round($cohortCollected, 2),
+            'encaisseHorsPeriode' => round(max(0.0, $encaisse - $cohortCollected), 2),
+            'resteActuel' => round($currentRemaining, 2),
         ];
     }
 
@@ -428,6 +497,18 @@ class CabinetServiceBillingService
     public function mapService(ServiceCabinet $service, bool $includePayments = false): array
     {
         $facture = $service->getFacture();
+        $insured = $service->getFactureAssurance();
+        $invoice = $facture instanceof FactureCabinet ? $this->mapFacture($facture, $includePayments) : null;
+        if ($insured !== null) {
+            $claim = $this->insuranceClaims->getClaimDetail($insured->getId())['data'] ?? null;
+            if ($claim !== null) {
+                $invoice = $this->insuredWorkflow->mapClaimToCashdeskRow($claim);
+                $invoice['paiements'] = $includePayments
+                    ? array_map(static fn (array $payment): array => ['id' => $payment['paiementId']] + $payment, $claim['paiements'] ?? [])
+                    : [];
+                $invoice['hasPayments'] = !$insured->getPaiements()->isEmpty();
+            }
+        }
         $patient = $service->getPatient();
         $patientName = trim((string) ($patient?->getFullName() ?? ''));
 
@@ -450,7 +531,10 @@ class CabinetServiceBillingService
             'date' => $service->getDateRealisation()?->format('Y-m-d H:i'),
             'note' => $service->getNote(),
             'statut' => $service->getStatut(),
-            'facture' => $facture instanceof FactureCabinet ? $this->mapFacture($facture, $includePayments) : null,
+            'coveredByInsurance' => $insured !== null,
+            'canModify' => !$service->isAnnule() && ($insured === null || ($insured->getLotFactureAssurance() === null && $insured->getPaiements()->isEmpty() && !$insured->isRecouvre())),
+            'canCancel' => !$service->isAnnule() && ($insured === null ? ($facture?->computePaidAmount() ?? 0) <= 0 : ($insured->getLotFactureAssurance() === null && $insured->computePatientPaidAmount() <= 0 && !$insured->isRecouvre())),
+            'facture' => $invoice,
         ];
     }
 
@@ -528,6 +612,15 @@ class CabinetServiceBillingService
         } catch (\Exception) {
             return null;
         }
+    }
+
+    private function serviceLine(ServiceCabinet $service): array
+    {
+        return [
+            'designation' => $service->getDesignation(), 'description' => $service->getNote() ?? '',
+            'quantite' => $service->getQuantite(), 'prix' => $service->getPrix(),
+            'total' => $service->getMontant(), 'virtual' => false,
+        ];
     }
 
     private function parseDateTime(mixed $date, mixed $time): ?\DateTime

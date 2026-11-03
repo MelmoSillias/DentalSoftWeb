@@ -459,7 +459,7 @@ const printDetailPayment = (row) => {
                         <div class="rounded-lg bg-surface-50 px-3 py-2 text-sm dark:bg-surface-800/60">Nombre : {{ servicesCabinetStats.count }}</div>
                         <div class="rounded-lg bg-surface-50 px-3 py-2 text-sm dark:bg-surface-800/60">Facturé : {{ formatFcfa(servicesCabinetStats.facture) }}</div>
                         <div class="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200">Encaissé : {{ formatFcfa(servicesCabinetStats.encaisse) }}</div>
-                        <div class="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:bg-rose-950/30 dark:text-rose-200">Reste : {{ formatFcfa(servicesCabinetStats.reste) }}</div>
+                        <div class="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:bg-rose-950/30 dark:text-rose-200">Part patient non encaissée dans la période : {{ formatFcfa(servicesCabinetStats.reste) }}</div>
                     </div>
                 </section>
 

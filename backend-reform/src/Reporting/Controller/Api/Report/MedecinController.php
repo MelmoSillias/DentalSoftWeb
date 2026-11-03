@@ -66,7 +66,10 @@ class MedecinController extends AbstractController
             'joursTravailles' => $medecin->getComingDaysInWeek(),
             'dateEmbauche'  => $medecin->getDateEmbauche()?->format('Y-m-d'),
             'stats' => [
-                'patientsTotal'           => ($doctorData['new_patients'] ?? 0) + ($doctorData['returning_patients'] ?? 0),
+                'patientsTotal'           => $doctorData['unique_patients'] ?? 0,
+                'newPatientsSeen' => $doctorData['new_patients'] ?? 0,
+                'returningPatientsSeen' => $doctorData['returning_patients'] ?? 0,
+                'repeatConsultations' => $doctorData['repeat_consultations'] ?? 0,
                 'totalConsultations'      => $totalConsultations,
                 'consultationsEnAttente'  => 0,
                 'rdvJour'                 => 0,

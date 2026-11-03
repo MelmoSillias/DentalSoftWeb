@@ -2,6 +2,9 @@
 import DatePicker from 'primevue/datepicker';
 import AppDialog from '@/components/layout/AppDialog.vue';
 import PrintDevisBody from '@/components/print/PrintDevisBody.vue';
+import PrintFactureAssuranceBody from '@/components/print/PrintFactureAssuranceBody.vue';
+import Checkbox from 'primevue/checkbox';
+import { fetchFactureAssurancePrintData } from '@/services/printService';
 import Button from 'primevue/button';
 import InputNumber from 'primevue/inputnumber';
 import Select from 'primevue/select';
@@ -13,7 +16,7 @@ import { usePrinter } from '@/composables/usePrinter';
 import { createCabinetService, fetchCabinetInvoicePrintData, updateCabinetService } from '@/services/cabinetServices';
 import { defaultServicesCabinetList, normalizeServicesCabinetList } from '@/services/consultations';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
-import { normalizePatient, searchPatients } from '@/services/patients';
+import { fetchPatientById, normalizePatient, searchPatients } from '@/services/patients';
 import { useAuthStore } from '@/stores/auth';
 import { logAppError } from '@/utils/appLogger';
 
@@ -39,6 +42,11 @@ const printing = ref(false);
 const saved = ref(false);
 const savedFactureId = ref(null);
 const savedServiceId = ref(null);
+const savedInsured = ref(false);
+const insuranceProfile = ref(null);
+const insuranceLoading = ref(false);
+const insuranceError = ref(false);
+let insuranceRequest = 0;
 const ignoreFormWatch = ref(false);
 const form = ref(emptyForm());
 const selectedPatientId = ref(null);
@@ -47,7 +55,7 @@ const patientsLoading = ref(false);
 let patientSearchTimeout = null;
 
 const isEdit = computed(() => Boolean(props.service?.id));
-const amountLocked = computed(() => Boolean(props.service?.facture?.hasPayments));
+const amountLocked = computed(() => Boolean(props.service?.facture?.hasPayments) || props.service?.canModify === false);
 const dialogTitle = computed(() => (isEdit.value ? 'Modifier le service cabinet' : 'Enregistrer un service cabinet'));
 const confirmLabel = computed(() => (isEdit.value ? 'Enregistrer' : 'Enregistrer'));
 const resolvedSubtitle = computed(() => {
@@ -64,6 +72,30 @@ const effectivePatientId = computed(() => {
 
 const total = computed(() => Math.max(0, Number(form.value.quantite) || 0) * Math.max(0, Number(form.value.prix) || 0));
 const canPrint = computed(() => saved.value && Number(savedFactureId.value) > 0);
+const coverageRate = computed(() => isEdit.value ? Number(props.service?.facture?.insurance?.tauxCouverture || 0) : Number(insuranceProfile.value?.coverageRate || 0));
+const insuranceName = computed(() => isEdit.value ? props.service?.facture?.insurance?.assuranceNom : insuranceProfile.value?.assurance?.nom);
+const canCover = computed(() => Boolean(insuranceProfile.value?.assurance?.actif && coverageRate.value > 0 && coverageRate.value <= 100));
+const insurerAmount = computed(() => form.value.coveredByInsurance ? Math.round(total.value * coverageRate.value) / 100 : 0);
+const patientAmount = computed(() => Math.round((total.value - insurerAmount.value) * 100) / 100);
+
+watch([visible, effectivePatientId], async ([open, patientId]) => {
+    const request = ++insuranceRequest;
+    insuranceProfile.value = null;
+    insuranceError.value = false;
+    insuranceLoading.value = false;
+    if (!open || isEdit.value || !patientId) return;
+    form.value.coveredByInsurance = false;
+    insuranceLoading.value = true;
+    try {
+        const patient = await fetchPatientById(patientId, auth.token);
+        if (request === insuranceRequest) insuranceProfile.value = patient?.insuranceProfile ?? null;
+    } catch (error) {
+        if (request === insuranceRequest) insuranceError.value = true;
+        logAppError('Assurance du patient', error);
+    } finally {
+        if (request === insuranceRequest) insuranceLoading.value = false;
+    }
+});
 
 watch(
     form,
@@ -95,7 +127,8 @@ function emptyForm() {
         quantite: 1,
         prix: Number(first?.montant) || 0,
         date: new Date(),
-        note: ''
+        note: '',
+        coveredByInsurance: false
     };
 }
 
@@ -105,7 +138,8 @@ function formFromService(service) {
         quantite: Number(service?.quantite) || 1,
         prix: Number(service?.prix) || 0,
         date: service?.date ? new Date(service.date) : new Date(),
-        note: service?.note || ''
+        note: service?.note || '',
+        coveredByInsurance: Boolean(service?.coveredByInsurance)
     };
 }
 
@@ -150,6 +184,7 @@ const applySavedState = async (service) => {
     const factureId = factureIdFrom(service);
     ignoreFormWatch.value = true;
     savedServiceId.value = Number(service?.id) || savedServiceId.value;
+    savedInsured.value = Boolean(service?.coveredByInsurance);
     savedFactureId.value = factureId;
     saved.value = Boolean(factureId);
     await nextTick();
@@ -163,6 +198,7 @@ watch(visible, async (open) => {
     ignoreFormWatch.value = true;
     saved.value = false;
     savedFactureId.value = null;
+    savedInsured.value = Boolean(props.service?.coveredByInsurance);
     savedServiceId.value = isEdit.value ? Number(props.service.id) : null;
     if (isEdit.value) {
         form.value = formFromService(props.service);
@@ -195,6 +231,10 @@ const formatDate = (value) => {
 };
 
 const submit = async () => {
+    if (insuranceLoading.value || insuranceError.value) {
+        toast.add({ severity: 'warn', summary: 'Assurance', detail: 'Le profil assurance doit être chargé avant l’enregistrement. Fermez puis rouvrez le formulaire pour réessayer.', life: 3500 });
+        return;
+    }
     if (!effectivePatientId.value && !isEdit.value) {
         toast.add({ severity: 'warn', summary: 'Patient', detail: 'Sélectionnez un patient', life: 2500 });
         return;
@@ -213,7 +253,8 @@ const submit = async () => {
         quantite: form.value.quantite,
         prix: form.value.prix,
         date: formatDate(form.value.date),
-        note: form.value.note
+        note: form.value.note,
+        coveredByInsurance: form.value.coveredByInsurance
     };
 
     try {
@@ -247,8 +288,10 @@ const printInvoice = async () => {
     if (!canPrint.value) return;
     printing.value = true;
     try {
-        const res = await fetchCabinetInvoicePrintData(savedFactureId.value, auth.token);
-        await printComponent(PrintDevisBody, { doc: res.doc, title: res.title || 'Facture service cabinet' });
+        const res = savedInsured.value
+            ? await fetchFactureAssurancePrintData(savedFactureId.value, auth.token)
+            : await fetchCabinetInvoicePrintData(savedFactureId.value, auth.token);
+        await printComponent(savedInsured.value ? PrintFactureAssuranceBody : PrintDevisBody, { doc: res.doc, title: res.title || 'Facture service cabinet' });
     } catch (error) {
         logAppError('Services cabinet', error);
         toast.add({ severity: 'error', summary: 'Impression', detail: 'Impression indisponible', life: 3000 });
@@ -281,6 +324,7 @@ const printInvoice = async () => {
                 <label class="text-sm font-medium">Patient <span class="text-red-500">*</span></label>
                 <Select
                     v-model="selectedPatientId"
+                    :disabled="Boolean(savedServiceId)"
                     :options="patientOptions"
                     optionLabel="label"
                     optionValue="value"
@@ -310,8 +354,24 @@ const printInvoice = async () => {
                     placeholder="Choisir un service"
                     class="w-full"
                     editable
+                    :disabled="amountLocked"
                     @update:modelValue="onDesignationChange"
                 />
+            </div>
+            <div class="rounded-lg border border-surface-200 p-3 space-y-2 dark:border-surface-700">
+                <p v-if="insuranceLoading" class="text-sm">Chargement de l’assurance…</p>
+                <p v-else-if="insuranceError" class="text-sm text-red-600">Impossible de charger le profil assurance. Rouvrez le formulaire pour réessayer.</p>
+                <template v-else-if="canCover || form.coveredByInsurance">
+                    <p class="text-sm font-medium">{{ insuranceName }} · Couverture {{ coverageRate }} %</p>
+                    <div class="flex items-center gap-2">
+                        <Checkbox v-model="form.coveredByInsurance" inputId="cabinet-service-covered" binary :disabled="isEdit || Boolean(savedServiceId)" />
+                        <label for="cabinet-service-covered" class="text-sm">Ce service est pris en charge par l’assurance</label>
+                    </div>
+                    <p class="text-xs text-surface-500">À confirmer selon la prise en charge du service. Le taux est figé à l’enregistrement.</p>
+                </template>
+                <p v-else class="text-sm text-surface-500">Service à la charge du patient. Aucune couverture applicable sélectionnée.</p>
+                <div class="flex justify-between text-sm"><span>Part patient</span><strong>{{ patientAmount.toLocaleString('fr-FR') }} FCFA</strong></div>
+                <div class="flex justify-between text-sm"><span>Part assurance</span><strong>{{ insurerAmount.toLocaleString('fr-FR') }} FCFA</strong></div>
             </div>
             <div class="grid grid-cols-2 gap-3">
                 <div class="flex flex-col gap-1">
@@ -325,11 +385,11 @@ const printInvoice = async () => {
             </div>
             <div class="flex flex-col gap-1">
                 <label class="text-sm font-medium">Date</label>
-                <DatePicker v-model="form.date" showTime hourFormat="24" dateFormat="dd/mm/yy" class="w-full" />
+                <DatePicker v-model="form.date" showTime hourFormat="24" dateFormat="dd/mm/yy" class="w-full" :disabled="amountLocked" />
             </div>
             <div class="flex flex-col gap-1">
                 <label class="text-sm font-medium">Note</label>
-                <Textarea v-model="form.note" rows="2" autoResize class="w-full" />
+                <Textarea v-model="form.note" rows="2" autoResize class="w-full" :disabled="amountLocked" />
             </div>
             <p class="text-sm font-semibold text-surface-800 dark:text-surface-100">Total : {{ total.toLocaleString('fr-FR') }} FCFA</p>
         </div>

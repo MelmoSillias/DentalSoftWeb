@@ -211,6 +211,11 @@ class FactureRepository extends ServiceEntityRepository
             $result[(int) $row['patient_id']] = (int) round((float) $row['reliquat']);
         }
 
+        foreach ($this->unpaidCabinetRows($patientIds) as $row) {
+            $patientId = $row['patientId'];
+            $result[$patientId] = ($result[$patientId] ?? 0) + (int) round($row['reste']);
+        }
+
         return $result;
     }
 
@@ -299,7 +304,48 @@ class FactureRepository extends ServiceEntityRepository
             ];
         }
 
+        foreach ($this->unpaidCabinetRows($patientIds) as $row) {
+            if ($row['factureAssuranceId'] !== null) {
+                $grouped[$row['patientId']][] = $row;
+            }
+        }
+
         return $grouped;
+    }
+
+    /** Cabinet debts include only the patient share; insurer receivables stay in lots. */
+    private function unpaidCabinetRows(array $patientIds): array
+    {
+        $services = $this->getEntityManager()->createQueryBuilder()
+            ->select('s', 'fa', 'f', 'ip', 'cp')
+            ->from(\App\Billing\Entity\ServiceCabinet::class, 's')
+            ->leftJoin('s.factureAssurance', 'fa')
+            ->leftJoin('fa.paiements', 'ip')
+            ->leftJoin('s.facture', 'f')
+            ->leftJoin('f.paiements', 'cp')
+            ->where('s.patient IN (:patientIds) AND s.statut = :active')
+            ->setParameter('patientIds', $patientIds)
+            ->setParameter('active', 'effectue')
+            ->getQuery()->getResult();
+        $rows = [];
+        foreach ($services as $service) {
+            $insured = $service->getFactureAssurance();
+            $classic = $service->getFacture();
+            $amount = $insured?->computeTotals()['montantPatient'] ?? $classic?->getMontant() ?? 0.0;
+            $paid = $insured?->computePatientPaidAmount() ?? $classic?->computePaidAmount() ?? 0.0;
+            $remaining = round(max(0.0, $amount - $paid), 2);
+            if ($remaining <= 0) continue;
+            $rows[] = [
+                'id' => $insured?->getId() ?? $classic?->getId(),
+                'patientId' => $service->getPatient()->getId(),
+                'date' => $service->getDateRealisation()?->format(DATE_ATOM),
+                'consultationId' => null, 'serviceId' => $service->getId(),
+                'montantPatient' => $amount, 'reste' => $remaining,
+                'type' => $insured !== null ? 'assurance' : 'service_cabinet',
+                'factureAssuranceId' => $insured?->getId(),
+            ];
+        }
+        return $rows;
     }
 
     private function unpaidResteSqlExpression(): string

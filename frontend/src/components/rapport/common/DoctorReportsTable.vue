@@ -121,6 +121,10 @@ function paymentStatus(montant, montantPaye) {
 
 function doctorSummaryCards(row) {
     return [
+        { key: 'patients', label: 'Patients distincts reçus', value: row?.unique_patients ?? 0, icon: 'pi pi-users', tone: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/40' },
+        { key: 'new', label: 'Nouvellement inscrits et reçus', value: row?.new_patients ?? 0, icon: 'pi pi-user-plus', tone: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/40' },
+        { key: 'existing', label: 'Déjà inscrits et reçus', value: row?.returning_patients ?? 0, icon: 'pi pi-users', tone: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/40' },
+        { key: 'repeat', label: 'Consultations supplémentaires', value: row?.repeat_consultations ?? 0, icon: 'pi pi-history', tone: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/40' },
         {
             key: 'apport',
             label: 'Facturé (hors cabinet)',
@@ -139,7 +143,7 @@ function doctorSummaryCards(row) {
         },
         {
             key: 'assurance',
-            label: 'Part assurance',
+            label: 'Part assurance rémunérée',
             value: formatFcfa(row?.revenue_assurance ?? row?.apport_assurance),
             icon: 'pi pi-shield',
             tone: 'text-violet-600 dark:text-violet-300',
@@ -155,7 +159,7 @@ function doctorSummaryCards(row) {
         },
         {
             key: 'remaining',
-            label: 'Réliquat patient',
+            label: 'Part patient non encaissée dans la période',
             value: formatFcfa(row?.reliquat),
             icon: 'pi pi-exclamation-circle',
             tone: 'text-amber-600 dark:text-amber-300',
@@ -256,7 +260,7 @@ function formatDoctorDetails(row) {
         <div class="print-section-title" style="margin-top: 16px;">Récapitulatif</div>
         <p style="margin-top: 8px; font-weight: 600;">
             Total facturé = ${formatFcfa(apportTotal)} ·
-            Total encaissé = ${formatFcfa(paidTotal)} ·
+            Base de rémunération (assurance incluse) = ${formatFcfa(paidTotal)} ·
             Total Paiements de reliquats = ${formatFcfa(reliquatTotal)}
         </p>
     `;
@@ -303,6 +307,10 @@ function formatDoctorTable(row) {
     return `
         <table class="print-table">
             <tbody>
+                <tr><td colspan="2">Patients distincts reçus</td><td>${row.unique_patients || 0}</td></tr>
+                <tr><td colspan="2">Nouvellement inscrits et reçus</td><td>${row.new_patients || 0}</td></tr>
+                <tr><td colspan="2">Déjà inscrits et reçus</td><td>${row.returning_patients || 0}</td></tr>
+                <tr><td colspan="2">Consultations supplémentaires</td><td>${row.repeat_consultations || 0}</td></tr>
                 <tr>
                     <td><strong>Consultations réalisées</strong></td>
                     <td>${row.consultations || 0}</td>
@@ -322,11 +330,11 @@ function formatDoctorTable(row) {
                     <td>${formatFcfa(row.revenue_reliquats)}</td>
                 </tr>
                 <tr>
-                    <td colspan="2"><strong>Total encaissé</strong></td>
+                    <td colspan="2"><strong>Base de rémunération (assurance incluse)</strong></td>
                     <td>${formatFcfa(doctorRevenueTotal(row))}</td>
                 </tr>
                 <tr>
-                    <td colspan="2"><strong>Réliquat patient</strong></td>
+                    <td colspan="2"><strong>Part patient non encaissée dans la période</strong></td>
                     <td>${formatFcfa(row.reliquat)}</td>
                 </tr>
             </tbody>
@@ -358,8 +366,8 @@ function printSummary() {
                     <th>Médecin</th>
                     <th>Consultations</th>
                     <th>Facturé (Fcfa)</th>
-                    <th>Total encaissé</th>
-                    <th>Réliquat patient</th>
+                    <th>Base de rémunération (assurance incluse)</th>
+                    <th>Part patient non encaissée dans la période</th>
                     <th>Salaire</th>
                 </tr>
             </thead>
@@ -488,7 +496,7 @@ function printAllActs() {
                     <td>${formatFcfa(apportTotal)}</td>
                 </tr>
                 <tr>
-                    <td><strong>Total encaissé</strong></td>
+                    <td><strong>Base de rémunération (assurance incluse)</strong></td>
                     <td>${formatFcfa(paidTotal)}</td>
                 </tr>
                 <tr>
@@ -565,16 +573,16 @@ function printAllActs() {
                     <Column v-if="variant === 'admin'" header="Montant facturé">
                         <template #body="{ data }">{{ formatFcfa(data.apport) }}</template>
                     </Column>
-                    <Column v-if="variant === 'admin'" header="Montant encaissé">
+                    <Column v-if="variant === 'admin'" header="Base de rémunération (assurance incluse)">
                         <template #body="{ data }">
                             <div>{{ formatFcfa(doctorRevenueTotal(data)) }}</div>
                             <div class="text-[11px] text-surface-500">
-                                dont espèces : {{ formatFcfa(doctorRevenueCash(data)) }}
+                                dont paiements patients (tous modes) : {{ formatFcfa(doctorRevenueCash(data)) }}
                                 <span v-if="Number(data.revenue_assurance || 0) > 0"> · assurance : {{ formatFcfa(data.revenue_assurance) }} </span>
                             </div>
                         </template>
                     </Column>
-                    <Column v-if="variant === 'admin'" header="Reliquat patient">
+                    <Column v-if="variant === 'admin'" header="Part patient non encaissée dans la période">
                         <template #body="{ data }">{{ formatFcfa(data.reliquat) }}</template>
                     </Column>
                     <Column v-if="variant === 'reception'" header="Montant">
@@ -707,11 +715,11 @@ function printAllActs() {
                                             <strong class="text-surface-900 dark:text-surface-0">{{ formatFcfa(sumActesField(data, 'montant')) }}</strong>
                                         </div>
                                         <div class="flex items-center justify-between gap-2">
-                                            <span class="text-surface-500">Total encaissé (soins)</span>
+                                            <span class="text-surface-500">Base de rémunération (assurance incluse) (soins)</span>
                                             <strong class="text-emerald-600 dark:text-emerald-300">{{ formatFcfa(sumActesField(data, 'montantPaye')) }}</strong>
                                         </div>
                                         <div class="flex items-center justify-between gap-2 sm:col-span-2">
-                                            <span class="text-surface-500">Encaissé (espèces)</span>
+                                            <span class="text-surface-500">Paiements patients reçus — tous modes</span>
                                             <strong class="text-sky-700 dark:text-sky-300">{{ formatFcfa(doctorCashCollected(data)) }}</strong>
                                         </div>
                                     </div>

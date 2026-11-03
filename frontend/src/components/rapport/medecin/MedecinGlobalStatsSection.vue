@@ -33,8 +33,13 @@ function formatSalaire(type, valeur) {
 const buildItems = (data) => [
     {
         key: 'patients',
-        label: 'Patients consultés',
+        label: 'Patients distincts reçus',
         value: data.stats?.patientsTotal ?? 0,
+        subStats: [
+            { label: 'Nouvellement inscrits et reçus', value: data.stats?.newPatientsSeen ?? 0 },
+            { label: 'Déjà inscrits et reçus', value: data.stats?.returningPatientsSeen ?? 0 },
+            { label: 'Consultations supplémentaires', value: data.stats?.repeatConsultations ?? 0 }
+        ],
         icon: 'pi pi-users'
     },
     {
@@ -61,12 +66,12 @@ const chartData = computed(() => {
     const documentStyle = getComputedStyle(document.documentElement);
     const data = props.data || {};
     return {
-        labels: ['Patients consultés', 'Consultations totales', 'Valeur salaire'],
+        labels: ['Patients distincts reçus', 'Consultations de la période'],
         datasets: [
             {
                 label: 'Indicateurs',
                 backgroundColor: documentStyle.getPropertyValue('--p-primary-500'),
-                data: [data.stats?.patientsTotal || 0, data.stats?.totalConsultations || 0, data.valeurSalaire || 0]
+                data: [data.stats?.patientsTotal || 0, data.stats?.totalConsultations || 0]
             }
         ]
     };

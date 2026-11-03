@@ -241,6 +241,10 @@
         padding: 0;
     }
 
+    .print-a4-page--landscape {
+        page: landscape;
+    }
+
     /* Réserve supplémentaire en fin de flux (dernier contenu avant footer) */
     .print-a4-page__body {
         padding-bottom: var(--print-footer-reserve);

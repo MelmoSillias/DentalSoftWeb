@@ -42,6 +42,21 @@ class InsuredInvoiceWorkflowService
         return array_map(fn (array $claim): array => $this->mapClaimToCashdeskRow($claim), $claims);
     }
 
+    public function listUnpaidCabinetFactures(?DateTimeInterface $start, ?DateTimeInterface $end): array
+    {
+        $qb = $this->factureAssuranceRepo->createQueryBuilder('f')
+            ->join('f.serviceCabinet', 's')->addSelect('s')
+            ->andWhere('s.statut = :active')->setParameter('active', 'effectue');
+        if ($start !== null) $qb->andWhere('f.dateFacture >= :start')->setParameter('start', $start);
+        if ($end !== null) $qb->andWhere('f.dateFacture <= :end')->setParameter('end', $end);
+        $rows = [];
+        foreach ($qb->getQuery()->getResult() as $facture) {
+            $row = $this->mapFactureAssuranceToCashdeskRow($facture->getId());
+            if ($row !== null && $row['reste'] > 0) $rows[] = $row;
+        }
+        return $rows;
+    }
+
     /**
      * @param array<string, mixed> $claim
      * @return array<string, mixed>
@@ -62,6 +77,9 @@ class InsuredInvoiceWorkflowService
 
         return [
             'id' => $claim['id'],
+            'origin' => $claim['origin'] ?? 'consultation',
+            'serviceId' => $claim['serviceId'] ?? null,
+            'designation' => $claim['designation'] ?? null,
             'factureAssuranceId' => $claim['factureId'] ?? $claim['id'],
             'date' => isset($claim['dateFacture']) ? (new \DateTime($claim['dateFacture']))->format('Y-m-d') : null,
             'consultation' => $claim['consultationId'] ?? null,
@@ -73,6 +91,8 @@ class InsuredInvoiceWorkflowService
             'statut' => $isRegle ? 1 : 0,
             'isRegle' => $isRegle,
             'hasPayments' => $patientPaid > 0,
+            'partPatientPayee' => $patientPaid,
+            'availableActions' => $claim['availableActions'] ?? [],
             'patient' => is_string($patientName)
                 ? ['id' => $patientId, 'nom' => $patientName, 'prenom' => '']
                 : ['id' => $patientId, 'nom' => '', 'prenom' => ''],
@@ -97,6 +117,7 @@ class InsuredInvoiceWorkflowService
                 'patientRemainingAmount' => $restePatient,
                 'restePatient' => $restePatient,
                 'insuranceStatus' => $claim['insuranceStatus'] ?? 'pending',
+                'lotStatut' => $claim['lotStatut'] ?? null,
                 'factureAssuranceId' => $claim['factureId'] ?? $claim['id'],
                 'lotId' => $claim['lotId'] ?? null,
                 'lotStatut' => $claim['lotStatut'] ?? null,
@@ -185,9 +206,9 @@ class InsuredInvoiceWorkflowService
                 'telephone' => $patient?->getTelephone(),
             ],
             'assurance' => [
-                'nom' => $assurance?->getNom() ?? ($snapshot['nom'] ?? null),
-                'code' => $assurance?->getCode() ?? ($snapshot['code'] ?? null),
-                'logoPath' => $assurance?->getLogoPath() ?? ($snapshot['logoPath'] ?? null),
+                'nom' => $snapshot['nom'] ?? $assurance?->getNom(),
+                'code' => $snapshot['code'] ?? $assurance?->getCode(),
+                'logoPath' => $snapshot['logoPath'] ?? $assurance?->getLogoPath(),
                 'tauxCouverture' => $facture->getCoverageRate(),
                 'montantTotal' => $montantTotal,
                 'montantAssurance' => $montantAssurance,

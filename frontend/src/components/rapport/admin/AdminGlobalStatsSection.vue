@@ -3,104 +3,27 @@ import { computed, ref } from 'vue';
 import Button from 'primevue/button';
 import AppChart from '@/components/common/AppChart.vue';
 import ToggleButton from 'primevue/togglebutton';
-import StatsCardsGrid from '@/components/rapport/common/StatsCardsGrid.vue';
+import { overviewCards } from '@/utils/reportOverview';
 import { formatAsOfLabel, printReport } from '@/utils/reportPrint';
 
 const props = defineProps({
     stats: { type: Object, default: () => ({}) },
-    loading: { type: Boolean, default: false }
+    loading: { type: Boolean, default: false },
+    periodLabel: { type: String, default: '' }
 });
 const showChart = ref(false);
 
-function formatFcfa(amount) {
-    const value = Number(amount || 0);
-    return `${new Intl.NumberFormat('fr-FR').format(value)} Fcfa`;
-}
-
-const items = (stats) => [
-    {
-        key: 'patients',
-        label: 'Nouveaux patients',
-        value: stats.patientsNew ?? 0,
-        subStats: [{ label: 'Patients au total', value: stats.patientsTotal ?? 0 }],
-        icon: 'pi pi-users',
-        tone: 'blue'
-    },
-    {
-        key: 'treasury',
-        label: 'Résultat (transactions)',
-        value: formatFcfa(stats.resultTotal),
-        subStats: [
-            { label: 'Revenus', value: formatFcfa(stats.revenueTotal) },
-            { label: 'Dépenses', value: formatFcfa(stats.expenseTotal) }
-        ],
-        icon: 'pi pi-wallet',
-        tone: Number(stats.resultTotal || 0) < 0 ? 'rose' : 'emerald'
-    },
-    {
-        key: 'billing',
-        label: 'Total facturé',
-        value: formatFcfa(stats.billedTotal),
-        subStats: [
-            { label: 'Factures normales', value: formatFcfa(stats.normalBilledTotal) },
-            { label: 'Factures assurances', value: formatFcfa(stats.insuranceBilledTotal) },
-            { label: 'Services cabinets', value: formatFcfa(stats.servicesCabinet?.facture) },
-            { label: 'Total encaissé', value: formatFcfa(stats.collectedTotal) }
-        ],
-        icon: 'pi pi-chart-line',
-        tone: 'indigo'
-    },
-    {
-        key: 'employees',
-        label: 'Employés (total)',
-        value: stats.employeesTotal ?? 0,
-        icon: 'pi pi-briefcase',
-        tone: 'violet'
-    },
-    {
-        key: 'payroll',
-        label: 'Masse salariale',
-        value: formatFcfa(stats.payrollTotal ?? (Number(stats.payrollFixed || 0) + Number(stats.payrollPercentage || 0))),
-        subStats: [
-            { label: 'Part fixe', value: formatFcfa(stats.payrollFixed) },
-            { label: 'Part variable', value: formatFcfa(stats.payrollPercentage) }
-        ],
-        icon: 'pi pi-money-bill',
-        tone: 'orange'
-    },
-    {
-        key: 'rooms',
-        label: 'Salles de consultation',
-        value: stats.consultRoomsCount ?? 0,
-        icon: 'pi pi-building',
-        tone: 'cyan'
-    },
-    {
-        key: 'consumables',
-        label: 'Produits consommables',
-        value: stats.consumablesCount ?? 0,
-        icon: 'pi pi-box',
-        tone: 'orange'
-    },
-    {
-        key: 'users',
-        label: 'Utilisateurs',
-        value: stats.usersTotal ?? 0,
-        subStats: [
-            { label: 'Administrateurs', value: stats.usersAdmin ?? 0 },
-            { label: 'Réception', value: stats.usersReceptionist ?? 0 },
-            { label: 'Médecins', value: stats.usersDoctor ?? 0 }
-        ],
-        icon: 'pi pi-id-card',
-        tone: 'teal'
-    }
-];
+const items = overviewCards;
+const bentoSize = (item) => {
+    const details = item.subStats?.length ?? 0;
+    return details >= 6 ? 'bento-card--large' : details >= 3 ? 'bento-card--medium' : details ? 'bento-card--small' : 'bento-card--compact';
+};
 
 const chartData = computed(() => {
     const stats = props.stats || {};
     const documentStyle = getComputedStyle(document.documentElement);
     return {
-        labels: ['Revenus', 'Dépenses', 'Facturé', 'Encaissé'],
+        labels: ['Entrées validées', 'Sorties validées', 'Montant facturé', 'Paiements patients reçus'],
         datasets: [
             {
                 label: 'Montants (Fcfa)',
@@ -174,14 +97,14 @@ function formatItemSubStats(item) {
 function printSection() {
     printReport({
         title: 'Statistiques globales',
-        periodLabel: formatAsOfLabel(),
+        periodLabel: props.periodLabel || formatAsOfLabel(),
         sections: [
             {
                 title: 'Indicateurs clés du cabinet',
                 items: items(props.stats).map((item) => ({
                     label: item.label,
                     value: item.value,
-                    sub: formatItemSubStats(item)
+                    sub: [formatItemSubStats(item), item.note].filter(Boolean).join('\n')
                 }))
             }
         ]
@@ -194,7 +117,7 @@ function printSection() {
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
                 <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0">Statistiques globales</h3>
-                <p class="text-sm text-surface-500 dark:text-surface-400">Vue d'ensemble des indicateurs clés du cabinet</p>
+                <p class="text-sm text-surface-500 dark:text-surface-400">Activité et flux de la période sélectionnée · effectifs et créances actuels signalés dans chaque case</p>
             </div>
             <div class="flex items-center gap-2">
                 <ToggleButton v-model="showChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-bar" offIcon="pi pi-list" />
@@ -202,7 +125,23 @@ function printSection() {
             </div>
         </div>
 
-        <StatsCardsGrid v-if="!showChart" :items="items(stats)" :loading="loading" />
+        <div v-if="!showChart" class="stats-bento" :aria-busy="loading">
+            <article v-for="item in items(stats)" :key="item.key" :class="['bento-card', bentoSize(item), 'bento-tone--' + item.tone]">
+                <div class="flex items-start justify-between gap-3">
+                    <h4 class="text-sm font-medium text-surface-600 dark:text-surface-300">{{ item.label }}</h4>
+                    <span class="bento-icon" aria-hidden="true"><i :class="item.icon"></i></span>
+                </div>
+                <div v-if="loading" class="mt-3 h-9 w-32 animate-pulse rounded bg-surface-200 dark:bg-surface-700" aria-label="Chargement"></div>
+                <p v-else class="bento-value">{{ item.value }}</p>
+                <dl v-if="item.subStats?.length" class="bento-details">
+                    <div v-for="sub in item.subStats" :key="sub.label">
+                        <dt>{{ sub.label }}</dt>
+                        <dd><span v-if="loading">…</span><span v-else>{{ sub.value }}</span></dd>
+                    </div>
+                </dl>
+                <p v-if="item.note" class="bento-note">{{ item.note }}</p>
+            </article>
+        </div>
         <div v-else class="rounded-2xl border border-surface-200/60 bg-gradient-to-br from-surface-0 to-surface-50/70 p-4 shadow-sm dark:border-surface-700 dark:from-surface-900 dark:to-surface-800">
             <div class="aspect-[16/9] w-full">
                 <AppChart type="bar" :data="chartData" :options="chartOptions" class="h-full w-full" />
@@ -210,3 +149,30 @@ function printSection() {
         </div>
     </section>
 </template>
+
+<style scoped>
+.stats-bento { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; align-items: stretch; grid-auto-flow: dense; }
+.bento-card { --bento-accent: var(--p-primary-500); min-width: 0; grid-column: span 2; padding: 1.35rem; border: 1px solid var(--p-surface-200); border-radius: 1.35rem; background: linear-gradient(140deg, color-mix(in srgb, var(--bento-accent) 7%, var(--p-surface-0)), var(--p-surface-0) 60%); display: flex; flex-direction: column; box-shadow: 0 3px 18px rgb(15 23 42 / 3%); }
+:global(.app-dark .bento-card) { border-color: var(--p-surface-700); background: linear-gradient(140deg, color-mix(in srgb, var(--bento-accent) 12%, var(--p-surface-900)), var(--p-surface-900) 60%); }
+.bento-icon { color: var(--bento-accent); background: color-mix(in srgb, var(--bento-accent) 12%, transparent); border-radius: .8rem; padding: .65rem; flex-shrink: 0; }
+.bento-value { font-size: clamp(1.5rem, 2vw, 2.2rem); font-weight: 700; letter-spacing: -.04em; margin: .7rem 0 1rem; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+:global(.app-dark .bento-value) { color: var(--p-surface-0); }
+:global(.app-dark .bento-details dd) { color: var(--p-surface-100); }
+:global(.app-dark .bento-details dt), :global(.app-dark .bento-note) { color: var(--p-surface-400); }
+.bento-details { display: grid; gap: .7rem; margin: 0; }
+.bento-details > div { display: flex; justify-content: space-between; gap: .8rem; border-top: 1px solid color-mix(in srgb, var(--bento-accent) 12%, transparent); padding-top: .65rem; font-size: .8rem; }
+.bento-details dt { color: var(--p-surface-500); line-height: 1.4; }
+.bento-details dd { margin: 0; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; flex-shrink: 0; max-width: 52%; overflow-wrap: anywhere; }
+.bento-note { margin-top: auto; padding-top: 1rem; font-size: .72rem; line-height: 1.6; color: var(--p-surface-500); }
+.bento-tone--emerald { --bento-accent: var(--p-emerald-500); }
+.bento-tone--indigo { --bento-accent: var(--p-indigo-500); }
+.bento-tone--violet { --bento-accent: var(--p-violet-500); }
+.bento-tone--blue { --bento-accent: var(--p-blue-500); }
+.bento-tone--cyan { --bento-accent: var(--p-cyan-500); }
+.bento-tone--orange { --bento-accent: var(--p-orange-500); }
+.bento-tone--rose { --bento-accent: var(--p-rose-500); }
+.bento-tone--teal { --bento-accent: var(--p-teal-500); }
+@media (min-width: 640px) { .stats-bento { grid-template-columns: repeat(6, minmax(0, 1fr)); } .bento-card { grid-column: span 3; } .bento-card--large { grid-column: span 6; } .bento-card--compact { grid-column: span 2; } }
+@media (min-width: 1280px) { .stats-bento { grid-template-columns: repeat(12, minmax(0, 1fr)); } .bento-card--large { grid-column: span 6; grid-row: span 2; } .bento-card--medium { grid-column: span 4; grid-row: span 2; } .bento-card--small { grid-column: span 3; grid-row: span 2; } .bento-card--compact { grid-column: span 2; } }
+@media print { .stats-bento { display: block; } .bento-card { break-inside: avoid; margin-bottom: 1rem; } }
+</style>

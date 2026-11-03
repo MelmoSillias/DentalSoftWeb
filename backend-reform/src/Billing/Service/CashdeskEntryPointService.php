@@ -99,7 +99,10 @@ class CashdeskEntryPointService
     /** @return list<array<string, mixed>> */
     public function listUnpaidCabinetFactures(?DateTimeInterface $start, ?DateTimeInterface $end): array
     {
-        return $this->cabinetServices->listUnpaidForCashdesk($start, $end);
+        return array_merge(
+            $this->cabinetServices->listUnpaidForCashdesk($start, $end),
+            $this->insuredWorkflow->listUnpaidCabinetFactures($start, $end),
+        );
     }
 
     /**

@@ -114,7 +114,7 @@ onMounted(() => {
                 <TabPanel value="overview">
                     <div class="space-y-4">
                         <div data-tour="rapports-admin.global">
-                            <AdminGlobalStatsSection :stats="adminGlobalStats" :loading="adminLoading" />
+                            <AdminGlobalStatsSection :stats="adminGlobalStats" :loading="adminLoading" :period-label="periodLabel" />
                         </div>
                         <div data-tour="rapports-admin.non-periodic">
                             <AdminNonPeriodicDetailsSection :employee-distribution="adminEmployeeDistribution" :low-stock="adminLowStockConsumables" :patients="adminGlobalPatients" :patient-referrals="adminPatientReferrals" :loading="adminLoading" />

@@ -1,21 +1,30 @@
 <script setup>
+import { computed } from 'vue';
 import PrintA4Page from './PrintA4Page.vue';
 import PrintDocumentHeader from './PrintDocumentHeader.vue';
 import logoImg from '@/assets/logo.png';
 
-defineProps({
+const props = defineProps({
     title: { type: String, default: 'Export' },
     subtitle: { type: String, default: '' },
     date: { type: [String, Date], default: '' },
     docId: { type: [String, Number], default: '' },
     columns: { type: Array, default: () => [] },
     rows: { type: Array, default: () => [] },
-    logoSrc: { type: String, default: logoImg }
+    logoSrc: { type: String, default: logoImg },
+    orientation: {
+        type: String,
+        default: '',
+        validator: (value) => ['', 'portrait', 'landscape'].includes(value)
+    }
 });
+
+// Les listes larges ont besoin de place pour les noms, dates et descriptions.
+const pageOrientation = computed(() => props.orientation || (props.columns.length >= 4 ? 'landscape' : 'portrait'));
 </script>
 
 <template>
-    <PrintA4Page :logo-src="logoSrc">
+    <PrintA4Page :logo-src="logoSrc" :orientation="pageOrientation">
         <template #header>
             <PrintDocumentHeader :title="title" :doc-id="docId" :date="date" />
         </template>

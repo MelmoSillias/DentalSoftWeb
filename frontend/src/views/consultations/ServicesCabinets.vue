@@ -1,4 +1,5 @@
 <script setup>
+import { cabinetServiceInsuranceLabel } from '@/utils/cabinetServiceInsurance';
 import { computed, onMounted, ref } from 'vue';
 import { FilterMatchMode } from '@primevue/core/api';
 import Button from 'primevue/button';
@@ -139,7 +140,7 @@ const canPay = (service) => {
 
 const canDelete = (service) => {
     if (!service || service.statut === 'annule') return false;
-    return !service.facture?.hasPayments;
+    return service.canCancel !== false && !service.facture?.hasPayments;
 };
 
 const statusMeta = (service) => {
@@ -147,7 +148,7 @@ const statusMeta = (service) => {
         return { label: 'Annulé', severity: 'secondary' };
     }
     if (isFullyPaid(service)) {
-        return { label: 'Payé', severity: 'success' };
+        return { label: service.coveredByInsurance ? 'Part patient réglée' : 'Payé', severity: 'success' };
     }
     const reste = Number(service?.facture?.reste) || 0;
     const montant = Number(service?.facture?.montant ?? service?.montant) || 0;
@@ -450,6 +451,8 @@ onMounted(async () => {
                             <template #body="{ data }">
                                 <div>
                                     <p class="font-semibold">{{ formatMoney(data.montant) }}</p>
+                                    <p v-if="data.coveredByInsurance" class="text-xs text-surface-500">Patient {{ formatMoney(data.facture?.montantPatient) }} · Assurance {{ formatMoney(data.facture?.montantAssureur) }}</p>
+                                    <p v-if="data.coveredByInsurance" class="text-xs text-surface-500">{{ cabinetServiceInsuranceLabel(data) }}</p>
                                     <p v-if="canPay(data)" class="text-xs text-amber-600 dark:text-amber-400">Reste {{ formatMoney(data.facture?.reste) }}</p>
                                 </div>
                             </template>
@@ -474,7 +477,7 @@ onMounted(async () => {
                                         v-tooltip.top="'Payer'"
                                         @click="openPay(data)"
                                     />
-                                    <Button icon="pi pi-pencil" text rounded severity="info" v-tooltip.top="'Modifier'" @click="openEdit(data)" />
+                                    <Button v-if="data.canModify !== false" icon="pi pi-pencil" text rounded severity="info" v-tooltip.top="'Modifier'" @click="openEdit(data)" />
                                     <Button
                                         v-if="canDelete(data)"
                                         icon="pi pi-trash"
@@ -535,6 +538,7 @@ onMounted(async () => {
                         <div class="rounded-xl border border-surface-200 p-3 dark:border-surface-700">
                             <p class="text-xs text-surface-500">Statut</p>
                             <Tag :value="statusMeta(detailService).label" :severity="statusMeta(detailService).severity" />
+                            <p v-if="detailService.coveredByInsurance" class="mt-1 text-xs text-surface-500">{{ cabinetServiceInsuranceLabel(detailService) }}</p>
                         </div>
                         <div class="rounded-xl border border-surface-200 p-3 dark:border-surface-700">
                             <p class="text-xs text-surface-500">Date</p>
@@ -547,9 +551,10 @@ onMounted(async () => {
                         <div class="rounded-xl border border-surface-200 p-3 dark:border-surface-700">
                             <p class="text-xs text-surface-500">Montant</p>
                             <p class="font-semibold">{{ formatMoney(detailService.montant) }}</p>
+                            <p v-if="detailService.coveredByInsurance" class="text-xs text-surface-500">Patient {{ formatMoney(detailService.facture?.montantPatient) }} · Assurance {{ formatMoney(detailService.facture?.montantAssureur) }}</p>
                         </div>
                         <div class="rounded-xl border border-surface-200 p-3 dark:border-surface-700">
-                            <p class="text-xs text-surface-500">Reste à payer</p>
+                            <p class="text-xs text-surface-500">Reste patient à payer</p>
                             <p class="font-semibold">{{ formatMoney(detailService.facture?.reste) }}</p>
                         </div>
                     </div>
@@ -577,7 +582,7 @@ onMounted(async () => {
 
                     <div class="flex flex-wrap gap-2 pt-1">
                         <Button v-if="canPay(detailService)" label="Payer" icon="pi pi-wallet" severity="success" @click="detailsVisible = false; openPay(detailService)" />
-                        <Button label="Modifier" icon="pi pi-pencil" severity="info" outlined @click="detailsVisible = false; openEdit(detailService)" />
+                        <Button v-if="detailService.canModify !== false" label="Modifier" icon="pi pi-pencil" severity="info" outlined @click="detailsVisible = false; openEdit(detailService)" />
                     </div>
                 </div>
             </AppDialog>

@@ -1,4 +1,5 @@
 <script setup>
+import { cabinetServiceInsuranceLabel } from '@/utils/cabinetServiceInsurance';
 import Button from 'primevue/button';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
@@ -60,7 +61,7 @@ const statusKey = (service) => {
 const statusLabel = (service) => {
     const key = statusKey(service);
     if (key === 'annule') return { label: 'Annulé', severity: 'secondary' };
-    if (key === 'paye') return { label: 'Payé', severity: 'success' };
+    if (key === 'paye') return { label: service.coveredByInsurance ? 'Part patient réglée' : 'Payé', severity: 'success' };
     if (key === 'partiel') return { label: 'Partiellement payé', severity: 'warning' };
     return { label: 'Impayé', severity: 'danger' };
 };
@@ -191,9 +192,10 @@ const cancelService = async (service) => {
                 <Column field="montant" header="Montant" sortable style="min-width: 8rem">
                     <template #body="{ data }">
                         {{ formatMoney(data.montant) }}
+                        <p v-if="data.coveredByInsurance" class="text-xs text-surface-500">Patient {{ formatMoney(data.facture?.montantPatient) }} · Assurance {{ formatMoney(data.facture?.montantAssureur) }}</p>
                     </template>
                 </Column>
-                <Column header="Reste" style="min-width: 7rem">
+                <Column header="Reste patient" style="min-width: 7rem">
                     <template #body="{ data }">
                         {{ formatMoney(data.facture?.reste ?? (statusKey(data) === 'paye' || statusKey(data) === 'annule' ? 0 : data.montant)) }}
                     </template>
@@ -201,12 +203,13 @@ const cancelService = async (service) => {
                 <Column header="Statut" style="min-width: 8rem">
                     <template #body="{ data }">
                         <Tag :value="statusLabel(data).label" :severity="statusLabel(data).severity" />
+                        <p v-if="data.coveredByInsurance" class="mt-1 text-xs text-surface-500">{{ cabinetServiceInsuranceLabel(data) }}</p>
                     </template>
                 </Column>
                 <Column header="" style="width: 3.5rem">
                     <template #body="{ data }">
                         <Button
-                            v-if="data.statut !== 'annule' && !data.facture?.hasPayments"
+                            v-if="data.statut !== 'annule' && data.canCancel !== false && !data.facture?.hasPayments"
                             icon="pi pi-times"
                             text
                             rounded

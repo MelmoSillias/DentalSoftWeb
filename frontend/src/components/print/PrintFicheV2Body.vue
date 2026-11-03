@@ -289,7 +289,7 @@ const etatLegend = [
 </script>
 
 <template>
-    <PrintA4Page :logo-src="logoSrc">
+    <PrintA4Page :logo-src="logoSrc" orientation="landscape">
         <template #header>
             <PrintDocumentHeader title="Fiche médicale" :doc-id="fiche?.id" :date="fiche?.createdAt || fiche?.dateCreation" />
         </template>
