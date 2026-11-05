@@ -79,10 +79,10 @@ onBeforeUnmount(() => {
     top: 0;
     z-index: 12000;
     display: flex;
-    align-items: flex-start;
-    gap: 0.75rem;
-    padding: 0.75rem 1rem;
-    padding-top: calc(0.75rem + env(safe-area-inset-top, 0px));
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    padding-top: calc(0.375rem + env(safe-area-inset-top, 0px));
     color: #0f172a;
     box-shadow: 0 8px 24px rgba(15, 23, 42, 0.16);
 }
@@ -98,8 +98,7 @@ onBeforeUnmount(() => {
 }
 
 .net-banner__icon {
-    margin-top: 0.1rem;
-    font-size: 1.05rem;
+    font-size: 0.9rem;
     flex-shrink: 0;
 }
 
@@ -112,19 +111,23 @@ onBeforeUnmount(() => {
 }
 
 .net-banner__copy {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 0.5rem;
     min-width: 0;
 }
 
 .net-banner__title {
     margin: 0;
-    font-size: 0.92rem;
+    font-size: 0.82rem;
     font-weight: 700;
     line-height: 1.3;
 }
 
 .net-banner__text {
-    margin: 0.15rem 0 0;
-    font-size: 0.84rem;
+    margin: 0;
+    font-size: 0.78rem;
     line-height: 1.4;
 }
 

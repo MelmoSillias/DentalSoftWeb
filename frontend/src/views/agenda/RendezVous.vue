@@ -333,6 +333,7 @@ onBeforeUnmount(() => {
     >
         <template #header>
             <PageHeader
+                v-if="!embedded"
                 title="Gestion des Rendez-vous"
                 subtitle="Planifiez et suivez les rendez-vous du cabinet"
                 icon="pi pi-calendar"
@@ -347,6 +348,10 @@ onBeforeUnmount(() => {
                     </div>
                 </template>
             </PageHeader>
+            <div v-else class="rendez-vous-compact-header flex shrink-0 flex-wrap items-center justify-between gap-2 px-3 py-1.5">
+                <h2 class="text-sm font-semibold text-surface-900 dark:text-surface-50">Rendez-vous</h2>
+                <StatusLegend />
+            </div>
         </template>
 
         <div v-if="rdvLoadErrorMessage" class="flex min-h-[280px] flex-col items-center justify-center gap-4 rounded-xl border border-amber-200/70 bg-amber-50/70 p-6 dark:border-amber-800/70 dark:bg-amber-950/20">
@@ -502,6 +507,27 @@ onBeforeUnmount(() => {
 .rendez-vous-page.is-embedded {
     min-height: 0;
     height: 100%;
+    gap: 0.5rem;
+}
+
+.rendez-vous-compact-header :deep(.rounded-full) {
+    gap: 0.375rem;
+    padding: 0;
+    background: transparent;
+}
+
+.rendez-vous-compact-header :deep(.p-tag) {
+    font-size: 0.6875rem;
+    padding: 0.125rem 0.375rem;
+}
+
+.rendez-vous-page.is-embedded :deep(.p-tab) {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8125rem;
+}
+
+.rendez-vous-page.is-embedded :deep(.p-tabpanels) {
+    padding: 0.5rem;
 }
 
 .rendez-vous-page.is-embedded :deep(.page-shell__body) {

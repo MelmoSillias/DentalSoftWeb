@@ -145,8 +145,8 @@ defineExpose({ reloadOnAction });
 </script>
 
 <template>
-    <section class="daily-view flex min-h-0 flex-1 flex-col gap-3 xs:gap-4" :class="embedded ? 'h-full min-w-0' : undefined">
-        <div class="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 xs:gap-4 rounded-xl bg-surface-0 p-2 xs:p-3 shadow-sm dark:bg-surface-900 dark:shadow-none dark:ring-1 dark:ring-surface-700">
+    <section class="daily-view flex min-h-0 flex-1 flex-col gap-3 xs:gap-4" :class="embedded ? 'is-embedded h-full min-w-0' : undefined">
+        <div class="daily-view-toolbar flex flex-shrink-0 flex-wrap items-center justify-between gap-3 xs:gap-4 rounded-xl bg-surface-0 p-2 xs:p-3 shadow-sm dark:bg-surface-900 dark:shadow-none dark:ring-1 dark:ring-surface-700">
             <DateChooser :modelValue="selectedDate" @update:modelValue="onDateChange" />
             <div class="flex items-center gap-1 xs:gap-2 text-xs xs:text-sm font-medium text-surface-700">
                 <span>Zoom</span>
@@ -176,6 +176,15 @@ defineExpose({ reloadOnAction });
 </template>
 
 <style scoped>
+.daily-view.is-embedded {
+    gap: 0.5rem;
+}
+
+.daily-view.is-embedded .daily-view-toolbar {
+    gap: 0.5rem;
+    padding: 0.375rem 0.5rem;
+}
+
 .daily-schedule-frame {
     min-height: 18rem;
     height: calc(100dvh - 22rem);

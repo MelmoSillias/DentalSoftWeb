@@ -461,12 +461,16 @@ function printAllActs() {
         )
         .join('');
 
+    // Somme des montants facturés pour tous les actes de la période.
     const apportTotal = acts.reduce((sum, act) => sum + Number(act.montant || 0), 0);
-    const paidTotal = acts.reduce((sum, act) => sum + actPaidIncludingInsurance(act), 0);
+    // Somme des montants couverts par l'assurance pour tous les actes.
     const assuranceTotal = acts.reduce((sum, act) => sum + Number(act.montantAssurance || 0), 0);
+    // Somme des paiements reçus pour les reliquats.
     const reliquatTotal = reliquats.reduce((sum, item) => sum + Number(item.montant || 0), 0);
 
+    // Paiements réels reçus sur la période, paiements de reliquats inclus.
     const collectedTotal = doctors.value.reduce((sum, doctor) => sum + doctorRevenueCash(doctor), 0);
+    // Total des reliquats encore dus par les patients, tous médecins confondus.
     const unpaidTotal = doctors.value.reduce((sum, doctor) => sum + Number(doctor.reliquat || 0), 0);
 
     const body = `
@@ -511,23 +515,19 @@ function printAllActs() {
                     <td>${formatFcfa(apportTotal)}</td>
                 </tr>
                 <tr>
+                    <td style="padding-left: 24px;">dont part assurance</td>
+                    <td>${formatFcfa(assuranceTotal)}</td>
+                </tr>
+                <tr>
                     <td><strong>Total encaissé</strong></td>
                     <td>${formatFcfa(collectedTotal)}</td>
                 </tr>
                 <tr>
-                    <td><strong>Total parts assurances</strong></td>
-                    <td>${formatFcfa(assuranceTotal)}</td>
-                <tr>
-                    <td><strong>Total Paiements de reliquats</strong></td>
+                    <td style="padding-left: 24px;">dont paiement de reliquats</td>
                     <td>${formatFcfa(reliquatTotal)}</td>
                 </tr>
-                </tr>
                 <tr>
-                    <td><strong>Total rénumérable</strong></td>
-                    <td>${formatFcfa(paidTotal)}</td>
-                </tr>
-                <tr>
-                    <td><strong>Total impayé patient</strong></td>
+                    <td><strong>Total impayé</strong></td>
                     <td>${formatFcfa(unpaidTotal)}</td>
                 </tr>
             </tbody>

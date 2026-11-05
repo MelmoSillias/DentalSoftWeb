@@ -355,7 +355,7 @@ defineExpose({ reloadOnAction });
 <template>
     <section class="weekly-view-page flex flex-col gap-3 xs:gap-4 p-0.5 xs:p-1" :class="embedded ? 'is-embedded h-full min-h-0 min-w-0 flex-1' : undefined">
         <!-- Filtres – plus moderne et espacé -->
-        <div data-tour="agenda-rdv.scope" class="flex flex-row items-center gap-3 xs:gap-4 rounded-xl xs:rounded-2xl bg-white p-3 xs:p-4 shadow-sm ring-1 ring-gray-200/70 dark:bg-gray-800 dark:ring-gray-700/60 dark:shadow-gray-900/20" :class="embedded ? 'min-w-0 shrink-0 overflow-x-auto' : undefined">
+        <div data-tour="agenda-rdv.scope" class="weekly-view-filters flex flex-row items-center gap-3 xs:gap-4 rounded-xl xs:rounded-2xl bg-white p-3 xs:p-4 shadow-sm ring-1 ring-gray-200/70 dark:bg-gray-800 dark:ring-gray-700/60 dark:shadow-gray-900/20" :class="embedded ? 'min-w-0 shrink-0 overflow-x-auto' : undefined">
             <Select
                 v-model="filters.medecinId"
                 :options="medecinsOptions"
@@ -376,7 +376,7 @@ defineExpose({ reloadOnAction });
         <!-- Conteneur calendrier -->
         <div
             ref="calendarFrameRef"
-            class="relative rounded-xl xs:rounded-2xl border border-gray-200 bg-white p-3 xs:p-4 shadow-md dark:border-gray-700 dark:bg-gray-800 dark:shadow-gray-950/30"
+            class="weekly-view-calendar relative rounded-xl xs:rounded-2xl border border-gray-200 bg-white p-3 xs:p-4 shadow-md dark:border-gray-700 dark:bg-gray-800 dark:shadow-gray-950/30"
             :class="embedded ? 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden' : 'overflow-x-auto'"
         >
             <!-- Loading overlay plus doux -->
@@ -740,5 +740,27 @@ defineExpose({ reloadOnAction });
     .weekly-view-page:not(.is-embedded) :deep(.fc-timeGridWeek-view .fc-scrollgrid) {
         min-width: 28rem;
     }
+}
+.weekly-view-page.is-embedded {
+    gap: 0.5rem;
+}
+
+.weekly-view-page.is-embedded .weekly-view-filters,
+.weekly-view-page.is-embedded .weekly-view-calendar {
+    padding: 0.5rem;
+}
+
+.weekly-view-page.is-embedded :deep(.fc-toolbar) {
+    margin-bottom: 0.5rem;
+    gap: 0.25rem 0.5rem;
+}
+
+.weekly-view-page.is-embedded :deep(.fc-toolbar-title) {
+    font-size: 0.875rem;
+}
+
+.weekly-view-page.is-embedded :deep(.fc .fc-button) {
+    padding: 0.25rem 0.45rem;
+    font-size: 0.75rem;
 }
 </style>
