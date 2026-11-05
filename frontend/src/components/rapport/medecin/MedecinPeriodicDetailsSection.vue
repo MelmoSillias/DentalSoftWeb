@@ -45,7 +45,7 @@ const revenueItems = (period) => [
         severity: 'warn'
     },
     {
-        label: 'Base de rémunération',
+        label: 'Total rénumérable',
         value: formatFcfa(period.revenueTotal || 0),
         severity: 'success'
     },
@@ -181,7 +181,7 @@ const revenueChartData = computed(() => {
                     </div>
                 </template>
             </ValueListCard>
-            <ValueListCard title="Paiements et base de rémunération" :items="revenueItems(period)" :loading="loading" :show-chart="showReliquatsChart">
+            <ValueListCard title="Paiements et Total rénumérable" :items="revenueItems(period)" :loading="loading" :show-chart="showReliquatsChart">
                 <template #actions>
                     <ToggleButton v-model="showReliquatsChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-pie" offIcon="pi pi-list" />
                 </template>

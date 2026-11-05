@@ -17,7 +17,7 @@ const rights = [
     ['Consultations › Historique', Y, Y, Y],
     ['Fiche médicale complète', Y, N, Y],
     ['Clôture rapide', Y, 'si autorisée', Y],
-    ['Consultations › Services cabinets', Y, Y, Y],
+    ['Consultations › Prestations du cabinet', Y, Y, Y],
     ['Caisse › Encaissements', Y, Y, N],
     ['Modifier une facture sans paiement', Y, 'si autorisé', N],
     ['Réinitialiser une facture', Y, N, N],
@@ -54,7 +54,7 @@ const troubleshooting = [
 
 const glossary = [
     ['Acte', 'Soin du catalogue posé sur une consultation. Il est facturé au patient et compte dans la rémunération du médecin.'],
-    ['Service cabinet', 'Prestation facturée au patient mais exclue de la rémunération du médecin : radiographie, produit, kit.'],
+    ['Prestation du cabinet', 'Prestation facturée au patient mais exclue de la rémunération du médecin : radiographie, produit, kit.'],
     ['Consultation', 'Dossier de la visite du jour. Elle naît ouverte, entre dans la file d’attente et se termine par la clôture.'],
     ['Clôture', 'Geste qui fige la consultation : médecin, salle et soins sont enregistrés, la fiche passe en lecture seule.'],
     ['Clôture rapide', 'Formulaire court permettant de clôturer une visite simple sans ouvrir la fiche médicale complète.'],

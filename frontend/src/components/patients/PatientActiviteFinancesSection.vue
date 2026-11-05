@@ -119,7 +119,7 @@ const tabs = computed(() => {
         { id: 'factures', label: 'Factures', icon: 'pi pi-file', badge: props.factures?.length || null },
         { id: 'devis', label: 'Devis', icon: 'pi pi-file-edit', badge: countPatientDevis(props.fiches) || null },
         { id: 'actes', label: 'Actes', icon: 'pi pi-list-check', badge: medicalActs.value?.length || null },
-        { id: 'services-cabinet', label: 'Services cabinet', icon: 'pi pi-building', badge: props.servicesCabinet?.length || null }
+        { id: 'services-cabinet', label: 'Prestations du cabinet', icon: 'pi pi-building', badge: props.servicesCabinet?.length || null }
     ];
 
     if (props.showConsultations) {
@@ -1056,7 +1056,7 @@ function getRDVStatusSeverity(status) {
                     <PatientDevisPanel :patient-id="patientId" :patient-name="patientName" :fiches="fiches" @refresh="emit('refresh')" />
                 </TabPanel>
 
-                <!-- Services cabinet -->
+                <!-- Prestations du cabinet -->
                 <TabPanel value="services-cabinet">
                     <PatientCabinetServicesPanel
                         compact

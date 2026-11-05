@@ -24,27 +24,36 @@ export function overviewCards(stats = {}) {
             subStats: [
                 { label: 'Factures normales', value: countAmount(stats.billingBreakdown?.normalCount, stats.billingBreakdown?.normalAmount) },
                 { label: 'Factures assurées', value: countAmount(stats.billingBreakdown?.insuredCount, stats.billingBreakdown?.insuredAmount) },
-                { label: 'Services cabinet', value: countAmount(cabinet.count, cabinet.facture) },
-                { label: 'Services non assurés', value: countAmount(cabinet.normalCount, cabinet.normalAmount) },
-                { label: 'Services assurés', value: countAmount(cabinet.insuredCount, cabinet.insuredAmount) },
-                { label: 'Services · part patient', value: money(cabinet.partPatient) },
-                { label: 'Services · part assurance', value: money(cabinet.partAssurance) },
+                { label: 'Prestations du cabinet', value: countAmount(cabinet.count, cabinet.facture) },
+                { label: 'Prestations non assurées', value: countAmount(cabinet.normalCount, cabinet.normalAmount) },
+                { label: 'Prestations assurées', value: countAmount(cabinet.insuredCount, cabinet.insuredAmount) },
+                { label: 'Prestations · part patient', value: money(cabinet.partPatient) },
+                { label: 'Prestations · part assurance', value: money(cabinet.partAssurance) },
                 { label: 'Part patient totale', value: money(stats.normalBilledTotal) },
                 { label: 'Part assurance totale', value: money(stats.insuranceBilledTotal) }
             ] },
-        { key: 'collections', label: 'Encaissements', value: money(number(stats.collectedTotal) + number(stats.insuranceRefundsCollected)), icon: 'pi pi-credit-card', tone: 'emerald',
+        { key: 'collections', label: 'Encaissements', value: money(stats.collectedTotal), icon: 'pi pi-credit-card', tone: 'emerald',
             subStats: [
-                { label: 'Paiements patients', value: money(stats.collectedTotal) },
-                { label: 'Soins de la période', value: money(number(stats.collectedCurrentActivities) - number(cabinet.encaissePrestationsPeriode)) },
-                { label: 'Reliquats soins', value: money(number(stats.collectedOtherActivities) - number(cabinet.encaisseHorsPeriode)) },
-                { label: 'Services de la période', value: money(cabinet.encaissePrestationsPeriode) },
-                { label: 'Reliquats services', value: money(cabinet.encaisseHorsPeriode) },
-                { label: 'Remboursements assurance', value: money(stats.insuranceRefundsCollected) },
+                // Total des encaissements patients et du cabinet : le libellé précédent était trop général.
+                { label: 'Total encaissé', value: money(stats.collectedTotal) },
+                // Encaissements des soins réalisés sur la période, hors prestations du cabinet.
+                { label: 'Soins · période', value: money(number(stats.collectedCurrentActivities) - number(cabinet.encaissePrestationsPeriode)) },
+                // Encaissements de la période portant sur des soins de périodes antérieures.
+                { label: 'Reliquats encaissés sur soins', value: money(number(stats.collectedOtherActivities) - number(cabinet.encaisseHorsPeriode)) },
+                // Encaissements des prestations du cabinet réalisées sur la période.
+                { label: 'Prestations du cabinet · période', value: money(cabinet.encaissePrestationsPeriode) },
+                // Encaissements reçus sur la période pour des prestations antérieures du cabinet.
+                { label: 'Reliquats encaissés sur prestations du cabinet', value: money(cabinet.encaisseHorsPeriode) },
+                // Reste dû par les patients pour les prestations de la période.
                 { label: 'Impayés patients · période', value: money(stats.patientRemainingPeriod) },
-                { label: 'Dont soins', value: money(number(stats.patientRemainingPeriod) - number(cabinet.reste)) },
-                { label: 'Dont services', value: money(cabinet.reste) },
-                { label: 'Assurance à recouvrer · actuel', value: money(stats.insuranceOutstandingCurrent) }
+                // Part du reste dû correspondant aux soins, hors prestations du cabinet.
+                { label: '↳ Dont soins', value: money(number(stats.patientRemainingPeriod) - number(cabinet.reste)) },
+                { label: '↳ Dont prestations du cabinet', value: money(cabinet.reste) }
             ], note: 'Impayés patients : prestations de la période, après paiements reçus sur cette période.' },
+        { key: 'insurance', label: 'Remboursements assurance', value: money(stats.insuranceRefundsCollected), icon: 'pi pi-shield', tone: 'violet',
+            subStats: [
+                { label: 'À recouvrer · actuel', value: money(stats.insuranceOutstandingCurrent) }
+            ] },
         { key: 'treasury', label: 'Trésorerie nette', value: money(stats.resultTotal), icon: 'pi pi-wallet', tone: number(stats.resultTotal) < 0 ? 'rose' : 'emerald',
             subStats: [
                 { label: 'Entrées validées', value: money(stats.revenueTotal) },

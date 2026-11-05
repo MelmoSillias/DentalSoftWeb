@@ -11,7 +11,7 @@ const actions = [
     ['Créer un patient', 'Reception, bouton Ajouter', 'Le patient apparaît dans la colonne du jour.'],
     ['Modifier un patient', 'Reception, crayon de la carte', 'Le même formulaire que la liste des patients s’ouvre.'],
     ['Créer une consultation', 'Reception, stéthoscope de la carte', 'La consultation entre dans la file ; le ticket est proposé si elle est payante.'],
-    ['Enregistrer un service cabinet', 'Reception, menu de la carte ou détail', 'Le service est facturé au patient, hors rémunération du médecin.'],
+    ['Enregistrer une prestation du cabinet', 'Reception, menu de la carte ou détail', 'La prestation est facturée au patient, hors rémunération du médecin.'],
     ['Poser un rendez-vous', 'Menu de la carte (Nouveau RDV), ou mode Rendez-vous', 'Le rendez-vous est créé au statut En attente.'],
     ['Clôturer une visite simple', 'Reception, détail › Clôture rapide', 'La consultation est terminée ; la facture reste à encaisser.'],
     ['Remplir et clôturer la fiche', 'Dentiste, fiche au centre', 'Sections sauvegardées, consultation figée.'],
@@ -193,7 +193,7 @@ const actions = [
                 <ManualStep>Tapez au moins deux caractères dans la recherche « Nom, prénom ou téléphone... ».</ManualStep>
                 <ManualStep>Patient introuvable : <span class="ui">Ajouter</span> ouvre le formulaire « Nouveau patient » (« Ajouter un patient depuis le mode focus »).</ManualStep>
                 <ManualStep>
-                    Sur la carte du patient : stéthoscope pour <span class="ui">Nouvelle consultation</span>, crayon pour <span class="ui">Modifier le patient</span>, ou <span class="ui">Plus d'actions</span>, qui propose Nouvelle consultation, Enregistrer un service cabinet, Nouveau RDV, Ouvrir
+                    Sur la carte du patient : stéthoscope pour <span class="ui">Nouvelle consultation</span>, crayon pour <span class="ui">Modifier le patient</span>, ou <span class="ui">Plus d'actions</span>, qui propose Nouvelle consultation, Enregistrer une prestation du cabinet, Nouveau RDV, Ouvrir
                     dossier et Modifier. Le clic droit sur la carte ouvre le même menu.
                 </ManualStep>
                 <ManualStep result="La ligne apparaît dans la file d’attente.">Créez la consultation comme décrit en 2.3.</ManualStep>

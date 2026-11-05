@@ -247,7 +247,7 @@ const paymentDayCount = computed(() => {
                                     <p class="pay-receipt-party-name">{{ row.patient || '—' }}</p>
                                     <p v-if="displayPhone(row.telephone)" class="pay-receipt-party-line">Tél. {{ displayPhone(row.telephone) }}</p>
                                     <p v-if="isCabinetPayment(row) || isInsurancePayment(row) || row.insuranceStatus === 'pending'" class="pay-receipt-tags">
-                                        <Tag v-if="isCabinetPayment(row)" value="Service cabinet" severity="warn" icon="pi pi-building" />
+                                        <Tag v-if="isCabinetPayment(row)" value="Prestation du cabinet" severity="warn" icon="pi pi-building" />
                                         <Tag v-if="isInsurancePayment(row)" value="Assurance" severity="info" icon="pi pi-shield" />
                                         <Tag v-if="row.insuranceStatus === 'pending'" value="En attente" severity="warn" />
                                     </p>

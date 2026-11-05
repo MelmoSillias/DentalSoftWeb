@@ -103,13 +103,13 @@ const cancelService = async (service) => {
     try {
         cancellingId.value = service.id;
         await cancelCabinetService(service.id, auth.token);
-        toast.add({ severity: 'success', summary: 'Service cabinet', detail: 'Service annulé', life: 2500 });
+        toast.add({ severity: 'success', summary: 'Prestation du cabinet', detail: 'Prestation annulée', life: 2500 });
         emit('refresh');
     } catch (error) {
-        logAppError('Services cabinet', error);
+        logAppError('Prestations du cabinet', error);
         toast.add({
             severity: 'error',
-            summary: 'Service cabinet',
+            summary: 'Prestation du cabinet',
             detail: error?.response?.data?.error || 'Annulation impossible',
             life: 3500
         });
@@ -123,16 +123,16 @@ const cancelService = async (service) => {
     <section :class="compact ? 'space-y-3' : 'page-section page-section--padded space-y-3'">
         <div v-if="!compact" class="mb-1 flex flex-wrap items-center justify-between gap-3">
             <div>
-                <h3 class="page-section__title">Services cabinet</h3>
+                <h3 class="page-section__title">Prestations du cabinet</h3>
                 <p class="page-section__subtitle">Radiographie et autres prestations facturées hors consultation.</p>
             </div>
-            <Button label="Enregistrer un service" icon="pi pi-plus" size="small" outlined @click="dialogVisible = true" />
+            <Button label="Enregistrer une prestation" icon="pi pi-plus" size="small" outlined @click="dialogVisible = true" />
         </div>
 
         <div :class="['page-kpi-grid', compact && 'page-kpi-grid--compact']">
             <div class="page-kpi-card border-blue-200/50 bg-gradient-to-br from-blue-50 to-blue-100/50 dark:border-blue-800/50 dark:from-blue-900/20 dark:to-blue-800/20">
                 <div class="min-w-0">
-                    <p class="page-kpi-label text-blue-700 dark:text-blue-300">Services</p>
+                    <p class="page-kpi-label text-blue-700 dark:text-blue-300">Prestations</p>
                     <p class="page-kpi-value text-blue-900 dark:text-blue-100">{{ kpi.count }}</p>
                 </div>
                 <i class="pi pi-building page-kpi-icon text-blue-500"></i>
@@ -227,9 +227,9 @@ const cancelService = async (service) => {
             <div class="dossier-state__icon">
                 <i class="pi pi-building"></i>
             </div>
-            <h4 class="dossier-state__title">{{ rows.length ? 'Aucun résultat' : 'Aucun service cabinet' }}</h4>
+            <h4 class="dossier-state__title">{{ rows.length ? 'Aucun résultat' : 'Aucune prestation du cabinet' }}</h4>
             <p class="dossier-state__text">
-                {{ rows.length ? 'Aucun service ne correspond aux filtres.' : 'Aucune prestation cabinet enregistrée pour ce patient.' }}
+                {{ rows.length ? 'Aucune prestation ne correspond aux filtres.' : 'Aucune prestation du cabinet enregistréee pour ce patient.' }}
             </p>
         </div>
 

@@ -200,9 +200,9 @@ function printSection() {
                 items: consultationsItems(props.consultations)
             },
             {
-                title: 'Services cabinets',
+                title: 'Prestations du cabinet',
                 items: servicesCabinetItems(props.servicesCabinet),
-                emptyLabel: 'Aucun service cabinet sur cette période.'
+                emptyLabel: 'Aucune prestation du cabinet sur cette période.'
             },
             {
                 title: 'Rendez-vous',
@@ -321,6 +321,6 @@ function printSection() {
             </ValueListCard>
         </div>
 
-        <ValueListCard id="admin-periodic-cabinet-services" title="Services cabinets" :items="servicesCabinetItems(servicesCabinet)" :loading="loading" empty-label="Aucun service cabinet sur cette période." />
+        <ValueListCard id="admin-periodic-cabinet-services" title="Prestations du cabinet" :items="servicesCabinetItems(servicesCabinet)" :loading="loading" empty-label="Aucune prestation du cabinet sur cette période." />
     </section>
 </template>

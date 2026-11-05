@@ -996,8 +996,8 @@ const saveSoinsCatalogAction = async () => {
     if (servicesCabinetCatalog.value.some((item) => !String(item?.description || '').trim())) {
         toast.add({
             severity: 'warn',
-            summary: 'Services cabinet',
-            detail: 'La description est obligatoire pour chaque service cabinet.',
+            summary: 'Prestations du cabinet',
+            detail: 'La description est obligatoire pour chaque prestation du cabinet.',
             life: 3500
         });
         return;
@@ -1831,10 +1831,10 @@ onBeforeUnmount(() => {
                                             </AccordionContent>
                                         </AccordionPanel>
                                     </Accordion>
-                                    <span class="field-helper">Description obligatoire. Les prestations du cabinet (radio, etc.) se gèrent dans la liste Services cabinet. Glissez-déposez pour réordonner. Les catégories vides peuvent être supprimées.</span>
+                                    <span class="field-helper">Description obligatoire. Les prestations du cabinet (radio, etc.) se gèrent dans la liste Prestations du cabinet. Glissez-déposez pour réordonner. Les catégories vides peuvent être supprimées.</span>
                                     <div class="mt-4 flex flex-col gap-2">
                                         <div class="flex items-center justify-between gap-2">
-                                            <span class="font-semibold text-surface-900 dark:text-surface-50">Services cabinet</span>
+                                            <span class="font-semibold text-surface-900 dark:text-surface-50">Prestations du cabinet</span>
                                             <Button icon="pi pi-plus" label="Ajouter" size="small" text @click="addServiceCabinetItem" />
                                         </div>
                                         <div v-for="(item, index) in servicesCabinetCatalog" :key="`cabinet-service-${index}`" class="flex flex-wrap items-center gap-2 rounded-lg border border-surface-200 p-2 dark:border-surface-700">

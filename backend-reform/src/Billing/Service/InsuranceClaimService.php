@@ -108,7 +108,7 @@ class InsuranceClaimService
 
         $consultation = $facture->getConsultation();
         if (!$facture->isReadyForBilling()) {
-            return ['error' => 'La consultation doit être clôturée ou le service cabinet actif avant encaissement', 'status' => 400];
+            return ['error' => 'La consultation doit être clôturée ou la prestation du cabinet active avant encaissement', 'status' => 400];
         }
 
         $mode = $this->modeRepository->find($modeId);

@@ -24,13 +24,15 @@ test('payments of older activities are separated from payments of current activi
     assert.equal(totals.patientRemainingPeriod, 11500);
 });
 
-test('overview starts with billing and collections, including insurer refunds', () => {
+test('overview starts with billing and collections, excluding insurer refunds', () => {
     const cards = overviewCards({ collectedTotal: 2000, insuranceRefundsCollected: 8000 });
     assert.deepEqual(cards.slice(0, 2).map((card) => card.key), ['billing', 'collections']);
     const collections = cards[1];
-    assert.equal(collections.value, '10\u202f000 FCFA');
+    assert.equal(collections.value, '2\u202f000 FCFA');
     assert.equal(collections.subStats.find((row) => row.label === 'Paiements patients').value, '2\u202f000 FCFA');
-    assert.equal(collections.subStats.find((row) => row.label === 'Remboursements assurance').value, '8\u202f000 FCFA');
+    assert.equal(collections.subStats.some((row) => row.label === 'Remboursements assurance'), false);
+    assert.equal(cards.find((card) => card.key === 'insurance').value, '8\u202f000 FCFA');
+    assert.equal(overviewCards({ collectedTotal: 0, insuranceRefundsCollected: 8000 })[1].value, '0 FCFA');
     assert.equal(new Set(cards.map((card) => card.key)).size, cards.length);
 });
 

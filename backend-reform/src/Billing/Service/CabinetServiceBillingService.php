@@ -49,7 +49,7 @@ class CabinetServiceBillingService
 
         $designation = trim((string) ($payload['designation'] ?? $payload['description'] ?? ''));
         if ($designation === '') {
-            return ['error' => 'Le service cabinet est requis', 'status' => 400];
+            return ['error' => 'La prestation du cabinet est requise', 'status' => 400];
         }
 
         $quantite = max(1, (int) ($payload['quantite'] ?? 1));
@@ -173,11 +173,11 @@ class CabinetServiceBillingService
     {
         $service = $this->serviceRepo->find($serviceId);
         if (!$service instanceof ServiceCabinet) {
-            return ['error' => 'Service cabinet introuvable', 'status' => 404];
+            return ['error' => 'Prestation du cabinet introuvable', 'status' => 404];
         }
 
         if ($service->isAnnule()) {
-            return ['error' => 'Ce service cabinet est annulé', 'status' => 400];
+            return ['error' => 'Cette prestation du cabinet est annulée', 'status' => 400];
         }
 
         $insured = $service->getFactureAssurance();
@@ -196,7 +196,7 @@ class CabinetServiceBillingService
             ? trim((string) ($payload['designation'] ?? $payload['description'] ?? ''))
             : $service->getDesignation();
         if ($designation === '') {
-            return ['error' => 'Le service cabinet est requis', 'status' => 400];
+            return ['error' => 'La prestation du cabinet est requise', 'status' => 400];
         }
 
         $note = array_key_exists('note', $payload)
@@ -271,7 +271,7 @@ class CabinetServiceBillingService
     {
         $service = $this->serviceRepo->find($serviceId);
         if (!$service instanceof ServiceCabinet) {
-            return ['error' => 'Service cabinet introuvable', 'status' => 404];
+            return ['error' => 'Prestation du cabinet introuvable', 'status' => 404];
         }
 
         if ($service->isAnnule()) {
@@ -365,7 +365,7 @@ class CabinetServiceBillingService
 
         $service = $facture->getService();
         if (!$service instanceof ServiceCabinet || $service->isAnnule()) {
-            return ['error' => 'Ce service cabinet est annulé', 'status' => 400];
+            return ['error' => 'Cette prestation du cabinet est annulée', 'status' => 400];
         }
 
         $remaining = $facture->computeReste();
@@ -395,8 +395,8 @@ class CabinetServiceBillingService
         $transaction->setType('Revenue');
         $transaction->setMontant((string) $montant);
         $transaction->setDateTransaction($timestamp);
-        $transaction->setDescription(sprintf('Paiement service cabinet #%d | %s | %s', $facture->getId(), $service->getDesignation(), $patientName));
-        $transaction->setMotif('Encaissement service cabinet');
+        $transaction->setDescription(sprintf('Paiement de prestation du cabinet #%d | %s | %s', $facture->getId(), $service->getDesignation(), $patientName));
+        $transaction->setMotif('Encaissement de prestation du cabinet');
         $transaction->setModeDePaiement($mode);
         $transaction->setRolePaiement('service_cabinet');
         $transaction->markValidated(\DateTimeImmutable::createFromInterface($timestamp));
@@ -567,7 +567,7 @@ class CabinetServiceBillingService
             'serviceId' => $service?->getId(),
             'date' => $facture->getDateFacture()?->format('Y-m-d') ?? (new \DateTime())->format('Y-m-d'),
             'consultation' => null,
-            'designation' => $service?->getDesignation() ?? 'Service cabinet',
+            'designation' => $service?->getDesignation() ?? 'Prestation du cabinet',
             'montant' => $facture->getMontant(),
             'montantTotal' => $facture->getMontant(),
             'montantPatient' => $facture->getMontant(),
@@ -586,7 +586,7 @@ class CabinetServiceBillingService
             'patientId' => $patient?->getId(),
             'telephone' => $patient?->getTelephone(),
             'contenus' => [[
-                'designation' => $service?->getDesignation() ?? 'Service cabinet',
+                'designation' => $service?->getDesignation() ?? 'Prestation du cabinet',
                 'description' => $service?->getNote() ?? '',
                 'qte' => $quantite,
                 'quantite' => $quantite,

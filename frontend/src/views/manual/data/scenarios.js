@@ -200,7 +200,7 @@ export const scenarios = [
         situation: 'Une nouvelle réceptionniste commence lundi. Elle doit pouvoir travailler dès la première heure.',
         steps: [
             { text: 'Gestion RH : créer sa fiche avec le poste « Réceptionniste », son contrat et ses jours travaillés.' },
-            { text: 'Utilisateurs : créer son compte en la choisissant comme Employe associe ; le rôle Réceptionniste est proposé.', result: 'Elle aura accès au Mode Focus, à l’Agenda, aux Patients, à l’Historique, aux Services cabinets, à la Caisse et aux Rapports.' },
+            { text: 'Utilisateurs : créer son compte en la choisissant comme Employe associe ; le rôle Réceptionniste est proposé.', result: 'Elle aura accès au Mode Focus, à l’Agenda, aux Patients, à l’Historique, aux Prestations du cabinet, à la Caisse et aux Rapports.' },
             { text: 'Poser son mot de passe avec la clé, et le lui remettre en main propre.', critical: true },
             { text: 'Ouvrir ce manuel, choisir « Lire en tant que : Accueil », puis « Imprimer ou exporter en PDF ».', result: 'Un PDF limité aux sections qui la concernent.' },
             { text: 'Le premier jour, lui faire dérouler le scénario 5.1 à côté d’un collègue.' }

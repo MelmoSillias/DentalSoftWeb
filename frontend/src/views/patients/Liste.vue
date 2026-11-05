@@ -395,7 +395,7 @@ const patientActionMenuItems = computed(() => {
             command: () => openRendezVous(patient)
         },
         {
-            label: 'Service cabinet',
+            label: 'Prestation du cabinet',
             icon: 'pi pi-building',
             command: () => openCabinetService(patient)
         },

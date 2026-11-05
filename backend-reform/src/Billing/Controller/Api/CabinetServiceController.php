@@ -52,7 +52,7 @@ class CabinetServiceController extends AbstractController
     {
         $row = $this->cabinetServices->get($id);
         if ($row === null) {
-            return new JsonResponse(['error' => 'Service cabinet introuvable'], 404);
+            return new JsonResponse(['error' => 'Prestation du cabinet introuvable'], 404);
         }
 
         return new JsonResponse(['data' => $row]);
@@ -136,7 +136,7 @@ class CabinetServiceController extends AbstractController
 
         return new JsonResponse([
             'doc' => $row,
-            'title' => 'Facture service cabinet',
+            'title' => 'Facture de prestation du cabinet',
         ]);
     }
 }

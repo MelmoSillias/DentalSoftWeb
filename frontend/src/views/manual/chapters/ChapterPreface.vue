@@ -113,7 +113,7 @@ import ManualSection from '../components/ManualSection.vue';
                             <td>Accueil (réceptionniste)</td>
                             <td><span class="m-code">ROLE_RECEPTION</span>, <span class="m-code">ROLE_RECEPTIONNISTE</span>, <span class="m-code">ROLE_SECRETAIRE</span></td>
                             <td>Reçoit les patients, ouvre les consultations, encaisse, tient l’agenda.</td>
-                            <td>Mode Focus, Agenda, Patients, Historique, Services cabinets, Caisse, Rapports, apparence des Paramètres généraux.</td>
+                            <td>Mode Focus, Agenda, Patients, Historique, Prestations du cabinet, Caisse, Rapports, apparence des Paramètres généraux.</td>
                         </tr>
                         <tr>
                             <td>Médecin</td>

@@ -1427,7 +1427,7 @@ const printInvoice = async () => {
     try {
         if (isCabinetServiceFacture(previewData.value) || isCabinetServiceFacture(selectedFacture.value)) {
             const res = await fetchCabinetInvoicePrintData(previewData.value.id, token);
-            await printComponent(PrintDevisBody, { doc: res.doc, title: res.title || 'Facture service cabinet' });
+            await printComponent(PrintDevisBody, { doc: res.doc, title: res.title || 'Facture de prestation du cabinet' });
         } else if (isInsuranceFacture(previewData.value) || isInsuranceFacture(selectedFacture.value)) {
             const claimId = previewData.value.insurance?.factureAssuranceId || selectedFacture.value?.factureAssuranceId || previewData.value.id;
             const res = await fetchFactureAssurancePrintData(claimId, token);

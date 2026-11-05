@@ -38,7 +38,7 @@ const factureOrigin = ref('all');
 const factureOriginOptions = [
     { label: 'Tous', value: 'all' },
     { label: 'Consultations', value: 'consultation' },
-    { label: 'Services cabinet', value: 'service_cabinet' }
+    { label: 'Prestations du cabinet', value: 'service_cabinet' }
 ];
 
 const normalizeText = (value) =>
@@ -68,7 +68,7 @@ const formatFcfa = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCF
 
 const isInsuranceRow = (row) => isInsuranceFactureRow(row);
 const isCabinetRow = (row) => isCabinetServiceFacture(row);
-const documentLabel = (row) => (isCabinetRow(row) ? 'SERVICE CABINET' : isInsuranceRow(row) ? 'FACTURE ASSURANCE' : 'FACTURE');
+const documentLabel = (row) => (isCabinetRow(row) ? 'PRESTATION DU CABINET' : isInsuranceRow(row) ? 'FACTURE ASSURANCE' : 'FACTURE');
 const matchesOrigin = (row) => {
     if (factureOrigin.value === 'service_cabinet') return isCabinetRow(row);
     if (factureOrigin.value === 'consultation') return !isCabinetRow(row);
@@ -227,7 +227,7 @@ const displayPhone = (value) => (props.hidePatientPhone ? "Masqué par l'adminis
                                 </p>
                                 <p class="fct-invoice-party-line">Tél. {{ displayPhone(row.telephone) }}</p>
                                 <p v-if="isCabinetRow(row) || computeInsuranceBadge(row)" class="fct-invoice-tags">
-                                    <Tag v-if="isCabinetRow(row)" value="Service cabinet" severity="warn" icon="pi pi-building" />
+                                    <Tag v-if="isCabinetRow(row)" value="Prestation du cabinet" severity="warn" icon="pi pi-building" />
                                     <Tag v-if="computeInsuranceBadge(row)" :value="computeInsuranceBadge(row).label" severity="info" icon="pi pi-shield" />
                                 </p>
                             </section>

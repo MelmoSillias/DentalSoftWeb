@@ -66,7 +66,7 @@ watch(visible, async (open) => {
         paymentMethods.value = await paymentMethodsStore.load(auth.token);
         form.value.modeId = getDefaultClassicMethod(paymentMethods.value)?.id ?? paymentOptions.value[0]?.value ?? null;
     } catch (error) {
-        logAppError('Services cabinet paiement', error);
+        logAppError('Prestations du cabinet paiement', error);
         paymentMethods.value = [];
     }
 });
@@ -101,7 +101,7 @@ const submit = async () => {
         visible.value = false;
         emit('paid');
     } catch (error) {
-        logAppError('Services cabinet paiement', error);
+        logAppError('Prestations du cabinet paiement', error);
         toast.add({
             severity: 'error',
             summary: 'Paiement',
@@ -117,7 +117,7 @@ const submit = async () => {
 <template>
     <AppDialog
         v-model:visible="visible"
-        title="Payer la part patient du service cabinet"
+        title="Payer la part patient de la prestation du cabinet"
         :subtitle="subtitle"
         icon="pi pi-wallet"
         icon-tone="success"

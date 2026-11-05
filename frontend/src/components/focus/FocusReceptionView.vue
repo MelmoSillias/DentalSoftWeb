@@ -7,6 +7,7 @@ import { usePrinter } from '@/composables/usePrinter';
 import { fetchInvoicePrintData, fetchReceiptPrintData, fetchTicketPrintData } from '@/services/printService';
 import { searchPatients } from '@/services/patients';
 import CabinetServiceDialog from '@/components/patients/CabinetServiceDialog.vue';
+import CabinetServicePayDialog from '@/components/consultations/CabinetServicePayDialog.vue';
 import { fetchCabinetServices, fetchCabinetService } from '@/services/cabinetServices';
 import { fetchFactures, fetchPayments } from '@/services/caisseService';
 import { isCabinetServiceFacture, isInsuranceFactureRow } from '@/utils/factureRow';
@@ -142,7 +143,7 @@ const showRevenueStatsModal = ref(false);
 const centerView = ref('queue');
 const centerViewOptions = [
     { label: "File d'attente", value: 'queue' },
-    { label: 'Services cabinets', value: 'services' }
+    { label: 'Prestations du cabinet', value: 'services' }
 ];
 const dailyInvoices = ref([]);
 const dailyPayments = ref([]);
@@ -185,6 +186,16 @@ watch(showRevenueStatsModal, (visible) => { if (visible) loadDailyFinancialData(
 const cabinetServices = ref([]);
 const selectedCabinetService = ref(null);
 const cabinetServicesLoading = ref(false);
+const cabinetServicePayVisible = ref(false);
+const serviceRemaining = (service) => Math.max(0, Number(service?.facture?.reste ?? service?.facture?.montantPatient ?? service?.montant) || 0);
+const servicePaymentStatus = (service) => {
+    if (service?.statut === 'annule') return { label: 'Annulée', severity: 'secondary' };
+    if (service?.facture?.isRegle || (service?.facture && serviceRemaining(service) === 0)) {
+        return { label: service.coveredByInsurance ? 'Part patient réglée' : 'Payée', severity: 'success' };
+    }
+    if (Number(service?.facture?.partPatientPayee) > 0) return { label: 'Partiellement payée', severity: 'warn' };
+    return { label: 'Impayée', severity: 'danger' };
+};
 /** Mobile panel: patients | queue | details (xl+ shows all three) */
 const mobilePanel = ref('queue');
 
@@ -217,7 +228,13 @@ const formatFcfa = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCF
 const servicePatientLabel = (service) => service?.patientName || service?.patient?.fullname || `${service?.patient?.prenom || ''} ${service?.patient?.nom || ''}`.trim() || 'Patient';
 const loadCabinetServices = async () => {
     cabinetServicesLoading.value = true;
-    try { cabinetServices.value = await fetchCabinetServices({}, token) || []; }
+    try {
+        const date = todayDate();
+        cabinetServices.value = await fetchCabinetServices({ start: date, end: date }, token) || [];
+        if (selectedCabinetService.value) {
+            selectedCabinetService.value = cabinetServices.value.find((service) => service.id === selectedCabinetService.value.id) || null;
+        }
+    }
     catch (_) { cabinetServices.value = []; }
     finally { cabinetServicesLoading.value = false; }
 };
@@ -225,7 +242,10 @@ const selectCabinetService = async (service) => {
     selectedCabinetService.value = service;
     mobilePanel.value = 'details';
     if (!service?.id) return;
-    try { selectedCabinetService.value = await fetchCabinetService(service.id, token) || service; }
+    try {
+        const details = await fetchCabinetService(service.id, token);
+        if (selectedCabinetService.value?.id === service.id) selectedCabinetService.value = details || service;
+    }
     catch (_) { /* Keep the list row details available if the full record cannot be loaded. */ }
 };
 onMounted(() => {
@@ -274,7 +294,7 @@ const patientContextMenuItems = computed(() => [
         }
     },
     {
-        label: 'Enregistrer un service cabinet',
+        label: 'Enregistrer une prestation du cabinet',
         icon: 'pi pi-building',
         command: () => openCabinetService(contextMenuPatient.value)
     },
@@ -453,7 +473,7 @@ const dailyRevenueStats = computed(() => {
     const familyDefinitions = [
         { key: 'facture', label: 'Factures normales', icon: 'pi pi-file' },
         { key: 'facture_assurance', label: 'Factures avec assurance', icon: 'pi pi-shield' },
-        { key: 'service_cabinet', label: 'Services cabinets', icon: 'pi pi-building' }
+        { key: 'service_cabinet', label: 'Prestations du cabinet', icon: 'pi pi-building' }
     ];
     const invoiceRows = familyDefinitions.map((family) => {
         const rows = dailyInvoices.value.filter((invoice) => invoiceFamily(invoice) === family.key);
@@ -755,7 +775,7 @@ const handleCancelWithConfirm = (event, consultation) => {
                                     {{ ((patient.prenom?.[0] ?? '') + (patient.nom?.[0] ?? 'P')).toUpperCase() }}
                                 </div>
                                 <div class="min-w-0 flex-1">
-                                    <p class="truncate text-sm font-semibold text-surface-900 dark:text-surface-50">
+                                    <p class="break-words text-base font-bold leading-snug text-surface-900 dark:text-surface-50">
                                         {{ patientDisplayName(patient) }}
                                     </p>
                                     <div class="mt-0.5 flex items-center gap-1 truncate text-xs text-surface-400">
@@ -833,7 +853,7 @@ const handleCancelWithConfirm = (event, consultation) => {
                                 {{ (patient.prenom?.[0] ?? '') + (patient.nom?.[0] ?? 'P') }}
                             </div>
                             <div class="min-w-0 flex-1">
-                                <p class="truncate text-sm font-semibold text-surface-900 dark:text-surface-50">
+                                <p class="break-words text-base font-bold leading-snug text-surface-900 dark:text-surface-50">
                                     {{ patientDisplayName(patient) }}
                                 </p>
                                 <div class="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-surface-400">
@@ -907,7 +927,7 @@ const handleCancelWithConfirm = (event, consultation) => {
                     <div class="flex flex-row gap-3">
                         <div class="flex min-w-0 items-center gap-2">
                             <SelectButton v-model="centerView" :options="centerViewOptions" option-label="label" option-value="value" :allow-empty="false" size="small" aria-label="Vue centrale" />
-                            <Tag :value="centerView === 'queue' ? secretaryRows.length : cabinetServices.length" :icon="centerView === 'queue' ? 'pi pi-users' : 'pi pi-building'" severity="info" :aria-label="centerView === 'queue' ? 'Nombre de consultations' : 'Nombre de services cabinets'" />
+                            <Tag :value="centerView === 'queue' ? secretaryRows.length : cabinetServices.length" :icon="centerView === 'queue' ? 'pi pi-users' : 'pi pi-building'" severity="info" :aria-label="centerView === 'queue' ? 'Nombre de consultations' : 'Nombre de prestations du cabinet'" />
                         </div>
                         <div class="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
                             <ToggleSwitch v-if="centerView === 'queue'" v-model="showCompletedSecretary" />
@@ -964,7 +984,7 @@ const handleCancelWithConfirm = (event, consultation) => {
                                     <div>
                                         <h4 class="text-sm font-semibold text-emerald-800 dark:text-emerald-200">Total encaissé aujourd’hui</h4>
                                         <p class="mt-2 text-3xl font-bold text-emerald-700 dark:text-emerald-200">{{ formatFcfa(dailyRevenueStats.totalRevenue) }}</p>
-                                        <p class="mt-2 text-xs text-emerald-700 dark:text-emerald-300">Factures normales, parts patient des assurances, services cabinets et tickets de consultation.</p>
+                                        <p class="mt-2 text-xs text-emerald-700 dark:text-emerald-300">Factures normales, parts patient des assurances, prestations du cabinet et tickets de consultation.</p>
                                     </div>
                                     <Tag :value="dailyRevenueStats.totalPaymentsCount" icon="pi pi-wallet" severity="success" aria-label="Nombre de paiements du jour" />
                                 </div>
@@ -1130,7 +1150,7 @@ const handleCancelWithConfirm = (event, consultation) => {
                                             </span>
                                         </div>
                                     </div>
-                                    <p class="text-sm font-semibold text-surface-900 truncate dark:text-surface-50">
+                                    <p class="break-words text-base font-bold leading-snug text-surface-900 dark:text-surface-50">
                                         {{ patientLabel(consultation) }}
                                     </p>
                                     <p class="text-xs text-surface-400 truncate mt-0.5">
@@ -1175,10 +1195,16 @@ const handleCancelWithConfirm = (event, consultation) => {
                 <div v-else class="min-h-0 flex-1 overflow-y-auto p-3 scrollbar-thin">
                     <div v-if="cabinetServicesLoading" class="p-6 text-center text-sm text-surface-500">Chargement des services…</div>
                     <button v-for="service in cabinetServices" :key="service.id" type="button" @click="selectCabinetService(service)" :class="['mb-2 flex w-full items-center justify-between gap-3 rounded-xl border p-3 text-left transition hover:border-primary-400 hover:bg-primary-50/50 dark:hover:bg-primary-950/20', selectedCabinetService?.id === service.id ? 'border-primary-400 bg-primary-50 dark:bg-primary-950/20' : 'border-surface-200 dark:border-surface-700']">
-                        <span class="min-w-0"><strong class="block truncate text-sm text-surface-900 dark:text-surface-50">{{ service.designation || 'Service cabinet' }}</strong><small class="block truncate text-surface-500">{{ servicePatientLabel(service) }} · {{ formatTime(service.createdAt || service.date) }}</small></span>
+                        <span class="min-w-0 flex-1">
+                            <strong class="block break-words text-base font-bold leading-snug text-surface-900 dark:text-surface-50">{{ servicePatientLabel(service) }}</strong>
+                            <small class="mt-1 block text-surface-500">{{ service.designation || 'Prestation du cabinet' }} · {{ formatTime(service.createdAt || service.date) }}</small>
+                            <Tag class="mt-2" :value="servicePaymentStatus(service).label" :severity="servicePaymentStatus(service).severity" />
+                            <small v-if="service.statut !== 'annule'" class="mt-1 block text-surface-500">Réglé : {{ formatFcfa(service.facture?.partPatientPayee) }} · Reste patient : {{ formatFcfa(serviceRemaining(service)) }}</small>
+                            <small v-if="service.coveredByInsurance" class="mt-1 block text-surface-500">Patient : {{ formatFcfa(service.facture?.montantPatient) }} · Assurance : {{ formatFcfa(service.facture?.montantAssureur) }}</small>
+                        </span>
                         <span class="shrink-0 text-xs font-semibold">{{ formatFcfa(service.montant) }}</span>
                     </button>
-                    <div v-if="!cabinetServicesLoading && !cabinetServices.length" class="p-8 text-center text-sm text-surface-500">Aucun service cabinet enregistré.</div>
+                    <div v-if="!cabinetServicesLoading && !cabinetServices.length" class="p-8 text-center text-sm text-surface-500">Aucune prestation du cabinet enregistrée aujourd’hui.</div>
                 </div>
             </div>
         </section>
@@ -1209,8 +1235,9 @@ const handleCancelWithConfirm = (event, consultation) => {
 
                 <div v-if="centerView === 'services' && selectedCabinetService" class="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 scrollbar-thin">
                     <div class="rounded-xl border border-primary-200 bg-primary-50/60 p-4 dark:border-primary-800 dark:bg-primary-950/20">
-                        <p class="text-lg font-semibold text-surface-900 dark:text-surface-50">{{ selectedCabinetService.designation || 'Service cabinet' }}</p>
-                        <p class="mt-1 text-sm text-surface-600 dark:text-surface-300">{{ servicePatientLabel(selectedCabinetService) }}</p>
+                        <p class="break-words text-xl font-bold leading-snug text-surface-900 dark:text-surface-50">{{ servicePatientLabel(selectedCabinetService) }}</p>
+                        <p class="mt-1 text-sm text-surface-600 dark:text-surface-300">{{ selectedCabinetService.designation || 'Prestation du cabinet' }}</p>
+                        <Tag class="mt-2" :value="servicePaymentStatus(selectedCabinetService).label" :severity="servicePaymentStatus(selectedCabinetService).severity" />
                     </div>
                     <div class="space-y-2 rounded-xl border border-surface-200 p-4 text-sm dark:border-surface-700">
                         <div class="flex justify-between"><span class="text-surface-500">Date</span><strong>{{ formatDateTime(selectedCabinetService.createdAt || selectedCabinetService.date) }}</strong></div>
@@ -1221,9 +1248,15 @@ const handleCancelWithConfirm = (event, consultation) => {
                             <p class="text-xs text-surface-500">{{ cabinetServiceInsuranceLabel(selectedCabinetService) }}</p>
                         </template>
                         <div class="flex justify-between"><span class="text-surface-500">Réglé</span><strong>{{ formatFcfa(selectedCabinetService.facture?.partPatientPayee ?? 0) }}</strong></div>
-                        <div class="flex justify-between"><span class="text-surface-500">Reste</span><strong>{{ formatFcfa(selectedCabinetService.facture?.reste ?? selectedCabinetService.montant) }}</strong></div>
-                        <div v-if="selectedCabinetService.observation" class="border-t border-surface-200 pt-2 dark:border-surface-700"><span class="text-surface-500">Note</span><p class="mt-1">{{ selectedCabinetService.observation }}</p></div>
+                        <div class="flex justify-between"><span class="text-surface-500">Reste patient</span><strong>{{ formatFcfa(serviceRemaining(selectedCabinetService)) }}</strong></div>
+                        <div v-if="selectedCabinetService.note" class="border-t border-surface-200 pt-2 dark:border-surface-700"><span class="text-surface-500">Note</span><p class="mt-1">{{ selectedCabinetService.note }}</p></div>
                     </div>
+                    <button v-if="selectedCabinetService.statut !== 'annule' && selectedCabinetService.facture?.id && serviceRemaining(selectedCabinetService) > 0" type="button" class="w-full rounded-xl bg-primary-500 px-4 py-3 text-sm font-semibold text-white hover:bg-primary-600" @click="cabinetServicePayVisible = true">
+                        <i class="pi pi-wallet mr-2"></i>Encaisser {{ formatFcfa(serviceRemaining(selectedCabinetService)) }}<span v-if="selectedCabinetService.coveredByInsurance"> (part patient)</span>
+                    </button>
+                    <button v-if="selectedCabinetService.patientId" type="button" class="w-full rounded-xl border border-primary-200 px-4 py-3 text-sm font-medium text-primary-700 dark:border-primary-800 dark:text-primary-300" @click="emit('open-patient-dossier', selectedCabinetService.patient || { id: selectedCabinetService.patientId })">
+                        <i class="pi pi-address-book mr-2"></i>Ouvrir dossier
+                    </button>
                 </div>
                 <div v-else-if="centerView === 'queue' && currentConsultation" class="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 scrollbar-thin">
                     <!-- Carte patient -->
@@ -1245,7 +1278,7 @@ const handleCancelWithConfirm = (event, consultation) => {
                                 {{ patientLabel(currentConsultation).charAt(0).toUpperCase() }}
                             </div>
                             <div class="flex-1 min-w-0">
-                                <p class="text-base font-semibold text-surface-900 truncate dark:text-surface-50">
+                                <p class="break-words text-xl font-bold leading-snug text-surface-900 dark:text-surface-50">
                                     {{ patientLabel(currentConsultation) }}
                                 </p>
                                 <p class="text-xs text-surface-400 truncate mt-0.5">
@@ -1288,7 +1321,7 @@ const handleCancelWithConfirm = (event, consultation) => {
                             class="col-span-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 transition-all hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200"
                             @click="openCabinetService(currentConsultation.patient || { id: selectedPatientId, nom: currentConsultation.patientName })"
                         >
-                            <i class="pi pi-building mr-1"></i>Enregistrer un service cabinet
+                            <i class="pi pi-building mr-1"></i>Enregistrer une prestation du cabinet
                         </button>
                         <button
                             v-if="allowReceptionQuickClose && Number(currentConsultation.state) !== 1"
@@ -1499,6 +1532,7 @@ const handleCancelWithConfirm = (event, consultation) => {
             </button>
         </nav>
     </div>
+    <CabinetServicePayDialog v-model:visible="cabinetServicePayVisible" :service="selectedCabinetService" @paid="onCabinetServiceCreated" />
     <CabinetServiceDialog
         v-model:visible="cabinetServiceVisible"
         :patient-id="cabinetServicePatient?.id"

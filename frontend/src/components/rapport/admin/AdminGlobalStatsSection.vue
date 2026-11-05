@@ -99,6 +99,19 @@ function printSection() {
     });
 }
 
+function printBento(item) {
+    printReport({
+        title: item.label,
+        periodLabel: props.periodLabel || formatAsOfLabel(),
+        landscape: false,
+        sections: [{
+            title: item.label,
+            items: [{ label: 'Total', value: item.value }, ...(item.subStats || [])],
+            note: item.note
+        }]
+    });
+}
+
 </script>
 
 <template>
@@ -118,7 +131,21 @@ function printSection() {
             <article v-for="item in items(stats)" :key="item.key" :class="['bento-card', bentoSize(item), 'bento-tone--' + item.tone]">
                 <div class="flex items-start justify-between gap-3">
                     <h3 class="text-xl font-medium text-surface-600 dark:text-surface-300">{{ item.label }}</h3>
-                    <span class="bento-icon" aria-hidden="true"><i :class="item.icon"></i></span>
+                    <div class="flex shrink-0 items-center gap-1">
+                        <Button
+                            icon="pi pi-print"
+                            text
+                            rounded
+                            severity="secondary"
+                            size="small"
+                            class="bento-print"
+                            :aria-label="'Imprimer : ' + item.label"
+                            :title="'Imprimer : ' + item.label"
+                            :disabled="loading"
+                            @click="printBento(item)"
+                        />
+                        <span class="bento-icon" aria-hidden="true"><i :class="item.icon"></i></span>
+                    </div>
                 </div>
                 <div v-if="loading" class="mt-3 h-9 w-32 animate-pulse rounded bg-surface-200 dark:bg-surface-700" aria-label="Chargement"></div>
                 <p v-else class="bento-value">{{ item.value }}</p>
@@ -163,5 +190,5 @@ function printSection() {
 .bento-tone--teal { --bento-accent: var(--p-teal-500); }
 @media (min-width: 640px) { .bento-card { flex-basis: calc((100% - 1rem) / 2); } .bento-card--large { flex-basis: 100%; } .bento-card--compact { flex-basis: calc((100% - 2rem) / 3); } }
 @media (min-width: 1280px) { .bento-card--large { flex-basis: calc((100% - 1rem) / 2); } .bento-card--medium { flex-basis: calc((100% - 2rem) / 3); } .bento-card--small { flex-basis: calc((100% - 3rem) / 4); } .bento-card--compact { flex-basis: calc((100% - 5rem) / 6); } }
-@media print { .stats-bento { display: block; } .bento-card { break-inside: avoid; margin-bottom: 1rem; } }
+@media print { .stats-bento { display: block; } .bento-card { break-inside: avoid; margin-bottom: 1rem; } .bento-print { display: none; } }
 </style>

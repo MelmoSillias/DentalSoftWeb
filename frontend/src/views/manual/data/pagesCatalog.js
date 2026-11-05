@@ -148,7 +148,7 @@ export const pageDocs = [
         roles: 'Administrateur, accueil, médecin (ses patients)',
         audience: ['admin', 'accueil', 'medecin'],
         purpose:
-            'Registre du cabinet (« Gestion des Patients »). On y cherche un patient, on crée son dossier, on lance une consultation, un rendez-vous ou un service cabinet. Un médecin ne voit que ses patients, et le téléphone peut lui être affiché « Masqué par l\'administrateur ».',
+            'Registre du cabinet (« Gestion des Patients »). On y cherche un patient, on crée son dossier, on lance une consultation, un rendez-vous ou une prestation du cabinet. Un médecin ne voit que ses patients, et le téléphone peut lui être affiché « Masqué par l\'administrateur ».',
         figure: {
             label: 'Liste des patients',
             caption: 'Recherche, boutons d’en-tête et actions de ligne.',
@@ -165,9 +165,9 @@ export const pageDocs = [
             ['Nouvelle consultation', 'Vérifie d’abord qu’aucune consultation n’est déjà ouverte pour ce patient.', 'Admin, accueil'],
             ['Modifier', 'Rouvre le formulaire « Modifier le patient », bouton Mettre à jour.', 'Tous'],
             ['Voir dossier médical', 'Ouvre le dossier du patient (menu d’actions de la ligne).', 'Tous'],
-            ['Voir activité', 'Ouvre une synthèse de l’activité du patient : rendez-vous, factures, paiements et services cabinet ; les consultations et fiches visibles dépendent du rôle.', 'Admin, accueil, médecin'],
+            ['Voir activité', 'Ouvre une synthèse de l’activité du patient : rendez-vous, factures, paiements et prestations du cabinet ; les consultations et fiches visibles dépendent du rôle.', 'Admin, accueil, médecin'],
             ['Créer un devis', 'Ouvre le devis associé au patient ; les devis enregistrés dans les fiches médicales sont aussi consultables depuis son dossier.', 'Tous'],
-            ['Nouveau rendez-vous, Service cabinet', 'Ouvre le dialogue correspondant avec ce patient.', 'Tous'],
+            ['Nouveau rendez-vous, Prestation du cabinet', 'Ouvre le dialogue correspondant avec ce patient.', 'Tous'],
             ['Supprimer (corbeille)', 'Après confirmation : « Patient déplacé dans la corbeille. » Il n’est pas effacé.', 'Tous'],
             ['Corbeille › Restaurer', '« Patient restauré avec succès. »', 'Tous'],
             ['Exporter', 'Imprime la page affichée : nom, prénom, téléphone, âge, sexe.', 'Tous']
@@ -245,7 +245,7 @@ export const pageDocs = [
             caption: 'Cartes classées par ancienneté.',
             markers: [
                 { x: 18, y: 40, text: 'Carte en position 1 : la plus ancienne.' },
-                { x: 55, y: 40, text: 'Actions rapides : Clôture rapide, fiche, Service cabinet, Annuler.' },
+                { x: 55, y: 40, text: 'Actions rapides : Clôture rapide, fiche, Prestation du cabinet, Annuler.' },
                 { x: 88, y: 10, text: 'Bascule Cartes / File d’attente.' }
             ]
         },
@@ -253,7 +253,7 @@ export const pageDocs = [
             ['Double-clic sur une carte', 'Ouvre la fiche médicale de la consultation.', 'Admin, médecin'],
             ['Clôture rapide', 'Formulaire court : Médecin, Aide(s) soignant(e)s, Salle, Soins réalisés, puis Clôturer.', 'Admin, médecin'],
             ['Ouvrir fiche médicale du patient', 'Ouvre la fiche liée tant que la consultation n’est pas clôturée.', 'Admin, médecin'],
-            ['Service cabinet', 'Enregistre une prestation du catalogue cabinet.', 'Admin, médecin'],
+            ['Prestation du cabinet', 'Enregistre une prestation du catalogue cabinet.', 'Admin, médecin'],
             ['Annuler', 'Confirmation « Annuler cette consultation en cours ? ». Si une fiche est liée, réservé à l’administrateur.', 'Selon le cas']
         ],
         events: [
@@ -347,13 +347,13 @@ export const pageDocs = [
     },
     {
         id: 'page-services',
-        title: 'Services cabinets',
-        menu: 'Consultations › Services cabinets',
+        title: 'Prestations du cabinet',
+        menu: 'Consultations › Prestations du cabinet',
         route: '/consultations/services-cabinets',
         roles: 'Administrateur, accueil, médecin',
         audience: ['admin', 'accueil', 'medecin'],
         purpose: 'Registre des prestations facturées au patient mais exclues de la rémunération du médecin : radiographie, produit, acte du cabinet. Les tarifs se préparent dans le catalogue des Paramètres généraux.',
-        figure: { label: 'Services cabinets', caption: 'Liste des services, statut de paiement et actions.' },
+        figure: { label: 'Prestations du cabinet', caption: 'Liste des prestations, statut de paiement et actions.' },
         actions: [
             ['Nouveau service', 'Patient, service du catalogue, quantité, prix, date, note.', 'Tous'],
             ['Payer', 'Ouvre l’encaissement tant qu’il reste un solde.', 'Tous'],
@@ -370,7 +370,7 @@ export const pageDocs = [
         exceptions: [
             'Statuts : Payé, Partiel, Impayé, Annulé.',
             'Le même dialogue s’ouvre depuis la liste des patients, la file d’attente et le Mode Focus.',
-            'Une facture de service cabinet ne se réinitialise pas et ne s’envoie pas par SMS.'
+            'Une facture de prestation du cabinet ne se réinitialise pas et ne s’envoie pas par SMS.'
         ],
         see: ['mr-tarifs']
     },
@@ -396,10 +396,10 @@ export const pageDocs = [
         actions: [
             ['Régler', 'Ouvre « Régler la facture », montant prérempli au reste ; plusieurs factures impayées s’ouvrent en onglets.', 'Admin, accueil'],
             ['Valider', 'Pour une facture à 0 : « Facture vide validée », sans paiement.', 'Admin, accueil'],
-            ['Modifier', 'Change les lignes d’une facture sans aucun paiement. Refusé sur assurance et service cabinet.', 'Admin ; accueil si autorisé'],
+            ['Modifier', 'Change les lignes d’une facture sans aucun paiement. Refusé sur assurance et prestation du cabinet.', 'Admin ; accueil si autorisé'],
             ['Aperçu', 'Affiche puis imprime la facture.', 'Admin, accueil'],
             ['Reçu', 'Onglet Paiements : imprime le reçu 80 mm du paiement.', 'Admin, accueil'],
-            ['Envoyer facture par SMS', '« Facture ajoutée à la file SMS. » Indisponible pour assurance et service cabinet.', 'Internet actif'],
+            ['Envoyer facture par SMS', '« Facture ajoutée à la file SMS. » Indisponible pour assurance et prestation du cabinet.', 'Internet actif'],
             ['Créer un lot', 'Regroupe des factures assurance : Nom, Début, Fin.', 'Admin, accueil'],
             ['Envoyer, Confirmer, Rembourser, Imprimer', 'Fait avancer le lot ; Rembourser demande un mode et un montant ; Imprimer sort le bordereau.', 'Admin, accueil'],
             ['Réinitialiser', 'Dans le dialogue de paiement : efface les paiements de la facture.', 'Admin']
@@ -428,12 +428,12 @@ export const pageDocs = [
         route: '/rapports',
         roles: 'Administrateur, accueil, médecin',
         audience: ['admin', 'accueil', 'medecin'],
-        purpose: 'Lecture de l’activité, en lecture seule. Les statistiques financières distinguent désormais les services cabinet des consultations et des actes. Le contenu dépend du rôle. Pour corriger un chiffre, il faut revenir à la source : caisse, fiche ou paie.',
+        purpose: 'Lecture de l’activité, en lecture seule. Les statistiques financières distinguent désormais les prestations du cabinet des consultations et des actes. Le contenu dépend du rôle. Pour corriger un chiffre, il faut revenir à la source : caisse, fiche ou paie.',
         figure: { label: 'Rapports', caption: 'Onglets du rapport et choix de période.' },
         actions: [
             ['Période (administrateur, médecin)', 'Sélecteur de plage de dates et bouton Rafraîchir.', 'Admin, médecin'],
             ['Date (accueil)', 'Choix d’un jour.', 'Accueil'],
-            ['Onglets administrateur', 'Vue d\'ensemble, Activité, Finances (tableau croisé financier), Soins, Médecins. Les montants des services cabinet sont présentés séparément dans les statistiques financières et périodiques.', 'Admin'],
+            ['Onglets administrateur', 'Vue d\'ensemble, Activité, Finances (tableau croisé financier), Soins, Médecins. Les montants des prestations du cabinet sont présentés séparément dans les statistiques financières et périodiques.', 'Admin'],
             ['Onglets médecin', 'Synthèse, Activité, Actes, Profil : uniquement ses propres chiffres.', 'Médecin'],
             ['Onglets accueil', 'Stats du jour, Par médecin.', 'Accueil'],
             ['Imprimer', 'Sur les tableaux par médecin et les statistiques du jour.', 'Admin, accueil']
@@ -472,7 +472,7 @@ export const pageDocs = [
             ['Ajouter un conge', 'Dialogue « Nouveau conge » : type (Vacances par défaut), début, fin, puis Creer.', 'Admin']
         ],
         events: [
-            ['Médecin rémunéré au pourcentage', 'Le calcul du salaire se base sur les montants encaissés des actes du médecin, selon la période de paie. Les services cabinet restent exclus.'],
+            ['Médecin rémunéré au pourcentage', 'Le calcul du salaire se base sur les montants encaissés des actes du médecin, selon la période de paie. Les prestations du cabinet restent exclus.'],
             ['Période déjà soldée', '« Cette période est déjà entièrement réglée. » Aucun second versement.'],
             ['Aucun mode de paiement choisi', '« Sélectionnez un mode de règlement. »'],
             ['Contrat CDI', 'La durée du contrat est désactivée ; sinon 3 mois par défaut.']

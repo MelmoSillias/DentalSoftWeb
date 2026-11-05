@@ -472,7 +472,7 @@ watch(
 
             <div class="min-w-0 flex-1 truncate text-center">
                 <template v-if="currentConsultation">
-                    <p class="truncate text-xs font-semibold text-surface-800 dark:text-surface-100">{{ patientLabel(currentConsultation) }}</p>
+                    <p class="break-words text-base font-bold leading-snug text-surface-900 dark:text-surface-50">{{ patientLabel(currentConsultation) }}</p>
                     <p class="truncate text-[10px] text-surface-400">{{ medecinLabel(currentConsultation) }}</p>
                 </template>
                 <template v-else>
@@ -602,7 +602,7 @@ watch(
                             <i class="pi pi-file-edit text-sm text-white"></i>
                         </div>
                         <div class="min-w-0">
-                            <h3 class="truncate text-base font-semibold text-surface-900 dark:text-surface-50">
+                            <h3 class="break-words text-xl font-bold leading-snug text-surface-900 dark:text-surface-50">
                                 {{ patientLabel(currentConsultation) }}
                             </h3>
                             <p class="truncate text-xs text-surface-500">
@@ -759,7 +759,7 @@ watch(
                                         </div>
                                     </div>
 
-                                    <p class="truncate text-sm font-semibold text-surface-900 dark:text-surface-50">
+                                    <p class="break-words text-base font-bold leading-snug text-surface-900 dark:text-surface-50">
                                         {{ patientLabel(consultation) }}
                                     </p>
                                     <p class="mt-0.5 truncate text-xs text-surface-400">
@@ -879,7 +879,7 @@ watch(
                                 </span>
                             </div>
                         </div>
-                        <p class="truncate text-sm font-semibold text-surface-900 dark:text-white">{{ patientLabel(consultation) }}</p>
+                        <p class="break-words text-base font-bold leading-snug text-surface-900 dark:text-white">{{ patientLabel(consultation) }}</p>
                         <p class="truncate text-xs text-surface-400">{{ medecinLabel(consultation) }}</p>
                         <div class="mt-1.5 flex flex-wrap gap-1">
                             <Tag v-if="isNewPatient(consultation)" value="Nouveau" size="small" severity="info" />

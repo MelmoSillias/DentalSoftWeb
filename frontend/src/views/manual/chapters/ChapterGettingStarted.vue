@@ -194,13 +194,13 @@ function goTo(id) {
                 <ManualStep>Bloc <span class="ui">Catalogue des soins</span> : cliquez <span class="ui">Ajouter une catégorie</span>, par exemple « Soins conservateurs ».</ManualStep>
                 <ManualStep>Ajoutez chaque acte de la catégorie avec sa description et son montant.</ManualStep>
                 <ManualStep>
-                    Dans la partie <span class="ui">Services cabinet</span>, cliquez <span class="ui">Ajouter</span> pour chaque prestation facturée au patient mais exclue de la rémunération du médecin : radiographie, produit, kit.
+                    Dans la partie <span class="ui">Prestations du cabinet</span>, cliquez <span class="ui">Ajouter</span> pour chaque prestation facturée au patient mais exclue de la rémunération du médecin : radiographie, produit, kit.
                 </ManualStep>
-                <ManualStep result="Les actes apparaissent dans la fiche médicale et la clôture rapide ; les services cabinet dans « Services cabinets ».">Cliquez <span class="ui">Enregistrer</span> sur le catalogue.</ManualStep>
+                <ManualStep result="Les actes apparaissent dans la fiche médicale et la clôture rapide ; les prestations du cabinet dans « Prestations du cabinet ».">Cliquez <span class="ui">Enregistrer</span> sur le catalogue.</ManualStep>
             </ManualSteps>
             <ManualFigure label="Catalogue des soins" number="1.4" compact caption="Catégories, actes et montants. Une catégorie ne se supprime que lorsqu’elle est vide." />
             <ManualCallout type="note">
-                <p>Distinguer acte et service cabinet est important pour la paie : un médecin rémunéré au pourcentage est payé sur les actes, jamais sur les services cabinet.</p>
+                <p>Distinguer acte et prestation du cabinet est important pour la paie : un médecin rémunéré au pourcentage est payé sur les actes, jamais sur les prestations du cabinet.</p>
             </ManualCallout>
         </ManualSection>
 

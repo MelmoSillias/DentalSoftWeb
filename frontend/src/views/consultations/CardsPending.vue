@@ -585,7 +585,7 @@ const breadcrumbItems = [{ label: 'Consultations' }, { label: "File d'attente" }
                                         severity="warn"
                                         size="small"
                                         outlined
-                                        label="Service cabinet"
+                                        label="Prestation du cabinet"
                                         @click.stop="openCabinetService(consultation)"
                                     />
                                     <Button
@@ -679,7 +679,7 @@ const breadcrumbItems = [{ label: 'Consultations' }, { label: "File d'attente" }
                                 severity="warn"
                                 size="small"
                                 outlined
-                                v-tooltip.top="'Enregistrer un service cabinet'"
+                                v-tooltip.top="'Enregistrer une prestation du cabinet'"
                                 @click.stop="openCabinetService(consultation)"
                             />
                             <Button

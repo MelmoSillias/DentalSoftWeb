@@ -78,7 +78,7 @@ L'ancien code ne reproduit pas 370 000 comme encaissement réel sur ces sauvegar
 
 - [ReportService.php](../backend-reform/src/Reporting/Service/ReportService.php) : l'ancienne version utilisait `ActAttributionService` pour exclure les actes cabinet du facturé et répartir les paiements. La nouvelle version affecte les actes de consultation et leurs paiements intégralement aux médecins.
 - [CabinetServiceBillingService.php](../backend-reform/src/Billing/Service/CabinetServiceBillingService.php) : les services cabinet sont désormais suivis dans des structures distinctes, vides dans la sauvegarde après migration.
-- [DoctorReportsTable.vue](../frontend/src/components/rapport/common/DoctorReportsTable.vue) : les sommes du facturé, des paiements des soins et des paiements de reliquats sont distinctes. Le nouveau libellé « Base de rémunération (assurance incluse) » ne signifie pas que toute la facturation est encaissée.
+- [DoctorReportsTable.vue](../frontend/src/components/rapport/common/DoctorReportsTable.vue) : les sommes du facturé, des paiements des soins et des paiements de reliquats sont distinctes. Le nouveau libellé « Total rénumérable (assurance incluse) » ne signifie pas que toute la facturation est encaissée.
 - Le mécanisme de sélection des paiements validés et le rattachement du paiement de 30 000 à une activité antérieure ne changent pas le résultat du jour.
 - La rémunération calculée des médecins de cette journée est identique dans les deux versions : 94 500 FCFA. Les 10 000 reclassés concernent ici un médecin dont la rémunération calculée dans ces données est nulle ; ce résultat ne préjuge pas d'autres journées.
 

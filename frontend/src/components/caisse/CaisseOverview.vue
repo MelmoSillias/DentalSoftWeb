@@ -74,7 +74,7 @@ const factureOrigin = ref('all');
 const factureOriginOptions = [
     { label: 'Tous', value: 'all' },
     { label: 'Consultations', value: 'consultation' },
-    { label: 'Services cabinet', value: 'service_cabinet' }
+    { label: 'Prestations du cabinet', value: 'service_cabinet' }
 ];
 const paymentsSearch = ref('');
 const paymentFamilyFilter = ref('non-insurance');
@@ -123,7 +123,7 @@ const priorReliquatAmount = (row) => computePriorReliquat(row);
 
 const isInvoiceStylePayment = (payment) => ['devis', 'facture', 'facture_assurance', 'service_cabinet'].includes(payment?.type);
 const isCabinetRow = (row) => isCabinetServiceFacture(row);
-const documentLabel = (row) => (isCabinetRow(row) ? 'SERVICE CABINET' : isInsuranceRow(row) ? 'FACTURE ASSURANCE' : 'FACTURE');
+const documentLabel = (row) => (isCabinetRow(row) ? 'PRESTATION DU CABINET' : isInsuranceRow(row) ? 'FACTURE ASSURANCE' : 'FACTURE');
 const matchesOrigin = (row) => {
     if (factureOrigin.value === 'service_cabinet') return isCabinetRow(row);
     if (factureOrigin.value === 'consultation') return !isCabinetRow(row);
@@ -161,7 +161,7 @@ const filteredFacturesR = computed(() => {
             .map((payment) => ({
                 ...payment,
                 detailType: payment?.type === 'service_cabinet' ? 'cabinet_payment' : payment?.type === 'facture_assurance' ? 'assurance_payment' : 'facture_payment',
-                detailLabel: payment?.type === 'service_cabinet' ? 'Paiement service cabinet' : payment?.type === 'facture_assurance' ? 'Paiement assurance' : 'Paiement facture'
+                detailLabel: payment?.type === 'service_cabinet' ? 'Paiement de prestation du cabinet' : payment?.type === 'facture_assurance' ? 'Paiement assurance' : 'Paiement facture'
             }));
 
         const consultationTicket = consultationId > 0 ? payments.find((payment) => payment?.type === 'ticket' && Number(payment?.consultationId) === consultationId) : null;
@@ -257,9 +257,71 @@ const paymentsTotals = computed(() => {
 });
 
 // Statistiques détaillées pour le modal
+const paymentPeriodLabel = computed(() => props.paymentRange?.length === 2 ? `${formatDate(props.paymentRange[0])} au ${formatDate(props.paymentRange[1])}` : 'Période des paiements');
+
+const receiptStats = computed(() => {
+    const families = [
+        { key: 'facture', label: 'Factures normales', icon: 'pi pi-file' },
+        { key: 'facture_assurance', label: 'Factures avec assurance', icon: 'pi pi-shield' },
+        { key: 'service_cabinet', label: 'Prestations du cabinet', icon: 'pi pi-building' },
+        { key: 'ticket', label: 'Tickets de consultation', icon: 'pi pi-ticket' }
+    ];
+    const calendarDay = (value) => {
+        if (!value) return null;
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? null : new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+    };
+    const start = calendarDay(props.paymentRange?.[0]);
+    const end = calendarDay(props.paymentRange?.[1]);
+    const invoiceFamily = (invoice) => isCabinetRow(invoice) ? 'service_cabinet' : isInsuranceRow(invoice) ? 'facture_assurance' : 'facture';
+    const invoiceDates = new Map((props.factures || []).map((invoice) => [`${invoiceFamily(invoice)}-${invoice.id}`, invoice.date]));
+    const uniquePayments = new Map();
+    (props.payments || []).forEach((payment, index) => uniquePayments.set(payment.pId ?? payment.id ?? `row-${index}`, payment));
+    const details = [...uniquePayments.values()].map((payment) => {
+        const family = payment.type === 'devis' ? 'facture' : payment.type;
+        const invoiceDate = payment.factureDate || invoiceDates.get(`${family}-${payment.factureId}`);
+        const day = calendarDay(invoiceDate);
+        let contextKey = 'unknown';
+        let context = 'Date de facture non disponible';
+        if (family === 'ticket') {
+            contextKey = 'period';
+            context = 'Ticket de consultation';
+        } else if (day !== null && start !== null && day < start) {
+            contextKey = 'prior';
+            context = 'Règlement de reliquat';
+        } else if (day !== null && start !== null && end !== null && day >= start && day <= end) {
+            contextKey = 'period';
+            context = 'Facture de la période';
+        } else if (day !== null) {
+            context = 'Facture hors période / période non définie';
+        }
+        return { ...payment, family, invoiceDate, contextKey, context, familyLabel: families.find((item) => item.key === family)?.label || 'Autres encaissements', montant: Number(payment.montant) || 0 };
+    });
+    if (details.some((payment) => !families.some((family) => family.key === payment.family))) {
+        families.push({ key: 'other', label: 'Autres encaissements', icon: 'pi pi-wallet' });
+    }
+    const knownFamilies = ['facture', 'facture_assurance', 'service_cabinet', 'ticket'];
+    const rows = families.map((family) => {
+        const payments = details.filter((payment) => family.key === 'other' ? !knownFamilies.includes(payment.family) : payment.family === family.key);
+        const sum = (context) => payments.filter((payment) => !context || payment.contextKey === context).reduce((total, payment) => total + payment.montant, 0);
+        return {
+            ...family,
+            count: payments.length,
+            documents: new Set(payments.map((payment, index) => family.key === 'ticket' ? `ticket-${payment.consultationId ?? payment.factureId ?? payment.pId ?? index}` : `${payment.family}-${payment.factureId ?? payment.pId ?? index}`)).size,
+            period: sum('period'), prior: sum('prior'), unknown: sum('unknown'), total: sum()
+        };
+    });
+    return {
+        rows, details,
+        total: details.reduce((sum, payment) => sum + payment.montant, 0),
+        prior: rows.reduce((sum, row) => sum + row.prior, 0),
+        hasUnknownContext: details.some((payment) => payment.contextKey === 'unknown')
+    };
+});
+
 const detailedStats = computed(() => {
     const allInvoices = props.factures || [];
-    const allPayments = props.payments || [];
+    const allPayments = receiptStats.value.details;
     const totalRevenue = allPayments.reduce((sum, payment) => sum + (Number(payment?.montant) || 0), 0);
 
     const totalInvoices = allInvoices.length;
@@ -283,16 +345,19 @@ const detailedStats = computed(() => {
         else statusCounts.partial++;
     });
 
-    const paymentModeBreakdown = {};
+    const paymentModeBreakdown = Object.create(null);
     allPayments.forEach((p) => {
         const mode = p.mode || 'Autre';
-        paymentModeBreakdown[mode] = (paymentModeBreakdown[mode] || 0) + (Number(p.montant) || 0);
+        const row = paymentModeBreakdown[mode] || { amount: 0, count: 0 };
+        row.amount += Number(p.montant) || 0;
+        row.count += 1;
+        paymentModeBreakdown[mode] = row;
     });
 
     const insurancePayments = allPayments.filter((payment) => isInsurancePayment(payment));
     const totalInsurance = insurancePayments.reduce((sum, p) => sum + (Number(p.montant) || 0), 0);
     const paymentModeRows = Object.entries(paymentModeBreakdown)
-        .map(([mode, amount]) => ({ mode, amount: Number(amount) || 0 }))
+        .map(([mode, row]) => ({ mode, ...row }))
         .sort((left, right) => right.amount - left.amount);
 
     return {
@@ -397,7 +462,7 @@ const printDetailPayment = (row) => {
                 <div class="min-w-0 flex-1">
                     <p class="page-kpi-label text-emerald-700 dark:text-emerald-300">Encaissements</p>
                     <p class="page-kpi-value truncate text-emerald-900 dark:text-emerald-100">{{ totalRevenueLabel }}</p>
-                    <p v-if="servicesCabinetStats.encaisse > 0" class="mt-1 truncate text-xs text-emerald-600/70 dark:text-emerald-400/70">Services cabinet : {{ formatFcfa(servicesCabinetStats.encaisse) }}</p>
+                    <p v-if="servicesCabinetStats.encaisse > 0" class="mt-1 truncate text-xs text-emerald-600/70 dark:text-emerald-400/70">Prestations du cabinet : {{ formatFcfa(servicesCabinetStats.encaisse) }}</p>
                 </div>
                 <i class="pi pi-wallet page-kpi-icon text-emerald-500"></i>
             </article>
@@ -410,7 +475,7 @@ const printDetailPayment = (row) => {
             </article>
             <article class="page-kpi-card border-amber-200/70 bg-gradient-to-br from-amber-50/80 to-amber-100/50 dark:border-amber-800/40 dark:from-amber-900/20 dark:to-amber-800/20">
                 <div class="min-w-0 flex-1">
-                    <p class="page-kpi-label text-amber-700 dark:text-amber-300">Services cabinet</p>
+                    <p class="page-kpi-label text-amber-700 dark:text-amber-300">Prestations du cabinet</p>
                     <p class="page-kpi-value text-amber-900 dark:text-amber-100">{{ servicesCabinetStats.count }}</p>
                     <p class="mt-1 truncate text-xs text-amber-600/70 dark:text-amber-400/70">Facturé {{ formatFcfa(servicesCabinetStats.facture) }}</p>
                 </div>
@@ -422,13 +487,16 @@ const printDetailPayment = (row) => {
         <AppDialog
             v-model:visible="showStatsModal"
             title="Statistiques détaillées"
+            :subtitle="`Période des encaissements : ${paymentPeriodLabel}`"
             icon="pi pi-chart-bar"
             icon-tone="primary"
-            size="md"
+            size="xl"
             :show-footer="false"
             class="stats-dialog"
         >
             <div class="flex flex-col gap-4">
+                <p class="text-sm text-surface-500">Les encaissements suivent la période des paiements, quelle que soit la date des factures. Le nombre de factures, leur répartition et le reste à encaisser suivent les filtres de la liste des factures.</p>
+                <p v-if="paymentsLoading || facturesLoading" role="status" class="text-sm text-surface-500"><i class="pi pi-spin pi-spinner mr-2"></i>Actualisation des statistiques…</p>
                 <div class="page-kpi-grid page-kpi-grid--compact">
                     <article class="page-kpi-card border-primary-200/70 bg-gradient-to-br from-primary-50/80 to-primary-100/50 dark:border-primary-800/40 dark:from-primary-900/30 dark:to-primary-800/20">
                         <div class="min-w-0 flex-1">
@@ -441,6 +509,7 @@ const printDetailPayment = (row) => {
                         <div class="min-w-0 flex-1">
                             <p class="page-kpi-label text-emerald-700 dark:text-emerald-300">Encaissements</p>
                             <p class="page-kpi-value truncate text-emerald-900 dark:text-emerald-100">{{ formatFcfa(detailedStats.totalPaid) }}</p>
+                            <p class="mt-1 text-xs text-emerald-700 dark:text-emerald-300">Dont règlements de reliquats : {{ formatFcfa(receiptStats.prior) }}</p>
                         </div>
                         <i class="pi pi-wallet page-kpi-icon text-emerald-500"></i>
                     </article>
@@ -454,12 +523,12 @@ const printDetailPayment = (row) => {
                 </div>
 
                 <section class="rounded-xl border border-surface-200 p-3 dark:border-surface-700">
-                    <h4 class="mb-2 font-semibold text-surface-900 dark:text-surface-100">Services cabinet</h4>
+                    <h4 class="mb-2 font-semibold text-surface-900 dark:text-surface-100">Prestations du cabinet</h4>
                     <div class="grid grid-cols-2 gap-2">
                         <div class="rounded-lg bg-surface-50 px-3 py-2 text-sm dark:bg-surface-800/60">Nombre : {{ servicesCabinetStats.count }}</div>
                         <div class="rounded-lg bg-surface-50 px-3 py-2 text-sm dark:bg-surface-800/60">Facturé : {{ formatFcfa(servicesCabinetStats.facture) }}</div>
                         <div class="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200">Encaissé : {{ formatFcfa(servicesCabinetStats.encaisse) }}</div>
-                        <div class="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:bg-rose-950/30 dark:text-rose-200">Paiement de réliquats : {{ formatFcfa(servicesCabinetStats.reste) }}</div>
+                        <div class="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:bg-rose-950/30 dark:text-rose-200">Reste à encaisser : {{ formatFcfa(servicesCabinetStats.reste) }}</div>
                     </div>
                 </section>
 
@@ -483,18 +552,65 @@ const printDetailPayment = (row) => {
                     </div>
                 </section>
 
+                <section class="overflow-hidden rounded-xl border border-surface-200 dark:border-surface-700">
+                    <div class="border-b border-surface-200 p-4 dark:border-surface-700">
+                        <h4 class="font-semibold text-surface-900 dark:text-surface-100">Origine des encaissements</h4>
+                        <p class="mt-1 text-xs text-surface-500">Les reliquats correspondent aux règlements de factures antérieures au début de la période des paiements.</p>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="bg-surface-50 text-xs text-surface-500 dark:bg-surface-800/50">
+                                <tr><th scope="col" class="p-3 text-left">Origine</th><th scope="col" class="p-3 text-right">Documents</th><th scope="col" class="p-3 text-right">Paiements</th><th scope="col" class="p-3 text-right">Factures de la période / tickets</th><th scope="col" class="p-3 text-right">Reliquats</th><th v-if="receiptStats.hasUnknownContext" scope="col" class="p-3 text-right">Autres dates / date inconnue</th><th scope="col" class="p-3 text-right">Total encaissé</th></tr>
+                            </thead>
+                            <tbody class="divide-y divide-surface-100 dark:divide-surface-800">
+                                <tr v-for="row in receiptStats.rows" :key="row.key">
+                                    <th scope="row" class="whitespace-nowrap p-3 text-left font-medium"><i :class="row.icon" class="mr-2 text-surface-400"></i>{{ row.label }}<small v-if="row.key === 'facture_assurance'" class="mt-1 block font-normal text-surface-500">Part patient encaissée</small></th>
+                                    <td class="p-3 text-right">{{ row.documents }}</td><td class="p-3 text-right">{{ row.count }}</td>
+                                    <td class="whitespace-nowrap p-3 text-right">{{ formatFcfa(row.period) }}</td>
+                                    <td class="whitespace-nowrap p-3 text-right">{{ formatFcfa(row.prior) }}</td>
+                                    <td v-if="receiptStats.hasUnknownContext" class="whitespace-nowrap p-3 text-right">{{ formatFcfa(row.unknown) }}</td>
+                                    <td class="whitespace-nowrap p-3 text-right font-semibold text-emerald-700 dark:text-emerald-300">{{ formatFcfa(row.total) }}</td>
+                                </tr>
+                            </tbody>
+                            <tfoot class="border-t border-surface-200 bg-surface-50 font-semibold dark:border-surface-700 dark:bg-surface-800/50">
+                                <tr><th scope="row" :colspan="receiptStats.hasUnknownContext ? 6 : 5" class="p-3 text-left">Total encaissé</th><td class="whitespace-nowrap p-3 text-right">{{ formatFcfa(receiptStats.total) }}</td></tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    <p v-if="!receiptStats.details.length" class="p-4 text-sm text-surface-500">Aucun encaissement enregistré sur la période.</p>
+                </section>
+
                 <section class="rounded-xl border border-surface-200 p-3 dark:border-surface-700">
                     <h4 class="mb-2 font-semibold text-surface-900 dark:text-surface-100">Encaissements par mode de paiement</h4>
                     <div v-if="detailedStats.paymentModeRows.length" class="page-kpi-grid page-kpi-grid--compact">
                         <article v-for="item in detailedStats.paymentModeRows" :key="item.mode" class="page-kpi-card">
                             <div class="min-w-0 flex-1">
                                 <p class="page-kpi-label">{{ item.mode }}</p>
+                                <p class="text-xs text-surface-500">{{ item.count }} paiement(s)</p>
                                 <p class="page-kpi-value truncate">{{ formatFcfa(item.amount) }}</p>
                             </div>
                             <i class="pi pi-credit-card page-kpi-icon text-surface-400"></i>
                         </article>
                     </div>
                     <div v-else class="rounded-xl border border-dashed border-surface-300 px-4 py-5 text-sm text-surface-500 dark:border-surface-600 dark:text-surface-400">Aucun paiement enregistré sur la période.</div>
+                </section>
+
+                <section v-if="receiptStats.details.length" class="overflow-hidden rounded-xl border border-surface-200 dark:border-surface-700">
+                    <div class="border-b border-surface-200 p-4 dark:border-surface-700"><h4 class="font-semibold text-surface-900 dark:text-surface-100">Journal des encaissements de la période</h4></div>
+                    <div class="max-h-80 overflow-auto">
+                        <table class="w-full text-sm">
+                            <thead class="sticky top-0 bg-surface-50 text-xs text-surface-500 dark:bg-surface-800"><tr><th scope="col" class="p-3 text-left">Date / patient</th><th scope="col" class="p-3 text-left">Document</th><th scope="col" class="p-3 text-left">Contexte</th><th scope="col" class="p-3 text-left">Moyen</th><th scope="col" class="p-3 text-right">Montant</th></tr></thead>
+                            <tbody class="divide-y divide-surface-100 dark:divide-surface-800">
+                                <tr v-for="(payment, index) in receiptStats.details" :key="payment.pId ?? payment.id ?? index">
+                                    <td class="p-3"><span class="block text-xs text-surface-500">{{ formatDate(payment.date, true) }}</span><span class="whitespace-nowrap">{{ formatPatientName(payment) }}</span></td>
+                                    <td class="p-3"><span class="block whitespace-nowrap">{{ payment.familyLabel }}</span><small class="text-surface-500">#{{ payment.factureId ?? payment.consultationId ?? '—' }}<span v-if="payment.invoiceDate"> · {{ formatDate(payment.invoiceDate) }}</span></small></td>
+                                    <td class="p-3"><Tag :value="payment.context" :severity="payment.contextKey === 'prior' ? 'warn' : 'secondary'" /></td>
+                                    <td class="whitespace-nowrap p-3">{{ payment.mode || 'Non renseigné' }}</td>
+                                    <td class="whitespace-nowrap p-3 text-right font-semibold">{{ formatFcfa(payment.montant) }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </section>
             </div>
         </AppDialog>
@@ -569,7 +685,7 @@ const printDetailPayment = (row) => {
                     <template #body="{ data }">
                         <div class="flex flex-wrap gap-2">
                             <Tag :value="computeStatus(data).label" :severity="computeStatus(data).severity" />
-                            <Tag v-if="isCabinetRow(data)" value="Service cabinet" severity="warn" icon="pi pi-building" />
+                            <Tag v-if="isCabinetRow(data)" value="" severity="warn" icon="pi pi-building" />
                             <Tag v-if="computeInsuranceBadge(data)" :value="computeInsuranceBadge(data).label" :severity="computeInsuranceBadge(data).severity" icon="pi pi-shield" />
                         </div>
                     </template>
@@ -626,7 +742,7 @@ const printDetailPayment = (row) => {
                                     </div>
                                     <div class="inv-tags">
                                         <Tag :value="computeStatus(invoice).label" :severity="computeStatus(invoice).severity" />
-                                        <Tag v-if="isCabinetRow(invoice)" value="Service cabinet" severity="warn" icon="pi pi-building" />
+                                        <Tag v-if="isCabinetRow(invoice)" value="Prestation du cabinet" severity="warn" icon="pi pi-building" />
                                         <Tag v-if="computeInsuranceBadge(invoice)" :value="computeInsuranceBadge(invoice).label" :severity="computeInsuranceBadge(invoice).severity" icon="pi pi-shield" />
                                     </div>
                                 </div>
@@ -762,8 +878,8 @@ const printDetailPayment = (row) => {
                     <template #body="{ data }">
                         <div class="flex flex-wrap gap-2">
                             <Tag :value="computePaymentModeTag(data).label" :severity="computePaymentModeTag(data).severity" />
-                            <Tag v-if="data.type === 'service_cabinet'" value="Service cabinet" severity="warn" icon="pi pi-building" />
-                            <Tag v-if="isInsurancePayment(data)" value="Assurance" severity="info" icon="pi pi-shield" />
+                            <Tag v-if="data.type === 'service_cabinet'" value="" severity="warn" icon="pi pi-building" />
+                            <Tag v-if="isInsurancePayment(data)" value="" severity="info" icon="pi pi-shield" />
                         </div>
                     </template>
                 </Column>

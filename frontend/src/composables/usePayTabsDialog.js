@@ -68,7 +68,7 @@ export const resolveOpenPayDialogMode = (row, primaryMode = null) => resolvePrim
 export const formatPayTabLabel = (row, { isPrimary = false } = {}) => {
     const id = row?.id ?? '—';
     const date = row?.date ? String(row.date).slice(0, 10) : '';
-    const title = factureKindKey(row) === 'cabinet' ? 'Service cabinet' : 'Facture';
+    const title = factureKindKey(row) === 'cabinet' ? 'Prestation du cabinet' : 'Facture';
     const base = date ? `${title} #${id} · ${date}` : `${title} #${id}`;
     return isPrimary ? `${base} (sélectionnée)` : base;
 };

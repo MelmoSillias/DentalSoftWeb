@@ -57,7 +57,7 @@ const detailService = ref(null);
 const deletingId = ref(null);
 
 const breadcrumbHome = { icon: 'pi pi-home', to: '/dashboard' };
-const breadcrumbItems = [{ label: 'Consultations' }, { label: 'Services cabinets' }];
+const breadcrumbItems = [{ label: 'Consultations' }, { label: 'Prestations du cabinet' }];
 
 const formatDateToApi = (date) => {
     const d = new Date(date);
@@ -84,8 +84,8 @@ const periodLabel = computed(() => {
 });
 
 const headerSubtitle = computed(() => {
-    if (!periodLabel.value) return 'Tous les services cabinets';
-    return `Services du ${periodLabel.value}`;
+    if (!periodLabel.value) return 'Toutes les prestations du cabinet';
+    return `Prestations du ${periodLabel.value}`;
 });
 
 const filteredServices = computed(() => {
@@ -95,7 +95,7 @@ const filteredServices = computed(() => {
     return services.value.filter((s) => set.has(s.designation));
 });
 
-const totalCountLabel = computed(() => (filteredServices.value?.length ? `${filteredServices.value.length} service(s)` : ''));
+const totalCountLabel = computed(() => (filteredServices.value?.length ? `${filteredServices.value.length} prestation(s)` : ''));
 
 const filterGlobalValue = computed({
     get: () => filters.value.global?.value ?? '',
@@ -163,7 +163,7 @@ const loadCatalog = async () => {
         const settings = await fetchPublicGeneralSettings(token.value);
         serviceCatalog.value = normalizeServicesCabinetList(settings?.servicesCabinetList);
     } catch (error) {
-        logAppError('Services cabinets catalogue', error);
+        logAppError('Prestations du cabinet catalogue', error);
         serviceCatalog.value = defaultServicesCabinetList.map((item) => ({ ...item }));
     }
 };
@@ -181,11 +181,11 @@ const loadServices = async ({ asPageLoad = false } = {}) => {
         if (asPageLoad) loadErrorMessage.value = '';
         return true;
     } catch (error) {
-        logAppError('Services cabinets', error);
+        logAppError('Prestations du cabinet', error);
         if (asPageLoad) {
-            loadErrorMessage.value = 'Impossible de charger les services cabinets.';
+            loadErrorMessage.value = 'Impossible de charger les prestations du cabinet.';
         }
-        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger les services cabinets.', life: 3000 });
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger les prestations du cabinet.', life: 3000 });
         return false;
     } finally {
         loading.value = false;
@@ -217,7 +217,7 @@ const openDetails = async (service) => {
     try {
         detailService.value = (await fetchCabinetService(service.id, token.value)) || service;
     } catch (error) {
-        logAppError('Services cabinets détails', error);
+        logAppError('Prestations du cabinet détails', error);
         toast.add({ severity: 'warn', summary: 'Détails', detail: 'Détails partiels affichés.', life: 2500 });
     } finally {
         detailsLoading.value = false;
@@ -237,10 +237,10 @@ const handleDelete = (event, service) => {
             try {
                 deletingId.value = service.id;
                 await cancelCabinetService(service.id, token.value);
-                toast.add({ severity: 'success', summary: 'Service cabinet', detail: 'Service supprimé', life: 2500 });
+                toast.add({ severity: 'success', summary: 'Prestation du cabinet', detail: 'Prestation supprimée', life: 2500 });
                 await loadServices();
             } catch (error) {
-                logAppError('Services cabinets suppression', error);
+                logAppError('Prestations du cabinet suppression', error);
                 toast.add({
                     severity: 'error',
                     summary: 'Suppression',
@@ -275,11 +275,11 @@ const printServices = async () => {
     }));
 
     await printComponent(PrintDataTablePage, {
-        title: 'Services cabinets',
+        title: 'Prestations du cabinet',
         subtitle: headerSubtitle.value,
         columns: [
             { key: 'patient', label: 'Patient' },
-            { key: 'designation', label: 'Service' },
+            { key: 'designation', label: 'Prestation' },
             { key: 'date', label: 'Date' },
             { key: 'montant', label: 'Montant' },
             { key: 'statut', label: 'Statut' }
@@ -299,14 +299,14 @@ onMounted(async () => {
 
         <template #header>
             <PageHeader
-                title="Services cabinets"
+                title="Prestations du cabinet"
                 :subtitle="headerSubtitle"
                 icon="pi pi-building"
                 :breadcrumb-items="breadcrumbItems"
                 :breadcrumb-home="breadcrumbHome"
             >
                 <template #actions>
-                    <Button label="Nouveau service" icon="pi pi-plus" @click="openCreate" />
+                    <Button label="Nouvelle prestation" icon="pi pi-plus" @click="openCreate" />
                 </template>
             </PageHeader>
         </template>
@@ -330,19 +330,19 @@ onMounted(async () => {
                         <InputIcon class="pi pi-search text-surface-400" />
                         <InputText
                             v-model="filterGlobalValue"
-                            placeholder="Patient, service, statut..."
+                            placeholder="Patient, prestation, statut..."
                             class="w-full rounded-xl border-surface-200 bg-surface-0 p-3.5 transition-all focus:ring-2 focus:ring-primary-500/20 dark:border-surface-700 dark:bg-surface-700/50"
                         />
                     </IconField>
                 </div>
                 <div class="w-full lg:w-72">
-                    <label class="mb-2 block text-sm font-medium text-surface-700 dark:text-surface-300">Service</label>
+                    <label class="mb-2 block text-sm font-medium text-surface-700 dark:text-surface-300">Prestation</label>
                     <MultiSelect
                         v-model="selectedDesignations"
                         :options="serviceCatalog"
                         optionLabel="description"
                         optionValue="description"
-                        placeholder="Tous les services"
+                        placeholder="Toutes les prestations"
                         display="chip"
                         filter
                         showClear
@@ -401,7 +401,7 @@ onMounted(async () => {
                 </div>
             </div>
 
-            <PageSection title="Liste des services" :subtitle="totalCountLabel">
+            <PageSection title="Liste des prestations" :subtitle="totalCountLabel">
                 <template #headerActions>
                     <Button icon="pi pi-download" severity="secondary" text size="small" label="Exporter" @click="printServices" />
                 </template>
@@ -432,7 +432,7 @@ onMounted(async () => {
                             </template>
                         </Column>
 
-                        <Column field="designation" header="Service" style="min-width: 12rem">
+                        <Column field="designation" header="Prestation" style="min-width: 12rem">
                             <template #body="{ data }">
                                 <div class="min-w-0">
                                     <p class="font-medium mb-1">{{ data.designation }}</p>
@@ -450,10 +450,9 @@ onMounted(async () => {
                         <Column header="Montant" style="min-width: 8rem">
                             <template #body="{ data }">
                                 <div>
-                                    <p class="font-semibold">{{ formatMoney(data.montant) }}</p>
-                                    <p v-if="data.coveredByInsurance" class="text-xs text-surface-500">Patient {{ formatMoney(data.facture?.montantPatient) }} · Assurance {{ formatMoney(data.facture?.montantAssureur) }}</p>
-                                    <p v-if="data.coveredByInsurance" class="text-xs text-surface-500">{{ cabinetServiceInsuranceLabel(data) }}</p>
-                                    <p v-if="canPay(data)" class="text-xs text-amber-600 dark:text-amber-400">Reste {{ formatMoney(data.facture?.reste) }}</p>
+                                    <p class="font-semibold m-0">{{ formatMoney(data.montant) }}</p>
+                                    <p v-if="data.coveredByInsurance" class="text-xs text-surface-500 m-0">Patient {{ formatMoney(data.facture?.montantPatient) }} · Assurance {{ formatMoney(data.facture?.montantAssureur) }}</p>
+                                    <p v-if="canPay(data)" class="text-xs text-amber-600 dark:text-amber-400 m-0">Reste {{ formatMoney(data.facture?.reste) }}</p>
                                 </div>
                             </template>
                         </Column>
@@ -497,12 +496,12 @@ onMounted(async () => {
                                 <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-surface-100 dark:bg-surface-800 mb-6">
                                     <i class="pi pi-building text-4xl text-surface-400"></i>
                                 </div>
-                                <h4 class="text-xl font-semibold text-surface-700 dark:text-surface-300 mb-3">Aucun service trouvé</h4>
+                                <h4 class="text-xl font-semibold text-surface-700 dark:text-surface-300 mb-3">Aucune prestation trouvée</h4>
                                 <p class="text-surface-600 dark:text-surface-400 mb-8 max-w-md mx-auto">
-                                    {{ hasActiveFilters ? 'Aucun résultat ne correspond à vos filtres.' : "Aucun service cabinet n'a été enregistré pour cette période." }}
+                                    {{ hasActiveFilters ? 'Aucun résultat ne correspond à vos filtres.' : "Aucune prestation du cabinet n'a été enregistrée pour cette période." }}
                                 </p>
                                 <div class="flex flex-wrap gap-3 justify-center">
-                                    <Button icon="pi pi-plus" label="Ajouter un service" class="bg-gradient-to-r from-primary-500 to-primary-600 border-0" @click="openCreate" />
+                                    <Button icon="pi pi-plus" label="Ajouter une prestation" class="bg-gradient-to-r from-primary-500 to-primary-600 border-0" @click="openCreate" />
                                     <Button v-if="hasActiveFilters" icon="pi pi-filter-slash" label="Réinitialiser les filtres" severity="secondary" outlined @click="resetFilters" />
                                 </div>
                             </div>
@@ -519,7 +518,7 @@ onMounted(async () => {
 
             <AppDialog
                 v-model:visible="detailsVisible"
-                title="Détails du service cabinet"
+                title="Détails de la prestation du cabinet"
                 :subtitle="patientLabel(detailService)"
                 icon="pi pi-info-circle"
                 icon-tone="info"
@@ -532,7 +531,7 @@ onMounted(async () => {
                 <div v-if="detailService" class="flex flex-col gap-4">
                     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div class="rounded-xl border border-surface-200 p-3 dark:border-surface-700">
-                            <p class="text-xs text-surface-500">Service</p>
+                            <p class="text-xs text-surface-500">Prestation</p>
                             <p class="font-medium">{{ detailService.designation }}</p>
                         </div>
                         <div class="rounded-xl border border-surface-200 p-3 dark:border-surface-700">

@@ -9,7 +9,7 @@
 - Les remboursements assurance reçus sont distincts des paiements patients et proviennent des transactions validées de remboursement des lots.
 - Les créances assurance affichées sont un **état actuel, toutes périodes**, calculé sur les factures actives, avec déduction des remboursements partiels validés au niveau des lots. Une facture cabinet annulée n'y figure pas. Aucun remboursement partiel d'un lot mixte n'est arbitrairement attribué à une prestation individuelle.
 - Le reste patient des services cabinet suit désormais la logique du rapport médecin : **part patient facturée sur la période moins paiements patients reçus dans cette période sur ces prestations**, avec un minimum de zéro par prestation. Ce chiffre n'est pas une dette actuelle ni un arrêté comptable historique. Un paiement ultérieur ne le réduit pas. L'ancien reste actuel est conservé dans le champ API `resteActuel` pour les services.
-- La part assurance médecin reste incluse dans sa base de rémunération **sans attendre son remboursement**. Aucun changement de taux ni de formule de rémunération n'a été effectué.
+- La part assurance médecin reste incluse dans sa Total rénumérable **sans attendre son remboursement**. Aucun changement de taux ni de formule de rémunération n'a été effectué.
 
 Exemple : radio facturée 10 000 FCFA le 2 novembre, assurance à 80 %, paiement patient de 500 FCFA le 3 et de 1 500 FCFA le 20. Le rapport du 1er au 3 novembre indique 2 000 FCFA de part patient, 8 000 FCFA de part assurance, 500 FCFA encaissés sur cette prestation et 1 500 FCFA non encaissés dans la période. Le reste actuel est pourtant nul après le paiement du 20.
 
@@ -68,7 +68,7 @@ Le graphique patients des détails d'activité compare les patients nouvellement
 | Absences patients | Rendez-vous annulés ; aucune absence n'est déduite d'une annulation |
 | Encaissé, côté réception | Entrées validées en espèces |
 | Montant encaissé (total), côté réception | Entrées validées — tous modes |
-| Montant encaissé / Total encaissé, lorsque le chiffre inclut l'assurance rémunérée | Base de rémunération (assurance incluse) |
+| Montant encaissé / Total encaissé, lorsque le chiffre inclut l'assurance rémunérée | Total rénumérable (assurance incluse) |
 | Part assurance, dans le détail médecin | Part assurance rémunérée |
 | Dont espèces / Encaissé (espèces), lorsque tous les modes sont additionnés | Paiements patients reçus — tous modes |
 | Réliquat patient / Reliquat patient | Part patient non encaissée dans la période |

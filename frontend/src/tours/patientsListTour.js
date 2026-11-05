@@ -207,7 +207,7 @@ function buildOverviewSteps(ctx) {
             group: GROUP,
             target: '[data-tour="patients-list.row-actions"]',
             title: 'Actions par ligne',
-            content: 'Consultation et modification en acces direct ; dossier, RDV, service cabinet et corbeille via le menu (trois points).'
+            content: 'Consultation et modification en acces direct ; dossier, RDV, prestation du cabinet et corbeille via le menu (trois points).'
         });
     }
 
