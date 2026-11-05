@@ -62,7 +62,7 @@ export const useUiSettingsStore = defineStore('uiSettings', () => {
 
     const applyFontSettings = () => {
         const root = document.documentElement;
-        const size = ['small', 'normal', 'large'].includes(fontSize.value) ? fontSize.value : 'normal';
+        const size = ['small', 'normal', 'large', 'xlarge'].includes(fontSize.value) ? fontSize.value : 'normal';
 
         // Taille gérée en CSS (media queries) via data-font-size — ne pas fixer --app-font-size en inline.
         root.dataset.fontSize = size;

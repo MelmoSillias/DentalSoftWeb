@@ -3,7 +3,7 @@
     --app-font-size: 16px;
 }
 
-/* Desktop / tablette : petit 14 · normal 16 · grand 18 */
+/* Desktop / tablette : petit 14 · normal 16 · grand 18 · très grand 20 */
 html[data-font-size='small'] {
     --app-font-size: 14px;
 }
@@ -14,6 +14,10 @@ html[data-font-size='normal'] {
 
 html[data-font-size='large'] {
     --app-font-size: 18px;
+}
+
+html[data-font-size='xlarge'] {
+    --app-font-size: 20px;
 }
 
 /*
@@ -35,6 +39,10 @@ html[data-font-size='large'] {
 
     html[data-font-size='large'] {
         --app-font-size: 16px;
+    }
+
+    html[data-font-size='xlarge'] {
+        --app-font-size: 18px;
     }
 }
 

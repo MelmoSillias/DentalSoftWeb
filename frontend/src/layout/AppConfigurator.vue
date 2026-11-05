@@ -97,7 +97,7 @@ const panelClass = computed(() => {
             </div>
             <div v-if="showTypography" class="flex flex-col gap-2" :id="embedded ? 'appearance-font-size' : null">
                 <span class="text-sm text-muted-color font-semibold">Taille texte</span>
-                <SelectButton v-model="fontSize" :options="fontSizeOptions" optionLabel="label" optionValue="value" :allowEmpty="false" />
+                <SelectButton v-model="fontSize" :options="fontSizeOptions" optionLabel="label" optionValue="value" :allowEmpty="false" class="flex-wrap" />
             </div>
             <div v-if="showMenuMode" class="flex flex-col gap-2">
                 <span class="text-sm text-muted-color font-semibold">Menu Mode</span>

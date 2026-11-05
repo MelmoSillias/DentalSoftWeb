@@ -42,7 +42,8 @@ export function useAppearanceSettings() {
     const fontSizeOptions = ref([
         { label: 'Petit', value: 'small' },
         { label: 'Normal', value: 'normal' },
-        { label: 'Grand', value: 'large' }
+        { label: 'Grand', value: 'large' },
+        { label: 'Très grand', value: 'xlarge' }
     ]);
 
     const primaryColors = ref([
