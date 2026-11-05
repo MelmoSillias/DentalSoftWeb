@@ -24,11 +24,23 @@ test('payments of older activities are separated from payments of current activi
     assert.equal(totals.patientRemainingPeriod, 11500);
 });
 
-test('overview keeps insurer refunds separate and prioritizes cards with more detail', () => {
+test('overview starts with billing and collections, including insurer refunds', () => {
     const cards = overviewCards({ collectedTotal: 2000, insuranceRefundsCollected: 8000 });
-    const details = cards.map((card) => card.subStats?.length ?? 0);
-    assert.deepEqual(details, [...details].sort((a, b) => b - a));
-    assert.match(cards.find((card) => card.key === 'collections').value, /2/);
-    assert.match(cards.find((card) => card.key === 'insurance').value, /8/);
+    assert.deepEqual(cards.slice(0, 2).map((card) => card.key), ['billing', 'collections']);
+    const collections = cards[1];
+    assert.equal(collections.value, '10\u202f000 FCFA');
+    assert.equal(collections.subStats.find((row) => row.label === 'Paiements patients').value, '2\u202f000 FCFA');
+    assert.equal(collections.subStats.find((row) => row.label === 'Remboursements assurance').value, '8\u202f000 FCFA');
     assert.equal(new Set(cards.map((card) => card.key)).size, cards.length);
+});
+
+test('billing details retain counts and amounts without adding insurer shares twice', () => {
+    const totals = overviewFinancials({ totalApport: 30000, totalPartAssurance: 8000,
+        billingBreakdown: { normalCount: 2, normalAmount: 20000, insuredCount: 1, insuredAmount: 10000 } },
+        { facture: 10000, partAssurance: 8000 });
+    const billing = overviewCards({ ...totals, servicesCabinet: { count: 1, facture: 10000, insuredCount: 1, insuredAmount: 10000 } })[0];
+    assert.equal(totals.billedTotal, 40000);
+    assert.equal(totals.normalBilledTotal + totals.insuranceBilledTotal, 40000);
+    assert.equal(billing.subStats[0].value, '2 · 20\u202f000 FCFA');
+    assert.equal(billing.subStats[1].value, '1 · 10\u202f000 FCFA');
 });

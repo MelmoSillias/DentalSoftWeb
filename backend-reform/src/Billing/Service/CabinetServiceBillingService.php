@@ -435,10 +435,19 @@ class CabinetServiceBillingService
         $facture = 0.0;
         $reste = 0.0;
         $patientBilled = $insurerBilled = $cohortCollected = $currentRemaining = 0.0;
+        $normalCount = $insuredCount = 0;
+        $normalAmount = $insuredAmount = 0.0;
         foreach ($services as $service) {
             $insuranceTotals = $service->getFactureAssurance()?->computeTotals();
             $amount = (float) ($service->getFacture()?->getMontant() ?? $service->getMontant());
             $facture += $amount;
+            if ($insuranceTotals !== null) {
+                $insuredCount++;
+                $insuredAmount += $amount;
+            } else {
+                $normalCount++;
+                $normalAmount += $amount;
+            }
             $patientShare = $insuranceTotals['montantPatient'] ?? $amount;
             $patientBilled += $patientShare;
             $insurerBilled += $insuranceTotals['montantAssureur'] ?? 0.0;
@@ -482,6 +491,10 @@ class CabinetServiceBillingService
 
         return [
             'count' => count($services),
+            'normalCount' => $normalCount,
+            'normalAmount' => round($normalAmount, 2),
+            'insuredCount' => $insuredCount,
+            'insuredAmount' => round($insuredAmount, 2),
             'facture' => round($facture, 2),
             'encaisse' => round($encaisse, 2),
             'reste' => round($reste, 2),

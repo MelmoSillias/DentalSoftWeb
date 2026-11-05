@@ -87,29 +87,18 @@ const chartOptions = computed(() => {
     };
 });
 
-function formatItemSubStats(item) {
-    if (item.subStats?.length) {
-        return item.subStats.map(({ label, value }) => `${label} : ${value}`).join('\n');
-    }
-    return Array.isArray(item.sub) ? item.sub.join('\n') : item.sub;
-}
-
 function printSection() {
     printReport({
-        title: 'Statistiques globales',
+        title: "Vue d’ensemble",
         periodLabel: props.periodLabel || formatAsOfLabel(),
-        sections: [
-            {
-                title: 'Indicateurs clés du cabinet',
-                items: items(props.stats).map((item) => ({
-                    label: item.label,
-                    value: item.value,
-                    sub: [formatItemSubStats(item), item.note].filter(Boolean).join('\n')
-                }))
-            }
-        ]
+        sections: items(props.stats).map((item) => ({
+            title: item.label,
+            items: [{ label: 'Total', value: item.value }, ...(item.subStats || [])],
+            note: item.note
+        }))
     });
 }
+
 </script>
 
 <template>
@@ -128,7 +117,7 @@ function printSection() {
         <div v-if="!showChart" class="stats-bento" :aria-busy="loading">
             <article v-for="item in items(stats)" :key="item.key" :class="['bento-card', bentoSize(item), 'bento-tone--' + item.tone]">
                 <div class="flex items-start justify-between gap-3">
-                    <h4 class="text-sm font-medium text-surface-600 dark:text-surface-300">{{ item.label }}</h4>
+                    <h3 class="text-xl font-medium text-surface-600 dark:text-surface-300">{{ item.label }}</h3>
                     <span class="bento-icon" aria-hidden="true"><i :class="item.icon"></i></span>
                 </div>
                 <div v-if="loading" class="mt-3 h-9 w-32 animate-pulse rounded bg-surface-200 dark:bg-surface-700" aria-label="Chargement"></div>
@@ -151,8 +140,8 @@ function printSection() {
 </template>
 
 <style scoped>
-.stats-bento { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; align-items: stretch; grid-auto-flow: dense; }
-.bento-card { --bento-accent: var(--p-primary-500); min-width: 0; grid-column: span 2; padding: 1.35rem; border: 1px solid var(--p-surface-200); border-radius: 1.35rem; background: linear-gradient(140deg, color-mix(in srgb, var(--bento-accent) 7%, var(--p-surface-0)), var(--p-surface-0) 60%); display: flex; flex-direction: column; box-shadow: 0 3px 18px rgb(15 23 42 / 3%); }
+.stats-bento { display: flex; flex-wrap: wrap; gap: 1rem; align-items: stretch; }
+.bento-card { --bento-accent: var(--p-primary-500); min-width: 0; flex: 1 0 100%; padding: 1.35rem; border: 1px solid var(--p-surface-200); border-radius: 1.35rem; background: linear-gradient(140deg, color-mix(in srgb, var(--bento-accent) 7%, var(--p-surface-0)), var(--p-surface-0) 60%); display: flex; flex-direction: column; box-shadow: 0 3px 18px rgb(15 23 42 / 3%); }
 :global(.app-dark .bento-card) { border-color: var(--p-surface-700); background: linear-gradient(140deg, color-mix(in srgb, var(--bento-accent) 12%, var(--p-surface-900)), var(--p-surface-900) 60%); }
 .bento-icon { color: var(--bento-accent); background: color-mix(in srgb, var(--bento-accent) 12%, transparent); border-radius: .8rem; padding: .65rem; flex-shrink: 0; }
 .bento-value { font-size: clamp(1.5rem, 2vw, 2.2rem); font-weight: 700; letter-spacing: -.04em; margin: .7rem 0 1rem; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
@@ -172,7 +161,7 @@ function printSection() {
 .bento-tone--orange { --bento-accent: var(--p-orange-500); }
 .bento-tone--rose { --bento-accent: var(--p-rose-500); }
 .bento-tone--teal { --bento-accent: var(--p-teal-500); }
-@media (min-width: 640px) { .stats-bento { grid-template-columns: repeat(6, minmax(0, 1fr)); } .bento-card { grid-column: span 3; } .bento-card--large { grid-column: span 6; } .bento-card--compact { grid-column: span 2; } }
-@media (min-width: 1280px) { .stats-bento { grid-template-columns: repeat(12, minmax(0, 1fr)); } .bento-card--large { grid-column: span 6; grid-row: span 2; } .bento-card--medium { grid-column: span 4; grid-row: span 2; } .bento-card--small { grid-column: span 3; grid-row: span 2; } .bento-card--compact { grid-column: span 2; } }
+@media (min-width: 640px) { .bento-card { flex-basis: calc((100% - 1rem) / 2); } .bento-card--large { flex-basis: 100%; } .bento-card--compact { flex-basis: calc((100% - 2rem) / 3); } }
+@media (min-width: 1280px) { .bento-card--large { flex-basis: calc((100% - 1rem) / 2); } .bento-card--medium { flex-basis: calc((100% - 2rem) / 3); } .bento-card--small { flex-basis: calc((100% - 3rem) / 4); } .bento-card--compact { flex-basis: calc((100% - 5rem) / 6); } }
 @media print { .stats-bento { display: block; } .bento-card { break-inside: avoid; margin-bottom: 1rem; } }
 </style>

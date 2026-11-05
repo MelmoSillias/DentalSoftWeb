@@ -31,9 +31,9 @@ function formatFcfa(amount) {
 
 const patientsItems = (patients) => [
     { label: 'Nouvelles inscriptions', value: patients.newPatients ?? 0, severity: 'info' },
-    { label: 'Patients distincts reçus', value: patients.uniquePatientsSeen ?? 0, severity: 'info' },
-    { label: 'Nouvellement inscrits et reçus', value: patients.newPatientsSeen ?? 0, severity: 'info' },
-    { label: 'Déjà inscrits et reçus', value: patients.returningPatients ?? 0, severity: 'success' },
+    { label: 'Patients reçus', value: patients.uniquePatientsSeen ?? 0, severity: 'info' },
+    { label: 'Nouveaux patients reçus', value: patients.newPatientsSeen ?? 0, severity: 'info' },
+    { label: 'Anciens patients reçus', value: patients.returningPatients ?? 0, severity: 'success' },
     { label: 'Consultations supplémentaires', value: patients.repeatConsultations ?? 0, severity: 'secondary' }
 ];
 
@@ -69,10 +69,10 @@ const servicesCabinetItems = (services) => [
     { label: 'Facturé', value: formatFcfa(services.facture), severity: 'warn' },
     { label: 'Part patient', value: formatFcfa(services.partPatient), severity: 'info' },
     { label: 'Part assurance', value: formatFcfa(services.partAssurance), severity: 'info' },
-    { label: 'Paiements patients reçus — tous modes', value: formatFcfa(services.encaisse), severity: 'success' },
-    { label: 'Dont prestations de la période', value: formatFcfa(services.encaissePrestationsPeriode), severity: 'success' },
-    { label: 'Dont prestations hors période', value: formatFcfa(services.encaisseHorsPeriode), severity: 'success' },
-    { label: 'Part patient non encaissée dans la période', value: formatFcfa(services.reste), severity: 'danger' }
+    { label: 'Paiements patients', value: formatFcfa(services.encaisse), severity: 'success' },
+    { label: 'Dont services de la période', value: formatFcfa(services.encaissePrestationsPeriode), severity: 'success' },
+    { label: 'Dont reliquats services', value: formatFcfa(services.encaisseHorsPeriode), severity: 'success' },
+    { label: 'Impayés patients · période', value: formatFcfa(services.reste), severity: 'danger' }
 ];
 
 const pieOptions = computed(() => {
@@ -106,7 +106,7 @@ const barOptions = computed(() => {
 const patientsChartData = computed(() => {
     const documentStyle = getComputedStyle(document.documentElement);
     return {
-        labels: ['Nouvellement inscrits et reçus', 'Déjà inscrits et reçus'],
+        labels: ['Nouveaux patients reçus', 'Anciens patients reçus'],
         datasets: [
             {
                 data: [props.patients.newPatientsSeen || 0, props.patients.returningPatients || 0],
@@ -188,7 +188,7 @@ const paymentFrequencyChartData = computed(() => {
 
 function printSection() {
     printReport({
-        title: 'Détails périodiques',
+        title: 'Activité',
         periodLabel: props.periodLabel,
         sections: [
             {
@@ -234,13 +234,13 @@ function printSection() {
     <section class="space-y-4" id="admin-periodic">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
-                <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0">Détails périodiques</h3>
+                <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0">Activité</h3>
                 <p class="text-sm text-surface-500 dark:text-surface-400">
                     Données filtrées par la période sélectionnée
                     <span v-if="periodLabel"> — {{ periodLabel }}</span>
                 </p>
             </div>
-            <Button label="Imprimer la section" icon="pi pi-print" outlined size="small" @click="printSection" />
+            <Button label="Imprimer" icon="pi pi-print" outlined size="small" @click="printSection" />
         </div>
 
         <div class="grid gap-4 lg:grid-cols-3">

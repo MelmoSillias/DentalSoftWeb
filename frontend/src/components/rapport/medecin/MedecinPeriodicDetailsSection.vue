@@ -36,8 +36,8 @@ const appointmentsItems = (period) => [
 const apportItems = (period) => [{ label: 'Montant facturé', value: formatFcfa(period.apportTotal || 0), severity: 'success' }];
 
 const revenueItems = (period) => [
-    { label: 'Paiements patients reçus — tous modes', value: formatFcfa(period.revenueCash || 0), severity: 'success' },
-    { label: 'Dont activité de la période', value: formatFcfa(period.revenue || 0), severity: 'success' },
+    { label: 'Paiements patients', value: formatFcfa(period.revenueCash || 0), severity: 'success' },
+    { label: 'Dont soins de la période', value: formatFcfa(period.revenue || 0), severity: 'success' },
     { label: 'Part assurance rémunérée', value: formatFcfa(period.revenueAssurance || 0), severity: 'info' },
     {
         label: 'Reliquats encaissés',
@@ -45,12 +45,12 @@ const revenueItems = (period) => [
         severity: 'warn'
     },
     {
-        label: 'Base de rémunération (assurance incluse)',
+        label: 'Base de rémunération',
         value: formatFcfa(period.revenueTotal || 0),
         severity: 'success'
     },
     {
-        label: 'Part patient non encaissée dans la période',
+        label: 'Impayés patients · période',
         value: formatFcfa(period.reliquat || 0),
         severity: 'danger'
     }
@@ -132,7 +132,7 @@ const revenueChartData = computed(() => {
     const documentStyle = getComputedStyle(document.documentElement);
     const period = props.period || {};
     return {
-        labels: ['Paiements patients sur l’activité de la période', 'Part patient non encaissée dans la période'],
+        labels: ['Paiements patients sur l’activité de la période', 'Impayés patients · période'],
         datasets: [
             {
                 data: [period.revenue || 0, period.reliquat || 0],
@@ -146,8 +146,8 @@ const revenueChartData = computed(() => {
 <template>
     <section class="space-y-4">
         <div>
-            <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0">Détails périodiques</h3>
-            <p class="text-sm text-surface-500 dark:text-surface-400">Le reste compare la part patient facturée sur la période aux paiements reçus pendant cette période. Les paiements ultérieurs ne le réduisent pas. La part assurance est incluse dans la base de rémunération sans attendre son remboursement.</p>
+            <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0">Activité</h3>
+            <p class="text-sm text-surface-500 dark:text-surface-400">Impayés : part patient non encaissée sur la période. Rémunération : assurance incluse.</p>
         </div>
 
         <div class="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">

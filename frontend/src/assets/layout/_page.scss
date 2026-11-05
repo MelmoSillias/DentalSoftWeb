@@ -167,8 +167,16 @@
     justify-content: space-between;
     gap: 0.5rem 0.75rem;
     padding: 0.625rem 0.875rem;
-    border-bottom: 1px solid color-mix(in srgb, var(--surface-border) 80%, transparent);
-    background: color-mix(in srgb, var(--surface-card) 92%, var(--text-color) 4%);
+    border-radius: calc(var(--page-section-radius) - 1px) calc(var(--page-section-radius) - 1px) 0 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--surface-border) 50%, transparent);
+    background: transparent;
+}
+
+/* Inset headers share the card surface and align with the padded content. */
+.page-section--padded > .page-section__header {
+    padding: 0 0 0.75rem;
+    margin-bottom: 0.75rem;
+    border-radius: 0;
 }
 
 .page-section__header-main {

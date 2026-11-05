@@ -64,7 +64,7 @@ class ReportService
 
         if ($period === 'custom' && $customStart && $customEnd) {
             return [
-                new DateTimeImmutable($customStart),
+                (new DateTimeImmutable($customStart))->setTime(0, 0, 0),
                 (new DateTimeImmutable($customEnd))->setTime(23, 59, 59),
             ];
         }
@@ -447,7 +447,9 @@ class ReportService
 
     public function periodicPatients(?\DateTime $from, ?\DateTime $to): array
     {
-        $cacheKey = 'report.periodicPatients.v2.' . ($from?->format('Ymd') ?? '') . '.' . ($to?->format('Ymd') ?? '');
+        $from = $from ? (clone $from)->setTime(0, 0, 0) : null;
+        $to = $to ? (clone $to)->setTime(23, 59, 59) : null;
+        $cacheKey = 'report.periodicPatients.v3.' . ($from?->format('Ymd') ?? '') . '.' . ($to?->format('Ymd') ?? '');
 
         return $this->remember($cacheKey, 180, function () use ($from, $to) {
             $qb = $this->patientRepo->createQueryBuilder('p')
@@ -634,6 +636,7 @@ class ReportService
 
         return [
             'kpi' => [
+                'billingBreakdown' => $this->billingBreakdown($doctorStats),
                 'totalApport' => $totalApport,
                 'totalPartAssurance' => $totalPartAssurance,
                 'totalPaidCash' => $totalPaidCash,
@@ -653,6 +656,19 @@ class ReportService
             ],
             'doctors' => $doctorStats,
         ];
+    }
+
+    private function billingBreakdown(array $doctorStats): array
+    {
+        $result = ['normalCount' => 0, 'normalAmount' => 0.0, 'insuredCount' => 0, 'insuredAmount' => 0.0];
+        foreach ($doctorStats as $doctor) {
+            foreach ($doctor['actes'] as $act) {
+                $prefix = $act['isInsurance'] ? 'insured' : 'normal';
+                $result[$prefix . 'Count']++;
+                $result[$prefix . 'Amount'] += $act['montant'];
+            }
+        }
+        return $result;
     }
 
     /**
@@ -1393,6 +1409,8 @@ class ReportService
      */
     public function periodicActsStats(?DateTime $from, ?DateTime $to): array
     {
+        $from = $from ? (clone $from)->setTime(0, 0, 0) : null;
+        $to = $to ? (clone $to)->setTime(23, 59, 59) : null;
         $cacheKey = 'report.periodicActsStats.v3.' . ($from?->format('Ymd') ?? '') . '.' . ($to?->format('Ymd') ?? '');
 
         return $this->remember($cacheKey, 180, function () use ($from, $to) {
@@ -1522,6 +1540,8 @@ class ReportService
 
     public function periodicConsultations(?DateTime $from, ?DateTime $to): array
     {
+        $from = $from ? (clone $from)->setTime(0, 0, 0) : null;
+        $to = $to ? (clone $to)->setTime(23, 59, 59) : null;
         $cacheKey = 'report.periodicConsultations.v3.' . ($from?->format('Ymd') ?? '') . '.' . ($to?->format('Ymd') ?? '');
 
         return $this->remember($cacheKey, 180, function () use ($from, $to) {
@@ -1554,6 +1574,8 @@ class ReportService
 
     public function periodicAppointments(?DateTime $from, ?DateTime $to): array
     {
+        $from = $from ? (clone $from)->setTime(0, 0, 0) : null;
+        $to = $to ? (clone $to)->setTime(23, 59, 59) : null;
         $cacheKey = 'report.periodicAppointments.' . ($from?->format('Ymd') ?? '') . '.' . ($to?->format('Ymd') ?? '');
 
         return $this->remember($cacheKey, 180, function () use ($from, $to) {

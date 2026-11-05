@@ -80,6 +80,26 @@ class ReportPrecisionTest extends TestCase
         return $patient;
     }
 
+    public function testPatientPeriodIncludesBothWholeDaysWithoutChangingInputDates(): void
+    {
+        foreach (['2026-11-01 00:00:00', '2026-11-02 23:59:59', '2026-10-31 23:59:59', '2026-11-03 00:00:00'] as $date) {
+            $patient = $this->patient($date);
+            $this->em->persist((new Consultation())->setPatient($patient)->setCreatedAt(new \DateTime($date)));
+        }
+        $this->em->flush();
+        $from = new \DateTime('2026-11-01 12:34:56');
+        $to = new \DateTime('2026-11-02 12:34:56');
+        $stats = $this->report->periodicPatients($from, $to);
+        self::assertSame(2, $stats['newPatients']);
+        self::assertSame(2, $stats['uniquePatientsSeen']);
+        self::assertSame(2, $stats['newPatientsSeen']);
+        self::assertSame('12:34:56', $from->format('H:i:s'));
+        self::assertSame('12:34:56', $to->format('H:i:s'));
+        $singleDay = $this->report->periodicPatients(new \DateTime('2026-11-02'), new \DateTime('2026-11-02'));
+        self::assertSame(1, $singleDay['newPatients']);
+        self::assertSame(1, $singleDay['uniquePatientsSeen']);
+    }
+
     private function transaction(string $type, float $amount, string $status = 'validated'): Transaction
     {
         $tx = (new Transaction())->setType($type)->setMontant((string) $amount)->setDateTransaction(new \DateTime('2026-11-02'))->setModeDePaiement($this->mode);
