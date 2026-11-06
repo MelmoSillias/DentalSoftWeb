@@ -5,8 +5,8 @@ const emit = defineEmits(['success']);
 const props = defineProps({
     disabled: {
         type: Boolean,
-        default: false
-    }
+        default: false,
+    },
 });
 const { form, loading, errorMessage, submit } = useAuthForm();
 
@@ -24,7 +24,6 @@ async function onSubmit() {
 
 <template>
     <div class="login-form-card">
-        <p class="form-heading">Connexion</p>
         <form class="login-form" @submit.prevent="onSubmit">
             <div class="field-block">
                 <label for="email" class="field-label">
@@ -33,6 +32,8 @@ async function onSubmit() {
                 </label>
                 <InputText
                     id="email"
+                    autocomplete="username"
+                    required
                     v-model="form.email"
                     type="text"
                     placeholder="Nom d'utilisateur"
@@ -47,7 +48,10 @@ async function onSubmit() {
                     Mot de passe
                 </label>
                 <Password
-                    id="password"
+                    input-id="password"
+                    autocomplete="current-password"
+                    required
+                    placeholder="Votre mot de passe"
                     v-model="form.password"
                     :feedback="false"
                     toggle-mask
@@ -56,12 +60,19 @@ async function onSubmit() {
                 />
             </div>
 
-            <Message v-if="errorMessage" severity="error" :closable="false" size="small">{{ errorMessage }}</Message>
+            <Message
+                v-if="errorMessage"
+                severity="error"
+                :closable="false"
+                size="small"
+                >{{ errorMessage }}</Message
+            >
 
             <Button
                 type="submit"
-                label="Se connecter"
-                icon="pi pi-sign-in"
+                label="Accéder à mon espace"
+                icon="pi pi-arrow-right"
+                icon-pos="right"
                 :loading="loading"
                 :disabled="props.disabled"
                 fluid
@@ -70,47 +81,3 @@ async function onSubmit() {
         </form>
     </div>
 </template>
-
-<style scoped>
-.login-form-card {
-    background: #fff;
-    border-radius: var(--pp-radius);
-    box-shadow: var(--pp-shadow-sm);
-    border: 1px solid rgba(0,0,0,0.04);
-    padding: 1.5rem;
-}
-
-.form-heading {
-    margin: 0 0 1.25rem;
-    font-size: 1.05rem;
-    font-weight: 700;
-    color: var(--p-text-color);
-}
-
-.login-form {
-    display: grid;
-    gap: 1rem;
-}
-
-.field-block {
-    display: grid;
-    gap: 0.45rem;
-}
-
-.field-label {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-size: 0.83rem;
-    font-weight: 600;
-    color: var(--p-text-muted-color);
-}
-
-.field-label i {
-    font-size: 0.78rem;
-}
-
-.submit-btn {
-    margin-top: 0.25rem;
-}
-</style>

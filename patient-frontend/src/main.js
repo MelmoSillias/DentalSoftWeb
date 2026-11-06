@@ -2,6 +2,24 @@ import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 import PrimeVue from 'primevue/config';
 import Aura from '@primeuix/themes/aura';
+import { definePreset } from '@primeuix/themes';
+const PatientTheme = definePreset(Aura, {
+    semantic: {
+        primary: {
+            50: '{violet.50}',
+            100: '{violet.100}',
+            200: '{violet.200}',
+            300: '{violet.300}',
+            400: '{violet.400}',
+            500: '#7047f5',
+            600: '#6035e5',
+            700: '{violet.700}',
+            800: '{violet.800}',
+            900: '{violet.900}',
+            950: '{violet.950}',
+        },
+    },
+});
 import ToastService from 'primevue/toastservice';
 
 import App from './App.vue';
@@ -29,12 +47,12 @@ app.use(pinia);
 app.use(router);
 app.use(ToastService);
 app.use(PrimeVue, {
-	theme: {
-		preset: Aura,
-		options: {
-			darkModeSelector: '.app-dark'
-		}
-	}
+    theme: {
+        preset: PatientTheme,
+        options: {
+            darkModeSelector: '.app-dark',
+        },
+    },
 });
 
 app.component('Button', Button);

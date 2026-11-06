@@ -17,65 +17,102 @@ const routes = [
         path: '/login',
         name: 'login',
         component: LoginView,
-        meta: { public: true, title: 'Connexion', breadcrumb: ['Auth', 'Connexion'] }
+        meta: {
+            public: true,
+            title: 'Connexion',
+            breadcrumb: ['Auth', 'Connexion'],
+        },
     },
     {
         path: '/',
-        redirect: '/dashboard'
+        redirect: '/dashboard',
     },
     {
         path: '/dashboard',
         name: 'dashboard',
         component: DashboardView,
-        meta: { requiresAuth: true, title: 'Dashboard', breadcrumb: ['Accueil', 'Dashboard'] }
+        meta: {
+            requiresAuth: true,
+            title: 'Vue d’ensemble',
+            breadcrumb: ['Accueil', 'Vue d’ensemble'],
+        },
     },
     {
         path: '/consultations',
         name: 'consultations',
         component: ConsultationsView,
-        meta: { requiresAuth: true, title: 'Consultations', breadcrumb: ['Espace patient', 'Consultations'] }
+        meta: {
+            requiresAuth: true,
+            title: 'Consultations',
+            breadcrumb: ['Espace patient', 'Consultations'],
+        },
     },
     {
         path: '/rendez-vous',
         name: 'appointments',
         component: AppointmentsView,
-        meta: { requiresAuth: true, title: 'Rendez-vous', breadcrumb: ['Espace patient', 'Rendez-vous'] }
+        meta: {
+            requiresAuth: true,
+            title: 'Rendez-vous',
+            breadcrumb: ['Espace patient', 'Rendez-vous'],
+        },
     },
     {
         path: '/profil',
         name: 'profile',
         component: ProfileView,
-        meta: { requiresAuth: true, title: 'Profil', breadcrumb: ['Espace patient', 'Profil'] }
+        meta: {
+            requiresAuth: true,
+            title: 'Profil',
+            breadcrumb: ['Espace patient', 'Profil'],
+        },
     },
     {
         path: '/paiements',
         name: 'payments',
         component: PaymentsView,
-        meta: { requiresAuth: true, title: 'Paiements', breadcrumb: ['Espace patient', 'Paiements'] }
+        meta: {
+            requiresAuth: true,
+            title: 'Paiements',
+            breadcrumb: ['Espace patient', 'Paiements'],
+        },
     },
     {
         path: '/documents',
         name: 'documents',
         component: DocumentsView,
-        meta: { requiresAuth: true, title: 'Documents', breadcrumb: ['Espace patient', 'Documents'] }
+        meta: {
+            requiresAuth: true,
+            title: 'Documents',
+            breadcrumb: ['Espace patient', 'Documents'],
+        },
     },
     {
         path: '/avis-anonyme',
         name: 'anonymous-review',
         component: AnonymousReviewView,
-        meta: { public: true, title: 'Avis anonyme', breadcrumb: ['Public', 'Avis anonyme'] }
+        meta: {
+            public: true,
+            title: 'Avis anonyme',
+            breadcrumb: ['Public', 'Avis anonyme'],
+        },
     },
     {
         path: '/portail-ferme',
         name: 'portal-closed',
         component: PortalClosedView,
-        meta: { public: true, title: 'Portail fermé', breadcrumb: ['Public', 'Portail fermé'] }
-    }
+        meta: {
+            public: true,
+            title: 'Portail fermé',
+            breadcrumb: ['Public', 'Portail fermé'],
+        },
+    },
 ];
 
 const router = createRouter({
     history: createWebHistory(),
-    routes
+    routes,
+    scrollBehavior: () => ({ top: 0 }),
 });
 
 router.beforeEach(async (to) => {
@@ -89,10 +126,10 @@ router.beforeEach(async (to) => {
         const isPortalClosedRoute = to.name === 'portal-closed';
 
         if (
-            portal.isPortalClosed
-            && to.meta.requiresAuth
-            && !isAnonymousReviewRoute
-            && !isPortalClosedRoute
+            portal.isPortalClosed &&
+            to.meta.requiresAuth &&
+            !isAnonymousReviewRoute &&
+            !isPortalClosedRoute
         ) {
             return { name: 'portal-closed' };
         }
@@ -102,7 +139,9 @@ router.beforeEach(async (to) => {
         }
 
         if (to.name === 'login' && auth.isAuthenticated) {
-            return portal.isPortalClosed ? { name: 'portal-closed' } : { name: 'dashboard' };
+            return portal.isPortalClosed
+                ? { name: 'portal-closed' }
+                : { name: 'dashboard' };
         }
 
         if (portal.isPortalClosed && isPortalClosedRoute && isPublicRoute) {
@@ -111,6 +150,10 @@ router.beforeEach(async (to) => {
 
         return true;
     });
+});
+
+router.afterEach((to) => {
+    document.title = `${to.meta.title || 'Mon espace'} · Espace patient`;
 });
 
 export default router;

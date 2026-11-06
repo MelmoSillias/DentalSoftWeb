@@ -1,10 +1,17 @@
 <script setup>
+import BrandMark from '../../components/BrandMark.vue';
 import { computed, onMounted } from 'vue';
 import { usePortalSettingsStore } from '../../stores/portalSettings';
 
 const portalSettings = usePortalSettingsStore();
-const closedMessage = computed(() => portalSettings.data.patientPortalClosedMessage || 'Le portail patient est temporairement indisponible.');
-const showcaseUrl = computed(() => portalSettings.data.cabinetShowcaseWebsiteUrl || '');
+const closedMessage = computed(
+    () =>
+        portalSettings.data.patientPortalClosedMessage ||
+        'Le portail patient est temporairement indisponible.',
+);
+const showcaseUrl = computed(
+    () => portalSettings.data.cabinetShowcaseWebsiteUrl || '',
+);
 
 onMounted(async () => {
     await portalSettings.load();
@@ -17,12 +24,23 @@ function openShowcase() {
 </script>
 
 <template>
-    <main class="public-page">
+    <main id="main-content" class="public-page">
         <Card class="public-card">
             <template #title>Portail patient fermé</template>
-            <template #content>
-                <Message severity="warn" :closable="false">{{ closedMessage }}</Message>
-                <p class="muted mt-3">Le cabinet continue de vous recevoir. Vous pouvez revenir plus tard ou nous contacter directement.</p>
+            <template #content
+                ><div class="public-heading">
+                    <BrandMark /><span class="welcome-icon"
+                        ><i class="pi pi-clock"
+                    /></span>
+                    <h1>Nous serons bientôt de retour.</h1>
+                </div>
+                <Message severity="warn" :closable="false">{{
+                    closedMessage
+                }}</Message>
+                <p class="muted mt-3">
+                    Le cabinet continue de vous recevoir. Vous pouvez revenir
+                    plus tard ou nous contacter directement.
+                </p>
                 <Button
                     v-if="showcaseUrl"
                     class="mt-2"
@@ -31,20 +49,14 @@ function openShowcase() {
                     text
                     @click="openShowcase"
                 />
-            </template>
+                <RouterLink
+                    to="/login"
+                    class="hero-link"
+                    style="margin-top: 24px; background: var(--pp-soft)"
+                    ><i class="pi pi-arrow-left" />Retour à la
+                    connexion</RouterLink
+                ></template
+            >
         </Card>
     </main>
 </template>
-
-<style scoped>
-.public-page {
-    min-height: calc(100dvh - var(--connection-banner-offset, 0px));
-    display: grid;
-    place-items: center;
-    padding: 1rem;
-}
-
-.public-card {
-    width: min(100%, 620px);
-}
-</style>

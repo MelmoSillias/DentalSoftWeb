@@ -1,12 +1,17 @@
 <script setup>
+import BrandMark from '../../components/BrandMark.vue';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { usePortalSettingsStore } from '../../stores/portalSettings';
 import { submitAnonymousAppreciation } from '../../services/patientPortal';
 
 const portalSettings = usePortalSettingsStore();
-const showcaseUrl = computed(() => portalSettings.data.cabinetShowcaseWebsiteUrl || '');
+const showcaseUrl = computed(
+    () => portalSettings.data.cabinetShowcaseWebsiteUrl || '',
+);
 const loading = ref(false);
 const success = ref(false);
+const submitError = ref('');
+const copied = ref(false);
 const publicPageUrl = ref('');
 
 const publicQrSrc = computed(() => {
@@ -18,7 +23,7 @@ const form = reactive({
     rating: 5,
     comment: '',
     authorName: '',
-    authorEmail: ''
+    authorEmail: '',
 });
 
 onMounted(async () => {
@@ -35,6 +40,7 @@ async function submitReview() {
         return;
     }
 
+    submitError.value = '';
     loading.value = true;
     success.value = false;
     try {
@@ -42,10 +48,13 @@ async function submitReview() {
             rating: Number(form.rating || 5),
             comment: String(form.comment || '').trim(),
             authorName: String(form.authorName || '').trim() || null,
-            authorEmail: String(form.authorEmail || '').trim() || null
+            authorEmail: String(form.authorEmail || '').trim() || null,
         });
         success.value = true;
         form.comment = '';
+    } catch {
+        submitError.value =
+            'Votre avis n’a pas pu être envoyé. Veuillez réessayer.';
     } finally {
         loading.value = false;
     }
@@ -56,18 +65,32 @@ function openShowcase() {
     window.open(showcaseUrl.value, '_blank', 'noopener,noreferrer');
 }
 
-function copyPublicUrl() {
+async function copyPublicUrl() {
     if (!publicPageUrl.value) return;
-    navigator.clipboard.writeText(publicPageUrl.value);
+    try {
+        await navigator.clipboard.writeText(publicPageUrl.value);
+        copied.value = true;
+    } catch {
+        submitError.value =
+            'Copie indisponible. Vous pouvez copier l’adresse depuis votre navigateur.';
+    }
 }
 </script>
 
 <template>
-    <main class="public-page">
+    <main id="main-content" class="public-page">
         <Card class="public-card">
-            <template #title>Avis anonyme</template>
-            <template #content>
-                <p class="muted">Partagez votre expérience en quelques secondes. Aucun compte requis.</p>
+            <template #content
+                ><div class="public-heading">
+                    <BrandMark /><span class="welcome-icon"
+                        ><i class="pi pi-heart"
+                    /></span>
+                    <h1>Votre expérience compte.</h1>
+                </div>
+                <p class="muted">
+                    Partagez votre expérience en quelques secondes. Aucun compte
+                    requis.
+                </p>
 
                 <div class="stars-row mt-3">
                     <button
@@ -75,6 +98,8 @@ function copyPublicUrl() {
                         :key="`public-star-${star}`"
                         type="button"
                         class="star-btn"
+                        :aria-label="`${star} sur 5`"
+                        :aria-pressed="star <= form.rating"
                         :class="{ active: star <= form.rating }"
                         @click="setRating(star)"
                     >
@@ -83,9 +108,21 @@ function copyPublicUrl() {
                 </div>
 
                 <div class="field-stack mt-3">
-                    <InputText v-model="form.authorName" placeholder="Nom (facultatif)" />
-                    <InputText v-model="form.authorEmail" placeholder="Email (facultatif)" />
+                    <InputText
+                        aria-label="Nom (facultatif)"
+                        autocomplete="name"
+                        v-model="form.authorName"
+                        placeholder="Nom (facultatif)"
+                    />
+                    <InputText
+                        aria-label="Email (facultatif)"
+                        type="email"
+                        autocomplete="email"
+                        v-model="form.authorEmail"
+                        placeholder="Email (facultatif)"
+                    />
                     <textarea
+                        aria-label="Votre avis"
                         v-model="form.comment"
                         rows="4"
                         class="feedback-textarea"
@@ -102,16 +139,44 @@ function copyPublicUrl() {
                     @click="submitReview"
                 />
 
-                <Message v-if="success" severity="success" :closable="false" class="mt-3">
-                    Merci, votre avis a bien été enregistré. Il sera publié après validation par le cabinet.
+                <Message
+                    v-if="submitError"
+                    severity="error"
+                    :closable="false"
+                    class="mt-3"
+                    >{{ submitError }}</Message
+                >
+                <Message
+                    v-if="success"
+                    severity="success"
+                    :closable="false"
+                    class="mt-3"
+                >
+                    Merci, votre avis a bien été enregistré. Il sera publié
+                    après validation par le cabinet.
                 </Message>
 
                 <Divider />
-                <p class="m-0 text-sm font-medium">QR code de la page d'avis anonyme</p>
-                <p class="muted text-sm">Partagez ce QR pour collecter des avis anonymes en salle d'attente.</p>
+                <p class="m-0 text-sm font-medium">
+                    QR code de la page d'avis anonyme
+                </p>
+                <p class="muted text-sm">
+                    Partagez ce QR pour collecter des avis anonymes en salle
+                    d'attente.
+                </p>
                 <div class="qr-block">
-                    <img v-if="publicQrSrc" :src="publicQrSrc" alt="QR avis anonyme" class="public-qr" />
-                    <Button text icon="pi pi-copy" label="Copier le lien" @click="copyPublicUrl" />
+                    <img
+                        v-if="publicQrSrc"
+                        :src="publicQrSrc"
+                        alt="QR avis anonyme"
+                        class="public-qr"
+                    />
+                    <Button
+                        text
+                        icon="pi pi-copy"
+                        :label="copied ? 'Lien copié' : 'Copier le lien'"
+                        @click="copyPublicUrl"
+                    />
                 </div>
 
                 <Button
@@ -122,66 +187,14 @@ function copyPublicUrl() {
                     label="Visiter le site du cabinet"
                     @click="openShowcase"
                 />
-            </template>
+                <RouterLink
+                    to="/login"
+                    class="hero-link"
+                    style="margin-top: 24px; background: var(--pp-soft)"
+                    ><i class="pi pi-arrow-left" />Retour à la
+                    connexion</RouterLink
+                ></template
+            >
         </Card>
     </main>
 </template>
-
-<style scoped>
-.public-page {
-    min-height: calc(100dvh - var(--connection-banner-offset, 0px));
-    display: grid;
-    place-items: center;
-    padding: 1rem;
-}
-
-.public-card {
-    width: min(100%, 620px);
-}
-
-.stars-row {
-    display: flex;
-    gap: 0.35rem;
-}
-
-.star-btn {
-    border: none;
-    background: transparent;
-    color: #cbd5e1;
-    cursor: pointer;
-    font-size: 1.25rem;
-}
-
-.star-btn.active {
-    color: #f59e0b;
-}
-
-.field-stack {
-    display: grid;
-    gap: 0.65rem;
-}
-
-.feedback-textarea {
-    width: 100%;
-    border: 1px solid var(--p-surface-300);
-    border-radius: 0.7rem;
-    padding: 0.65rem 0.75rem;
-    font-family: inherit;
-    resize: vertical;
-    min-height: 90px;
-}
-
-.qr-block {
-    display: grid;
-    justify-items: start;
-    gap: 0.6rem;
-}
-
-.public-qr {
-    width: min(220px, 100%);
-    border: 1px solid var(--p-surface-300);
-    border-radius: 0.75rem;
-    background: var(--p-surface-0);
-    padding: 0.5rem;
-}
-</style>
