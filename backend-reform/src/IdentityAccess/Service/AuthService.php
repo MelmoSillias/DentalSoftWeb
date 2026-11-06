@@ -152,7 +152,8 @@ final class AuthService
     /** @return array<int, array<string, mixed>> */
     private function getActivityFeed(User $user): array
     {
-        $session = $this->requestStack->getSession();
+        $request = $this->requestStack->getCurrentRequest();
+        $session = $request?->hasSession() ? $request->getSession() : null;
         $key = sprintf('user_activity_feed_%d', $user->getId());
         $raw = $session?->get($key, []);
 
@@ -247,10 +248,7 @@ final class AuthService
         /** @var User|null $user */
         $user = $this->security->getUser();
         if (!$user) {
-            return [
-                'status' => 'invalid',
-                'message' => 'Unauthorized',
-            ];
+            throw new \Symfony\Component\HttpKernel\Exception\UnauthorizedHttpException('Bearer', 'Unauthorized');
         }
 
         return [

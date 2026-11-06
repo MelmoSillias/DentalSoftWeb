@@ -61,6 +61,17 @@ export async function apiRequest(path, { method = 'GET', token = '', body, heade
     const payload = contentType.includes('application/json') ? await response.json() : null;
 
     if (!response.ok) {
+        if (response.status === 401 && token) {
+            Promise.all([import('../stores/auth'), import('../router')])
+                .then(([{ useAuthStore }, { default: router }]) => {
+                    const auth = useAuthStore();
+                    // A delayed response from a previous session must not close the new one.
+                    if (auth.token !== token) return;
+                    auth.logout();
+                    return router.replace({ name: 'login' });
+                })
+                .catch(() => {});
+        }
         const errorMessage = payload?.error || payload?.message || `Erreur HTTP ${response.status}`;
         if (showToast) {
             emitAppToast({
@@ -75,7 +86,9 @@ export async function apiRequest(path, { method = 'GET', token = '', body, heade
                 life: 5500
             });
         }
-        throw new Error(errorMessage);
+        const error = new Error(errorMessage);
+        error.status = response.status;
+        throw error;
     }
 
     noteTransportSuccess();

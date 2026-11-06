@@ -23,6 +23,8 @@ const isUploadRequest = (config) => {
     return typeof contentType === 'string' && contentType.includes('multipart/form-data');
 };
 
+const isLoginRequest = (config) => /(?:^|\/)login_check(?:\?|$)/.test(config?.url || '');
+
 const userFacingMessages = {
     slow: "Connexion au serveur impossible. Vérifiez votre connexion internet : il ne s'agit pas d'une erreur de l'application.",
     unauthorized: 'Votre session a expire. Veuillez vous reconnecter.',
@@ -76,6 +78,7 @@ export const getHttpErrorMessage = (error, fallback = userFacingMessages.generic
     }
 
     if (status === 401) {
+        if (isLoginRequest(error.config)) return 'Identifiants incorrects.';
         return userFacingMessages.unauthorized;
     }
 
@@ -174,9 +177,11 @@ http.interceptors.response.use(
         }
 
         // Si réponse HTTP et statut 401 => token invalide/expiré
-        if (error.response && error.response.status === 401) {
+        if (error.response && error.response.status === 401 && !isLoginRequest(error.config)) {
+            const failedAuthorization = error.config?.headers?.Authorization;
             Promise.all([loadAuthStore(), loadRouter()])
                 .then(([useAuthStore, router]) => {
+                    if (failedAuthorization !== `Bearer ${localStorage.getItem('token')}`) return;
                     try {
                         useAuthStore()?.logout();
                     } catch (_) {

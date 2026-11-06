@@ -13,7 +13,7 @@ Les endpoints du portail patient sont proteges et necessitent un token JWT.
 ### 1) Connexion
 
 - Methode: `POST`
-- URL: `/api/login_check`
+- URL: `/api/login_patient_check`
 - Body JSON:
 
 ```json
@@ -27,10 +27,16 @@ Les endpoints du portail patient sont proteges et necessitent un token JWT.
 
 ```json
 {
-  "token": "<jwt_token>",
-  "refresh_token": "<refresh_token_optionnel>"
+  "token": "<jwt_token>"
 }
 ```
+
+Le compte doit etre actif, posseder `ROLE_PATIENT` et ne posseder aucun role du personnel.
+Un compte inconnu, un mot de passe incorrect, un compte desactive ou un compte du personnel
+renvoient tous `401` avec `{"code":401,"message":"Identifiants incorrects."}`, sans JWT.
+La connexion du personnel reste sur `/api/login_check` et refuse les comptes uniquement patients.
+Apres cinq echecs par identifiant et adresse IP sur cinq minutes, les tentatives sont limitees
+avec une reponse `429`. Une limite supplementaire de 25 echecs par IP s'applique a chaque connexion.
 
 ### 2) Appels authentifies
 

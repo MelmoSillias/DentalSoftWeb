@@ -7,3 +7,8 @@ controllers:
 # config/routes.yaml
 api_login_check:
     path: /api/login_check
+    methods: [POST]
+
+api_patient_login_check:
+    path: /api/login_patient_check
+    methods: [POST]

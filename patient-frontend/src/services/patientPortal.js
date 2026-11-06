@@ -1,8 +1,9 @@
 import { apiRequest } from './api';
 
 export async function loginPatient(identifier, password) {
-    return apiRequest('/api/login_check', {
+    return apiRequest('/api/login_patient_check', {
         method: 'POST',
+        showToast: false,
         body: {
             username: identifier,
             password

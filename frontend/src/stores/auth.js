@@ -11,6 +11,7 @@ export const useAuthStore = defineStore('auth', {
         user: null,
         token: localStorage.getItem('token') || null,
         loading: false,
+        sessionVersion: 0,
         error: null,
         deviceBlockMessage: null,
         deviceBlockStatus: null
@@ -28,24 +29,31 @@ export const useAuthStore = defineStore('auth', {
         },
 
         async login(username, password) {
+            const version = ++this.sessionVersion;
             this.loading = true;
             this.error = null;
             this.clearDeviceBlock();
             try {
                 const res = await http.post('login_check', { username, password });
+                if (version !== this.sessionVersion) throw new Error('Connexion annulée.');
+                if (typeof res.data?.token !== 'string' || !res.data.token) {
+                    throw new Error('Réponse de connexion invalide.');
+                }
+                this.user = null;
                 this.token = res.data.token;
                 localStorage.setItem('token', this.token);
                 await this.fetchUser();
             } catch (err) {
+                if (version !== this.sessionVersion) throw err;
                 if (isDeviceNotAllowedError(err)) {
                     this.setDeviceBlock(err.response?.data?.message, err.response?.data?.status);
                     throw err;
                 }
                 this.logout();
-                this.error = err.response?.data?.message || 'Erreur de connexion';
+                this.error = err.response?.status === 401 ? 'Identifiants incorrects.' : err.response?.data?.message || 'Erreur de connexion';
                 throw err;
             } finally {
-                this.loading = false;
+                if (version === this.sessionVersion) this.loading = false;
             }
         },
 
@@ -63,10 +71,15 @@ export const useAuthStore = defineStore('auth', {
         },
 
         async validateToken() {
+            const requestedToken = this.token;
             try {
                 const response = await http.get('token/validate');
-                return true;
+                if (this.token !== requestedToken) return false;
+                const valid = response.data?.status === 'valid';
+                if (!valid) this.logout();
+                return valid;
             } catch (error) {
+                if (this.token !== requestedToken) return false;
                 if (error.response && error.response.status === 401) {
                     this.logout();
                 } else {
@@ -80,8 +93,10 @@ export const useAuthStore = defineStore('auth', {
         },
 
         async fetchUser() {
+            const requestedToken = this.token;
             try {
                 const res = await http.get('me');
+                if (!requestedToken || this.token !== requestedToken) throw new Error('Session modifiée.');
                 this.user = {
                     ...res.data.user,
                     employee: res.data.employee ?? null,
@@ -99,6 +114,7 @@ export const useAuthStore = defineStore('auth', {
                 });
                 return res.data;
             } catch (err) {
+                if (this.token !== requestedToken) throw err;
                 if (isDeviceNotAllowedError(err)) {
                     this.setDeviceBlock(err.response?.data?.message, err.response?.data?.status);
                     throw err;
@@ -111,6 +127,8 @@ export const useAuthStore = defineStore('auth', {
         },
 
         logout() {
+            this.sessionVersion += 1;
+            this.loading = false;
             releasePushSubscription(this.token);
             import('@/composables/useBrowserNotifications').then(({ useBrowserNotifications }) => {
                 useBrowserNotifications().markPushSubscriptionReleased();

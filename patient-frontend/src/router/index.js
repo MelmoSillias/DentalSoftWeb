@@ -78,10 +78,10 @@ const router = createRouter({
     routes
 });
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
     const auth = useAuthStore();
     const portal = usePortalSettingsStore();
-    auth.hydrate();
+    await auth.hydrate();
 
     return portal.load().then(() => {
         const isPublicRoute = to.meta.public === true;

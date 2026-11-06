@@ -22,18 +22,36 @@ security:
             pattern: ^/api/sms/webhooks/
             security: false
 
-        # 🔐 JWT LOGIN (API)
-        api_login:
-            pattern: ^/api/login
+        api_patient_login:
+            pattern: ^/api/login_patient_check$
             stateless: true
             provider: users_in_database
-            user_checker: App\IdentityAccess\Security\UserEnabledChecker
+            user_checker: App\IdentityAccess\Security\LoginUserChecker
+            login_throttling:
+                max_attempts: 5
+                interval: '5 minutes'
+            json_login:
+                check_path: /api/login_patient_check
+                username_path: username
+                password_path: password
+                success_handler: lexik_jwt_authentication.handler.authentication_success
+                failure_handler: App\IdentityAccess\Security\LoginFailureHandler
+
+        # 🔐 JWT LOGIN (API)
+        api_login:
+            pattern: ^/api/login_check$
+            stateless: true
+            provider: users_in_database
+            user_checker: App\IdentityAccess\Security\LoginUserChecker
+            login_throttling:
+                max_attempts: 5
+                interval: '5 minutes'
             json_login:
                 check_path: /api/login_check
                 username_path: username
                 password_path: password
                 success_handler: lexik_jwt_authentication.handler.authentication_success
-                failure_handler: lexik_jwt_authentication.handler.authentication_failure
+                failure_handler: App\IdentityAccess\Security\LoginFailureHandler
 
         # 🔐 JWT PROTECTED API
         api:
@@ -45,9 +63,9 @@ security:
 
     access_control:
         # API
-        - { path: ^/api/login, roles: PUBLIC_ACCESS }
+        - { path: ^/api/login(?:_patient)?_check$, roles: PUBLIC_ACCESS }
         - { path: ^/api/health, roles: PUBLIC_ACCESS }
-        - { path: ^/api/token/validate, roles: PUBLIC_ACCESS }
+        - { path: ^/api/token/validate$, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/api/appreciations/public, roles: PUBLIC_ACCESS }
         - { path: ^/api/appreciations/anonymous, roles: PUBLIC_ACCESS }
         - { path: ^/api/settings/general/public, roles: PUBLIC_ACCESS }

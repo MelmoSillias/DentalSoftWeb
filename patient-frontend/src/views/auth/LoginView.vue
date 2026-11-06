@@ -57,9 +57,7 @@ function openShowcase() {
             />
         </section>
 
-        <LoginForm :disabled="isPortalClosed" @success="handleSuccess" />
-
-        <p class="login-footer">Votre espace est sécurisé et chiffré.</p>
+        <LoginForm :disabled="isPortalClosed" @success="handleSuccess" /> 
     </main>
 </template>
 

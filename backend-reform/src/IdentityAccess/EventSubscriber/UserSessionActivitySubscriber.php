@@ -60,7 +60,8 @@ final class UserSessionActivitySubscriber implements EventSubscriberInterface
 
     private function storeEvent(User $user, string $title, string $subtitle, string $badge, string $icon, ?Request $request = null): void
     {
-        $session = $this->requestStack->getSession();
+        $request ??= $this->requestStack->getCurrentRequest();
+        $session = $request?->hasSession() ? $request->getSession() : null;
         if (!$session || null === $user->getId()) {
             return;
         }
