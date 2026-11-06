@@ -168,7 +168,7 @@ onBeforeUnmount(() => {
 <style>
 html.is-connection-offline .auth,
 html.is-connection-restored .auth {
-    min-height: calc(100dvh - var(--connection-banner-offset, 0px));
+    min-height: calc(var(--auth-viewport-height, 100dvh) - var(--connection-banner-offset, 0px));
 }
 
 /* Toast offset when banner is visible is handled in layout/_toast.scss */

@@ -1,6 +1,5 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
-import AppLayout from '../../layout/AppLayout.vue';
 import StatsGrid from './components/StatsGrid.vue';
 import NextAppointmentCard from './components/NextAppointmentCard.vue';
 import LastConsultationCard from './components/LastConsultationCard.vue';
@@ -198,108 +197,106 @@ onMounted(async () => {
 });
 </script>
 <template>
-    <AppLayout
-        ><section class="dashboard-stack">
-            <div class="welcome-row">
-                <div>
-                    <h1>
-                        Bonjour, <span>{{ firstName }}.</span>
-                    </h1>
-                    <p class="muted">
-                        Un nouveau jour pour prendre soin de votre sourire.
-                    </p>
-                </div>
-                <span class="welcome-status"
-                    ><span class="status-dot" />Mon espace patient</span
-                >
+    <section class="dashboard-stack">
+        <div class="welcome-row">
+            <div>
+                <h1>
+                    Bonjour, <span>{{ firstName }}.</span>
+                </h1>
+                <p class="muted">
+                    Un nouveau jour pour prendre soin de votre sourire.
+                </p>
             </div>
-            <Message v-if="loadError" severity="warn" :closable="false">{{
-                loadError
-            }}</Message>
-            <section class="overview-hero">
-                <div class="hero-copy">
-                    <span class="hero-kicker">VOTRE SANTÉ, NOTRE PRIORITÉ</span>
-                    <h2>
-                        Un sourire serein,<br />un suivi en toute simplicité.
-                    </h2>
-                    <p>Votre cabinet vous accompagne à chaque étape.</p>
-                    <RouterLink class="hero-link" to="/rendez-vous"
-                        >Mes rendez-vous<i class="pi pi-arrow-right"
+            <span class="welcome-status"
+                ><span class="status-dot" />Mon espace patient</span
+            >
+        </div>
+        <Message v-if="loadError" severity="warn" :closable="false">{{
+            loadError
+        }}</Message>
+        <section class="overview-hero">
+            <div class="hero-copy">
+                <span class="hero-kicker">VOTRE SANTÉ, NOTRE PRIORITÉ</span>
+                <h2>
+                    Un sourire serein,<br />un suivi en toute simplicité.
+                </h2>
+                <p>Votre cabinet vous accompagne à chaque étape.</p>
+                <RouterLink class="hero-link" to="/rendez-vous"
+                    >Mes rendez-vous<i class="pi pi-arrow-right"
+                /></RouterLink>
+            </div>
+            <div class="hero-art" aria-hidden="true">
+                <svg viewBox="0 0 100 100" fill="none">
+                    <path
+                        d="M30 18C12 18 12 38 21 57c6 14 7 28 15 28 8 0 4-29 14-29s6 29 14 29c8 0 9-14 15-28 9-19 9-39-9-39-10 0-11 6-20 6s-10-6-20-6Z"
+                        stroke="currentColor"
+                        stroke-width="3"
+                        stroke-linejoin="round"
+                    />
+                    <path
+                        d="M38 35c7 4 17 4 24 0"
+                        stroke="currentColor"
+                        stroke-width="2.5"
+                        stroke-linecap="round"
+                    /></svg
+                ><span class="hero-art-dot" />
+            </div>
+        </section>
+        <Message
+            v-if="sectionErrors.stats"
+            severity="warn"
+            :closable="false"
+            >{{ sectionErrors.stats }}</Message
+        ><StatsGrid v-else :stats="stats" :loading="isLoading" />
+        <div class="dashboard-columns">
+            <section class="dashboard-section">
+                <div class="section-heading">
+                    <h2>Prochain rendez-vous</h2>
+                    <RouterLink to="/rendez-vous"
+                        >Tout voir<i class="pi pi-arrow-right"
                     /></RouterLink>
                 </div>
-                <div class="hero-art" aria-hidden="true">
-                    <svg viewBox="0 0 100 100" fill="none">
-                        <path
-                            d="M30 18C12 18 12 38 21 57c6 14 7 28 15 28 8 0 4-29 14-29s6 29 14 29c8 0 9-14 15-28 9-19 9-39-9-39-10 0-11 6-20 6s-10-6-20-6Z"
-                            stroke="currentColor"
-                            stroke-width="3"
-                            stroke-linejoin="round"
-                        />
-                        <path
-                            d="M38 35c7 4 17 4 24 0"
-                            stroke="currentColor"
-                            stroke-width="2.5"
-                            stroke-linecap="round"
-                        /></svg
-                    ><span class="hero-art-dot" />
-                </div>
+                <Message
+                    v-if="sectionErrors.appointments"
+                    severity="warn"
+                    :closable="false"
+                    >{{ sectionErrors.appointments }}</Message
+                ><NextAppointmentCard
+                    v-else
+                    :appointment="nextAppointment"
+                    :loading="isLoading"
+                    :empty="!isLoading && appointmentsEmpty"
+                />
             </section>
-            <Message
-                v-if="sectionErrors.stats"
-                severity="warn"
-                :closable="false"
-                >{{ sectionErrors.stats }}</Message
-            ><StatsGrid v-else :stats="stats" :loading="isLoading" />
-            <div class="dashboard-columns">
-                <section class="dashboard-section">
-                    <div class="section-heading">
-                        <h2>Prochain rendez-vous</h2>
-                        <RouterLink to="/rendez-vous"
-                            >Tout voir<i class="pi pi-arrow-right"
-                        /></RouterLink>
-                    </div>
-                    <Message
-                        v-if="sectionErrors.appointments"
-                        severity="warn"
-                        :closable="false"
-                        >{{ sectionErrors.appointments }}</Message
-                    ><NextAppointmentCard
-                        v-else
-                        :appointment="nextAppointment"
-                        :loading="isLoading"
-                        :empty="!isLoading && appointmentsEmpty"
-                    />
-                </section>
-                <section class="dashboard-section">
-                    <div class="section-heading">
-                        <h2>Dernière consultation</h2>
-                        <RouterLink to="/consultations"
-                            >Mon historique<i class="pi pi-arrow-right"
-                        /></RouterLink>
-                    </div>
-                    <Message
-                        v-if="sectionErrors.consultations"
-                        severity="warn"
-                        :closable="false"
-                        >{{ sectionErrors.consultations }}</Message
-                    ><LastConsultationCard
-                        v-else
-                        :consultation="lastConsultation"
-                        :loading="isLoading"
-                        :empty="!isLoading && consultationsEmpty"
-                    />
-                </section>
-            </div>
-            <aside class="care-tip">
-                <i class="pi pi-sparkles" aria-hidden="true" />
-                <div>
-                    <strong>Le petit geste qui fait sourire</strong>
-                    <p>
-                        Deux minutes de brossage, deux fois par jour : une bonne
-                        habitude pour votre santé bucco-dentaire.
-                    </p>
+            <section class="dashboard-section">
+                <div class="section-heading">
+                    <h2>Dernière consultation</h2>
+                    <RouterLink to="/consultations"
+                        >Mon historique<i class="pi pi-arrow-right"
+                    /></RouterLink>
                 </div>
-            </aside>
-        </section></AppLayout
-    >
+                <Message
+                    v-if="sectionErrors.consultations"
+                    severity="warn"
+                    :closable="false"
+                    >{{ sectionErrors.consultations }}</Message
+                ><LastConsultationCard
+                    v-else
+                    :consultation="lastConsultation"
+                    :loading="isLoading"
+                    :empty="!isLoading && consultationsEmpty"
+                />
+            </section>
+        </div>
+        <aside class="care-tip">
+            <i class="pi pi-sparkles" aria-hidden="true" />
+            <div>
+                <strong>Le petit geste qui fait sourire</strong>
+                <p>
+                    Deux minutes de brossage, deux fois par jour : une bonne
+                    habitude pour votre santé bucco-dentaire.
+                </p>
+            </div>
+        </aside>
+    </section>
 </template>

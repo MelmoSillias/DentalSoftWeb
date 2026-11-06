@@ -1,6 +1,6 @@
 <script setup>
 import FloatingConfigurator from '@/components/FloatingConfigurator.vue';
-import { ref } from 'vue';
+import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { useRouter } from 'vue-router';
 import { isDeviceNotAllowedError } from '@/service/http';
@@ -20,6 +20,29 @@ const password = ref('');
 const checked = ref(false);
 const errorMessage = ref('');
 const loading = ref(false);
+const authElement = ref(null);
+const viewportHeight = ref(null);
+
+// Mobile keyboards can resize only the visual viewport, leaving 100dvh unchanged.
+const syncViewportHeight = async () => {
+    viewportHeight.value = `${window.visualViewport?.height ?? window.innerHeight}px`;
+    await nextTick();
+    const activeElement = document.activeElement;
+    if (authElement.value?.contains(activeElement) && activeElement?.matches('input')) {
+        activeElement.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
+};
+
+onMounted(() => {
+    syncViewportHeight();
+    window.visualViewport?.addEventListener('resize', syncViewportHeight);
+    window.addEventListener('resize', syncViewportHeight);
+});
+
+onBeforeUnmount(() => {
+    window.visualViewport?.removeEventListener('resize', syncViewportHeight);
+    window.removeEventListener('resize', syncViewportHeight);
+});
 
 const onSubmit = async () => {
     errorMessage.value = '';
@@ -170,7 +193,7 @@ const onSubmit = async () => {
             </g>
         </g>
     </svg>
-    <main class="auth">
+    <main ref="authElement" class="auth" :style="{ '--auth-viewport-height': viewportHeight }">
         <div class="auth_container">
             <section class="auth_illustration">
                 <div class="auth_illustration_content">
@@ -253,15 +276,23 @@ const onSubmit = async () => {
 }
 
 .auth {
-    min-height: 100vh;
-    display: grid;
-    place-items: center;
+    box-sizing: border-box;
+    height: calc(var(--auth-viewport-height, 100dvh) - var(--connection-banner-offset, 0px));
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scroll-padding-block: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     padding: 1.5rem;
     background: radial-gradient(circle at 8% 15%, #dbe9ff 0, transparent 34%), radial-gradient(circle at 92% 80%, #d8fff0 0, transparent 30%), var(--auth-bg);
 }
 
 .auth_container {
     width: min(980px, 100%);
+    flex-shrink: 0;
+    margin-block: auto;
     min-height: 620px;
     background: var(--auth-card-bg);
     border-radius: 1.25rem;
@@ -561,6 +592,10 @@ h1 {
         border-radius: 1rem;
     }
 
+    :deep(input) {
+        font-size: max(16px, 1rem);
+    }
+
     h1 {
         font-size: 1.45rem;
     }
@@ -573,6 +608,7 @@ h1 {
 }
 
 svg {
+    pointer-events: none;
     position: absolute;
     width: 100%;
     height: 100%;

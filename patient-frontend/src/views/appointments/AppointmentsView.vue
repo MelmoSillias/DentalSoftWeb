@@ -1,7 +1,6 @@
 <script setup>
 import CollectionToolbar from '../../components/CollectionToolbar.vue';
 import { computed, onMounted, ref } from 'vue';
-import AppLayout from '../../layout/AppLayout.vue';
 import { useAuthStore } from '../../stores/auth';
 import { fetchPatientAppointments } from '../../services/patientPortal';
 
@@ -79,92 +78,91 @@ const visibleItems = computed(() =>
 </script>
 
 <template>
-    <AppLayout>
-        <section class="space-y-4">
-            <div class="page-hero">
-                <div>
-                    <h2 class="hero-title">Rendez-vous</h2>
-                    <p class="muted m-0 text-sm">
-                        Suivez vos prochains rendez-vous et leur statut.
+    <section class="space-y-4">
+        <div class="page-hero">
+            <div>
+                <h2 class="hero-title">Rendez-vous</h2>
+                <p class="muted m-0 text-sm">
+                    Suivez vos prochains rendez-vous et leur statut.
+                </p>
+            </div>
+        </div>
+
+        <CollectionToolbar
+            v-if="!loading && !loadError"
+            v-model:search="search"
+            v-model:filter="filter"
+            :filters="filters"
+            :count="visibleItems.length"
+            placeholder="Rechercher un rendez-vous..."
+        />
+        <Message v-if="loadError" severity="error" :closable="false"
+            >{{ loadError }}
+            <button type="button" class="retry-link" @click="reloadPage">
+                Réessayer
+            </button></Message
+        >
+        <div v-if="loading" class="grid gap-3">
+            <Skeleton height="5.5rem" border-radius="16px" />
+            <Skeleton height="5.5rem" border-radius="16px" />
+        </div>
+
+        <div
+            v-else-if="!loadError && appointments.length === 0"
+            class="empty-card"
+        >
+            <i class="pi pi-calendar-times empty-icon" />
+            <p class="muted m-0">
+                Aucun rendez-vous planifié pour le moment.
+            </p>
+        </div>
+
+        <div
+            v-else-if="!loadError && visibleItems.length === 0"
+            class="empty-card"
+        >
+            <i class="pi pi-search empty-icon" />
+            <p class="muted">Aucun résultat pour ces critères.</p>
+            <Button
+                label="Réinitialiser les filtres"
+                text
+                @click="
+                    search = '';
+                    filter = 'all';
+                "
+            />
+        </div>
+        <div v-else-if="!loadError" class="grid gap-3">
+            <div
+                v-for="item in visibleItems"
+                :key="item.id"
+                class="rdv-card"
+            >
+                <div class="rdv-accent" />
+                <div class="rdv-body">
+                    <div class="rdv-top">
+                        <div>
+                            <p class="m-0 font-semibold">
+                                {{ formatDate(item.dateRdv) }}
+                            </p>
+                            <p class="m-0 text-sm muted mt-1">
+                                {{ item?.medecin?.nom || '--' }}
+                            </p>
+                        </div>
+                        <Tag
+                            :value="item.statut || 'Planifié'"
+                            severity="info"
+                        />
+                    </div>
+                    <p
+                        v-if="item.description"
+                        class="m-0 text-sm muted rdv-desc"
+                    >
+                        {{ item.description }}
                     </p>
                 </div>
             </div>
+        </div>
+    </section>
 
-            <CollectionToolbar
-                v-if="!loading && !loadError"
-                v-model:search="search"
-                v-model:filter="filter"
-                :filters="filters"
-                :count="visibleItems.length"
-                placeholder="Rechercher un rendez-vous..."
-            />
-            <Message v-if="loadError" severity="error" :closable="false"
-                >{{ loadError }}
-                <button type="button" class="retry-link" @click="reloadPage">
-                    Réessayer
-                </button></Message
-            >
-            <div v-if="loading" class="grid gap-3">
-                <Skeleton height="5.5rem" border-radius="16px" />
-                <Skeleton height="5.5rem" border-radius="16px" />
-            </div>
-
-            <div
-                v-else-if="!loadError && appointments.length === 0"
-                class="empty-card"
-            >
-                <i class="pi pi-calendar-times empty-icon" />
-                <p class="muted m-0">
-                    Aucun rendez-vous planifié pour le moment.
-                </p>
-            </div>
-
-            <div
-                v-else-if="!loadError && visibleItems.length === 0"
-                class="empty-card"
-            >
-                <i class="pi pi-search empty-icon" />
-                <p class="muted">Aucun résultat pour ces critères.</p>
-                <Button
-                    label="Réinitialiser les filtres"
-                    text
-                    @click="
-                        search = '';
-                        filter = 'all';
-                    "
-                />
-            </div>
-            <div v-else-if="!loadError" class="grid gap-3">
-                <div
-                    v-for="item in visibleItems"
-                    :key="item.id"
-                    class="rdv-card"
-                >
-                    <div class="rdv-accent" />
-                    <div class="rdv-body">
-                        <div class="rdv-top">
-                            <div>
-                                <p class="m-0 font-semibold">
-                                    {{ formatDate(item.dateRdv) }}
-                                </p>
-                                <p class="m-0 text-sm muted mt-1">
-                                    {{ item?.medecin?.nom || '--' }}
-                                </p>
-                            </div>
-                            <Tag
-                                :value="item.statut || 'Planifié'"
-                                severity="info"
-                            />
-                        </div>
-                        <p
-                            v-if="item.description"
-                            class="m-0 text-sm muted rdv-desc"
-                        >
-                            {{ item.description }}
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </AppLayout>
 </template>

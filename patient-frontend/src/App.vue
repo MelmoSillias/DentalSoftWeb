@@ -2,6 +2,7 @@
 import { onBeforeUnmount, onMounted } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import AmbientBackground from './components/AmbientBackground.vue';
+import AppLayout from './layout/AppLayout.vue';
 import { useTheme } from './composables/useTheme';
 import OfflineConnectionBanner from './components/OfflineConnectionBanner.vue';
 import { APP_TOAST_EVENT } from './services/toastBus';
@@ -37,5 +38,11 @@ onBeforeUnmount(() => {
     <AmbientBackground />
     <OfflineConnectionBanner />
     <Toast position="top-right" />
-    <RouterView />
+    <RouterView v-slot="{ Component, route }">
+        <component :is="route.meta.requiresAuth ? AppLayout : 'div'" class="route-host">
+            <Transition name="portal-page" mode="out-in">
+                <component :is="Component" :key="route.path" />
+            </Transition>
+        </component>
+    </RouterView>
 </template>

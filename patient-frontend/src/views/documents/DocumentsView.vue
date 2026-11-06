@@ -1,7 +1,6 @@
 <script setup>
 import CollectionToolbar from '../../components/CollectionToolbar.vue';
 import { computed, onMounted, ref } from 'vue';
-import AppLayout from '../../layout/AppLayout.vue';
 import { useAuthStore } from '../../stores/auth';
 import {
     fetchDocumentDetail,
@@ -102,255 +101,254 @@ const visibleItems = computed(() =>
 </script>
 
 <template>
-    <AppLayout>
-        <section class="space-y-4">
-            <div class="page-hero">
-                <i class="pi pi-folder-open hero-icon" />
-                <div>
-                    <h2 class="hero-title">Documents</h2>
-                    <p class="muted m-0 text-sm">
-                        Vos factures et documents de consultation.
-                    </p>
-                </div>
+    <section class="space-y-4">
+        <div class="page-hero">
+            <i class="pi pi-folder-open hero-icon" />
+            <div>
+                <h2 class="hero-title">Documents</h2>
+                <p class="muted m-0 text-sm">
+                    Vos factures et documents de consultation.
+                </p>
             </div>
+        </div>
 
-            <CollectionToolbar
-                v-if="!loading && !loadError"
-                v-model:search="search"
-                v-model:filter="filter"
-                :filters="filters"
-                :count="visibleItems.length"
-                placeholder="Rechercher un document..."
+        <CollectionToolbar
+            v-if="!loading && !loadError"
+            v-model:search="search"
+            v-model:filter="filter"
+            :filters="filters"
+            :count="visibleItems.length"
+            placeholder="Rechercher un document..."
+        />
+        <Message v-if="loadError" severity="error" :closable="false"
+            >{{ loadError }}
+            <button type="button" class="retry-link" @click="reloadPage">
+                Réessayer
+            </button></Message
+        >
+        <div v-if="loading" class="grid gap-3">
+            <Skeleton height="5.5rem" border-radius="16px" />
+            <Skeleton height="5.5rem" border-radius="16px" />
+        </div>
+
+        <div
+            v-else-if="!loadError && documents.length === 0"
+            class="empty-card"
+        >
+            <i class="pi pi-file empty-icon" />
+            <p class="muted m-0">Aucun document trouvé.</p>
+        </div>
+
+        <div
+            v-else-if="!loadError && visibleItems.length === 0"
+            class="empty-card"
+        >
+            <i class="pi pi-search empty-icon" />
+            <p class="muted">Aucun résultat pour ces critères.</p>
+            <Button
+                label="Réinitialiser les filtres"
+                text
+                @click="
+                    search = '';
+                    filter = 'all';
+                "
             />
-            <Message v-if="loadError" severity="error" :closable="false"
-                >{{ loadError }}
-                <button type="button" class="retry-link" @click="reloadPage">
-                    Réessayer
-                </button></Message
-            >
-            <div v-if="loading" class="grid gap-3">
-                <Skeleton height="5.5rem" border-radius="16px" />
-                <Skeleton height="5.5rem" border-radius="16px" />
-            </div>
-
+        </div>
+        <div v-else-if="!loadError" class="grid gap-3">
             <div
-                v-else-if="!loadError && documents.length === 0"
-                class="empty-card"
+                v-for="item in visibleItems"
+                :key="item.id"
+                class="doc-card"
             >
-                <i class="pi pi-file empty-icon" />
-                <p class="muted m-0">Aucun document trouvé.</p>
-            </div>
-
-            <div
-                v-else-if="!loadError && visibleItems.length === 0"
-                class="empty-card"
-            >
-                <i class="pi pi-search empty-icon" />
-                <p class="muted">Aucun résultat pour ces critères.</p>
-                <Button
-                    label="Réinitialiser les filtres"
-                    text
-                    @click="
-                        search = '';
-                        filter = 'all';
-                    "
-                />
-            </div>
-            <div v-else-if="!loadError" class="grid gap-3">
-                <div
-                    v-for="item in visibleItems"
-                    :key="item.id"
-                    class="doc-card"
-                >
-                    <div class="doc-file-icon">
-                        <i class="pi pi-file-pdf" />
+                <div class="doc-file-icon">
+                    <i class="pi pi-file-pdf" />
+                </div>
+                <div class="doc-body">
+                    <div class="doc-top">
+                        <div>
+                            <p class="m-0 font-semibold">
+                                Facture #{{ item.id }}
+                            </p>
+                            <p class="m-0 text-sm muted mt-1">
+                                {{ formatDate(item.date) }}
+                            </p>
+                        </div>
+                        <Tag
+                            :value="
+                                item.statut === 'reglee'
+                                    ? 'Réglée'
+                                    : 'Ouverte'
+                            "
+                            :severity="
+                                item.statut === 'reglee'
+                                    ? 'success'
+                                    : 'warn'
+                            "
+                        />
                     </div>
-                    <div class="doc-body">
-                        <div class="doc-top">
-                            <div>
-                                <p class="m-0 font-semibold">
-                                    Facture #{{ item.id }}
-                                </p>
-                                <p class="m-0 text-sm muted mt-1">
-                                    {{ formatDate(item.date) }}
-                                </p>
-                            </div>
-                            <Tag
-                                :value="
-                                    item.statut === 'reglee'
-                                        ? 'Réglée'
-                                        : 'Ouverte'
-                                "
-                                :severity="
-                                    item.statut === 'reglee'
-                                        ? 'success'
-                                        : 'warn'
-                                "
-                            />
-                        </div>
-                        <div class="doc-amounts">
-                            <span class="amount-chip amount-total">
-                                <i class="pi pi-money-bill" />
-                                {{
-                                    Number(item.montant || 0).toLocaleString(
-                                        'fr-FR',
-                                    )
-                                }}
-                                FCFA
-                            </span>
-                            <span
-                                v-if="Number(item.reste || 0) > 0"
-                                class="amount-chip amount-rest"
-                            >
-                                <i class="pi pi-hourglass" />
-                                Reste:
-                                {{
-                                    Number(item.reste || 0).toLocaleString(
-                                        'fr-FR',
-                                    )
-                                }}
-                                FCFA
-                            </span>
-                        </div>
-
-                        <!-- Bouton détail -->
-                        <button
-                            type="button"
-                            class="detail-toggle-btn"
-                            :aria-expanded="expandedId === item.id"
-                            @click="toggleDetail(item.id)"
-                        >
-                            <i
-                                class="pi"
-                                :class="
-                                    expandedId === item.id
-                                        ? 'pi-chevron-up'
-                                        : 'pi-list'
-                                "
-                            />
+                    <div class="doc-amounts">
+                        <span class="amount-chip amount-total">
+                            <i class="pi pi-money-bill" />
                             {{
-                                expandedId === item.id
-                                    ? 'Masquer les lignes'
-                                    : 'Voir le détail'
+                                Number(item.montant || 0).toLocaleString(
+                                    'fr-FR',
+                                )
                             }}
-                        </button>
+                            FCFA
+                        </span>
+                        <span
+                            v-if="Number(item.reste || 0) > 0"
+                            class="amount-chip amount-rest"
+                        >
+                            <i class="pi pi-hourglass" />
+                            Reste:
+                            {{
+                                Number(item.reste || 0).toLocaleString(
+                                    'fr-FR',
+                                )
+                            }}
+                            FCFA
+                        </span>
+                    </div>
 
-                        <!-- Détail lignes -->
-                        <div v-if="expandedId === item.id" class="doc-detail">
+                    <!-- Bouton détail -->
+                    <button
+                        type="button"
+                        class="detail-toggle-btn"
+                        :aria-expanded="expandedId === item.id"
+                        @click="toggleDetail(item.id)"
+                    >
+                        <i
+                            class="pi"
+                            :class="
+                                expandedId === item.id
+                                    ? 'pi-chevron-up'
+                                    : 'pi-list'
+                            "
+                        />
+                        {{
+                            expandedId === item.id
+                                ? 'Masquer les lignes'
+                                : 'Voir le détail'
+                        }}
+                    </button>
+
+                    <!-- Détail lignes -->
+                    <div v-if="expandedId === item.id" class="doc-detail">
+                        <div
+                            v-if="loadingDetail[item.id]"
+                            class="detail-loading"
+                        >
+                            <i class="pi pi-spin pi-spinner" />
+                            Chargement...
+                        </div>
+                        <Message
+                            v-else-if="detailErrors[item.id]"
+                            severity="error"
+                            :closable="false"
+                            >{{ detailErrors[item.id] }}</Message
+                        >
+                        <template v-else-if="detailById[item.id]">
                             <div
-                                v-if="loadingDetail[item.id]"
-                                class="detail-loading"
+                                v-if="!detailById[item.id].lignes?.length"
+                                class="detail-empty"
                             >
-                                <i class="pi pi-spin pi-spinner" />
-                                Chargement...
+                                Aucune ligne disponible.
                             </div>
-                            <Message
-                                v-else-if="detailErrors[item.id]"
-                                severity="error"
-                                :closable="false"
-                                >{{ detailErrors[item.id] }}</Message
-                            >
-                            <template v-else-if="detailById[item.id]">
-                                <div
-                                    v-if="!detailById[item.id].lignes?.length"
-                                    class="detail-empty"
-                                >
-                                    Aucune ligne disponible.
+                            <div v-else>
+                                <div class="ligne-row ligne-header">
+                                    <span>Acte</span><span>Dent</span
+                                    ><span class="text-right">Qté</span
+                                    ><span class="text-right">P.U.</span
+                                    ><span class="text-right">Total</span>
                                 </div>
-                                <div v-else>
-                                    <div class="ligne-row ligne-header">
-                                        <span>Acte</span><span>Dent</span
-                                        ><span class="text-right">Qté</span
-                                        ><span class="text-right">P.U.</span
-                                        ><span class="text-right">Total</span>
+                                <div
+                                    v-for="(ligne, idx) in detailById[
+                                        item.id
+                                    ].lignes"
+                                    :key="idx"
+                                    class="ligne-row"
+                                >
+                                    <span class="ligne-type">{{
+                                        ligne.designation ||
+                                        ligne.type ||
+                                        '-'
+                                    }}</span>
+                                    <span class="muted">{{
+                                        ligne.dent || '-'
+                                    }}</span>
+                                    <span class="text-right">{{
+                                        ligne.quantite || ligne.qte
+                                    }}</span>
+                                    <span class="text-right muted">{{
+                                        formatPrice(
+                                            ligne.prix || ligne.montant,
+                                        )
+                                    }}</span>
+                                    <span class="text-right ligne-total">{{
+                                        formatPrice(ligne.total)
+                                    }}</span>
+                                </div>
+                                <div class="doc-totals">
+                                    <div class="total-row">
+                                        <span>Montant total</span>
+                                        <span
+                                            class="total-chip total-green"
+                                            >{{
+                                                formatPrice(
+                                                    detailById[item.id]
+                                                        .montantTotal,
+                                                )
+                                            }}</span
+                                        >
                                     </div>
                                     <div
-                                        v-for="(ligne, idx) in detailById[
-                                            item.id
-                                        ].lignes"
-                                        :key="idx"
-                                        class="ligne-row"
+                                        v-if="
+                                            Number(
+                                                detailById[item.id]
+                                                    .restePatient,
+                                            ) > 0
+                                        "
+                                        class="total-row"
                                     >
-                                        <span class="ligne-type">{{
-                                            ligne.designation ||
-                                            ligne.type ||
-                                            '-'
-                                        }}</span>
-                                        <span class="muted">{{
-                                            ligne.dent || '-'
-                                        }}</span>
-                                        <span class="text-right">{{
-                                            ligne.quantite || ligne.qte
-                                        }}</span>
-                                        <span class="text-right muted">{{
-                                            formatPrice(
-                                                ligne.prix || ligne.montant,
-                                            )
-                                        }}</span>
-                                        <span class="text-right ligne-total">{{
-                                            formatPrice(ligne.total)
-                                        }}</span>
-                                    </div>
-                                    <div class="doc-totals">
-                                        <div class="total-row">
-                                            <span>Montant total</span>
-                                            <span
-                                                class="total-chip total-green"
-                                                >{{
-                                                    formatPrice(
-                                                        detailById[item.id]
-                                                            .montantTotal,
-                                                    )
-                                                }}</span
-                                            >
-                                        </div>
-                                        <div
-                                            v-if="
-                                                Number(
+                                        <span>Reste à payer</span>
+                                        <span
+                                            class="total-chip total-orange"
+                                            >{{
+                                                formatPrice(
                                                     detailById[item.id]
                                                         .restePatient,
-                                                ) > 0
-                                            "
-                                            class="total-row"
+                                                )
+                                            }}</span
                                         >
-                                            <span>Reste à payer</span>
-                                            <span
-                                                class="total-chip total-orange"
-                                                >{{
-                                                    formatPrice(
-                                                        detailById[item.id]
-                                                            .restePatient,
-                                                    )
-                                                }}</span
-                                            >
-                                        </div>
-                                        <div
-                                            v-if="
-                                                Number(
+                                    </div>
+                                    <div
+                                        v-if="
+                                            Number(
+                                                detailById[item.id]
+                                                    .patientPaid,
+                                            ) > 0
+                                        "
+                                        class="total-row"
+                                    >
+                                        <span>Déjà payé</span>
+                                        <span
+                                            class="total-chip total-blue"
+                                            >{{
+                                                formatPrice(
                                                     detailById[item.id]
                                                         .patientPaid,
-                                                ) > 0
-                                            "
-                                            class="total-row"
+                                                )
+                                            }}</span
                                         >
-                                            <span>Déjà payé</span>
-                                            <span
-                                                class="total-chip total-blue"
-                                                >{{
-                                                    formatPrice(
-                                                        detailById[item.id]
-                                                            .patientPaid,
-                                                    )
-                                                }}</span
-                                            >
-                                        </div>
                                     </div>
                                 </div>
-                            </template>
-                        </div>
+                            </div>
+                        </template>
                     </div>
                 </div>
             </div>
-        </section>
-    </AppLayout>
+        </div>
+    </section>
+
 </template>

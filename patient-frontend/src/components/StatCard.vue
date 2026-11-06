@@ -15,12 +15,10 @@ defineProps({
     <div class="stat-card">
         <div
             class="stat-icon"
-            :style="{ background: `var(--p-${item.color}-100)` }"
         >
             <i
                 v-if="!loading"
                 :class="item.icon"
-                :style="{ color: `var(--p-${item.color}-600)` }"
             />
             <Skeleton v-else width="1.5rem" height="1.5rem" />
         </div>

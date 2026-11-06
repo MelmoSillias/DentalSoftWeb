@@ -51,8 +51,7 @@ function openShowcase() {
                 />
                 <RouterLink
                     to="/login"
-                    class="hero-link"
-                    style="margin-top: 24px; background: var(--pp-soft)"
+                    class="hero-link public-notice"
                     ><i class="pi pi-arrow-left" />Retour à la
                     connexion</RouterLink
                 ></template
