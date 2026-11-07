@@ -363,6 +363,7 @@ export function useInvoiceBillingActions(options = {}) {
     };
 
     const submitPayment = async () => {
+        if (payLoading.value || validateLoading.value || resetPaymentsLoading.value) return;
         if (!selectedFacture.value) return;
         const montant = Number(payForm.value.montant) || 0;
         const max = Number(selectedFacture.value.reste) || 0;
@@ -436,6 +437,7 @@ export function useInvoiceBillingActions(options = {}) {
     };
 
     const confirmValidate = async () => {
+        if (validateLoading.value || payLoading.value || resetPaymentsLoading.value) return;
         const target = pendingFacture.value || selectedFacture.value;
         if (!target) return;
         validateLoading.value = true;
@@ -474,6 +476,7 @@ export function useInvoiceBillingActions(options = {}) {
     };
 
     const resetSelectedDevisPayments = async () => {
+        if (resetPaymentsLoading.value || payLoading.value || validateLoading.value) return;
         const factureId = selectedFacture.value?.id ?? previewData.value?.id;
         if (!factureId) return;
 

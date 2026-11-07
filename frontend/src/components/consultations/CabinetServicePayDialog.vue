@@ -72,6 +72,7 @@ watch(visible, async (open) => {
 });
 
 const submit = async () => {
+    if (saving.value) return;
     if (!facture.value?.id) {
         toast.add({ severity: 'warn', summary: 'Paiement', detail: 'Facture introuvable', life: 2500 });
         return;

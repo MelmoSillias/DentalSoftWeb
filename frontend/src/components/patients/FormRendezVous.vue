@@ -271,6 +271,7 @@ watch(
 );
 
 const saveRendezVous = async () => {
+    if (loading.value) return;
     if (!selectedPatientId.value) {
         toast.add({ severity: 'warn', summary: 'Patient requis', detail: 'Sélectionnez un patient.', life: 2500 });
         return;

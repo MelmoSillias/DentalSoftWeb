@@ -135,6 +135,7 @@ const updateLine = (idx, patch) => {
 };
 
 const handleSave = () => {
+    if (props.saving || props.loading) return;
     emit('save', {
         lines: localLines.value.map((line, idx) => normalizeLine(line, idx)),
         date: localDate.value,

@@ -188,6 +188,7 @@ const buildPayload = () => ({
 });
 
 const handleSave = async ({ silent = false } = {}) => {
+    if (saving.value) return false;
     if (!props.consultation?.id || !ficheId.value || !canAccessForm.value) return false;
     if (!hasSelectedMedecin.value) {
         toast.add({ severity: 'warn', summary: 'Médecin requis', detail: 'Veuillez sélectionner un médecin avant la sauvegarde.', life: 3000 });
@@ -212,6 +213,7 @@ const handleSave = async ({ silent = false } = {}) => {
 };
 
 const handleCloture = async () => {
+    if (clotureLoading.value || saving.value) return;
     const consultationId = Number(props.consultation?.id);
     const currentFicheId = ficheId.value;
     if (!Number.isFinite(consultationId) || consultationId <= 0 || !currentFicheId || !canAccessForm.value) return;
@@ -240,6 +242,7 @@ const handleDialogHide = () => {
 };
 
 const verifyDoctorPassword = async () => {
+    if (verifyLoading.value) return;
     if (!props.consultation?.id || !doctorPassword.value) return;
 
     verifyLoading.value = true;

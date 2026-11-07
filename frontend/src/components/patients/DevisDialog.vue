@@ -130,6 +130,7 @@ const resolveTargetFicheId = async () => {
 };
 
 const submit = async () => {
+    if (saving.value) return;
     const entry = activeEntry();
     const lines = normalizeDevisServices(entry).filter((line) => String(line.designation || '').trim());
     if (!lines.length) {

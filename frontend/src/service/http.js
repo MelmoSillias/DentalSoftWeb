@@ -4,6 +4,8 @@ import axios from 'axios';
 import { apiPrefix } from '@/config';
 import { noteHttpFailure, noteTransportSuccess } from '@/composables/useNetworkStatus';
 import { getDeviceMetadata } from '@/utils/deviceFingerprint';
+import { beginMutationPreparation, reportMutationIssue, runMutation } from '@/composables/useMutationStatus';
+import { isMutation, stableValue } from './mutationGuard.mjs';
 
 /** Timeout par défaut pour la plupart des requêtes API (20 s). */
 export const REQUEST_TIMEOUT_MS = 20000;
@@ -13,6 +15,52 @@ export const HEAVY_REQUEST_TIMEOUT_MS = 60000;
 
 /** Timeout pour les uploads de fichiers (images médicales, archives, photos). */
 export const UPLOAD_REQUEST_TIMEOUT_MS = 600000;
+
+const transport = axios.getAdapter(axios.defaults.adapter);
+const fileIdentities = new WeakMap();
+let nextFileIdentity = 0;
+
+async function mutationBody(data) {
+    if (data instanceof FormData) {
+        const entries = [];
+        for (const [name, value] of data.entries()) {
+            if (value instanceof Blob) {
+                // Hash actual bytes: different files with identical names must stay distinct.
+                if (!globalThis.crypto?.subtle) {
+                    if (!fileIdentities.has(value)) fileIdentities.set(value, ++nextFileIdentity);
+                    entries.push([name, 'local-file', fileIdentities.get(value)]);
+                    continue;
+                }
+                const hash = await crypto.subtle.digest('SHA-256', await value.arrayBuffer());
+                entries.push([name, value.name, value.type, Array.from(new Uint8Array(hash))]);
+            } else entries.push([name, value]);
+        }
+        return entries;
+    }
+    if (typeof data === 'string') {
+        try {
+            return stableValue(JSON.parse(data));
+        } catch {
+            return data;
+        }
+    }
+    return stableValue(data ?? null);
+}
+
+async function guardedTransport(config) {
+    if (!isMutation(config.method)) return transport(config);
+    const finish = beginMutationPreparation();
+    try {
+        const body = await mutationBody(config.data);
+        const identity = JSON.stringify([config.headers.Authorization || '', config.method, config.baseURL, config.url, stableValue(config.params), body]);
+        return await runMutation(identity, (key) => {
+            config.headers.set('Idempotency-Key', key);
+            return transport(config);
+        });
+    } finally {
+        finish();
+    }
+}
 
 const isUploadRequest = (config) => {
     if (config?.data instanceof FormData) {
@@ -65,6 +113,10 @@ export const getHttpErrorMessage = (error, fallback = userFacingMessages.generic
     const status = error?.response?.status;
     const payloadMessage = extractPayloadMessage(error);
 
+    if (isMutation(error?.config?.method) && !isLoginRequest(error.config) && (!error.response || status >= 500)) {
+        return 'La confirmation du serveur n’a pas été reçue. Vérifiez les données enregistrées avant de réessayer. Si nécessaire, relancez la même action sans modifier les informations.';
+    }
+
     if (isConnectionIssue(error)) {
         if (typeof navigator !== 'undefined' && navigator.onLine === false) {
             return "Votre connexion internet est coupée. Ce n'est pas une erreur de l'application.";
@@ -116,6 +168,7 @@ const loadRouter = () => import('@/router').then((m) => m.default);
 
 const http = axios.create({
     baseURL: apiPrefix,
+    adapter: guardedTransport,
     timeout: REQUEST_TIMEOUT_MS
 });
 
@@ -134,12 +187,14 @@ http.interceptors.request.use(
             config.headers['X-Device-Id'] = device.id;
             config.headers['X-Device-Name'] = device.name;
             config.headers['X-Device-Type'] = device.type;
-        } catch (_) {
+        } catch {
             // localStorage / device metadata indisponible
         }
 
         if (isUploadRequest(config)) {
             config.timeout = Math.max(config.timeout ?? 0, UPLOAD_REQUEST_TIMEOUT_MS);
+        } else if (isMutation(config.method) && config.timeout === REQUEST_TIMEOUT_MS) {
+            config.timeout = HEAVY_REQUEST_TIMEOUT_MS;
         }
 
         return config;
@@ -155,6 +210,9 @@ http.interceptors.response.use(
     },
     (error) => {
         normalizeHttpError(error);
+        if (isMutation(error?.config?.method) && !isLoginRequest(error.config) && (!error.response || error.response.status >= 500)) {
+            reportMutationIssue(error);
+        }
 
         if (!error?.config?.networkProbe) {
             noteHttpFailure(error);
@@ -165,7 +223,7 @@ http.interceptors.response.use(
                 .then(([useAuthStore, router]) => {
                     try {
                         useAuthStore()?.setDeviceBlock(error.response?.data?.message, error.response?.data?.status);
-                    } catch (_) {
+                    } catch {
                         // Pinia pas initialisé
                     }
                     if (router.currentRoute.value.name !== 'devicePending') {
@@ -184,7 +242,7 @@ http.interceptors.response.use(
                     if (failedAuthorization !== `Bearer ${localStorage.getItem('token')}`) return;
                     try {
                         useAuthStore()?.logout();
-                    } catch (_) {
+                    } catch {
                         localStorage.removeItem('token');
                     }
                     if (router.currentRoute.value.name !== 'login') {
