@@ -72,6 +72,7 @@ security:
         - { path: ^/api/sms/webhooks/, roles: PUBLIC_ACCESS }
         - { path: ^/api, roles: PUBLIC_ACCESS, methods: [OPTIONS] }
         - { path: ^/api/portal-patient/me(?:/|$), roles: ROLE_PATIENT }
+        - { path: ^/api/(vitrine|administration/appreciations)(?:/|$), roles: [ROLE_ADMIN, ROLE_RECEPTION, ROLE_RECEPTIONNISTE] }
         - { path: ^/api/me, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/api/me/notifications, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/api, roles: [ROLE_ADMIN, ROLE_MEDECIN, ROLE_RECEPTION, ROLE_RECEPTIONNISTE] }

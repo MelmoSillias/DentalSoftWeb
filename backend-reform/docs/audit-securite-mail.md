@@ -1,0 +1,51 @@
+# Audit de sécurité de l’intégration mail — 7 novembre 2026
+
+## Périmètre et limites
+
+Audit du code local de la Vitrine : contrôleurs/API, droits frontend/backend, IMAP, secrets, réponses email/SMS, affichage, notifications, conservation et abus. Les nouveaux avis sont inclus car ils alimentent les mêmes notifications.
+
+Il s’agit d’une revue de code et de tests automatisés ciblés, pas d’un test d’intrusion du serveur de production. L’environnement local ne dispose pas de l’extension PHP IMAP ni d’identifiants de test. Le certificat IMAP, le DNS en production, les règles de sortie réseau, le transport SMTP/MTA, les sauvegardes et la livraison réelle Mercure/push/email/SMS ne sont donc pas validés.
+
+## Constats et corrections
+
+| Priorité initiale | Constat | Correction / état |
+| --- | --- | --- |
+| Élevée | L’API de connexion acceptait un nom de serveur arbitraire ; sa syntaxe seule ne protégeait pas des destinations internes ou d’un serveur malveillant. | Liste exacte de noms approuvés `VITRINE_IMAP_ALLOWED_HOSTS`, vide par défaut, contrôlée côté déploiement. Rejet des IP littérales, paramètres de protocole, DNS privés/réservés et réponses DNS mixtes. Contrôle répété à chaque connexion. Configuration réservée à l’admin. Le risque DNS résiduel est décrit ci-dessous. |
+| Élevée | En conservant le champ mot de passe vide lors d’un changement de serveur/compte, le secret déjà stocké pouvait être transmis à une nouvelle destination. | Ressaisie obligatoire si serveur, identifiant ou email change. Le chiffrement authentifié lie aussi le secret à ces trois valeurs. |
+| Moyenne | Secret mail chiffré en CBC sans authentification du ciphertext. | Chiffrement dédié AES-256-GCM, nonce aléatoire de 12 octets, tag de 16 octets, clé dérivée de `APP_SECRET` par HKDF avec contexte propre à la messagerie. Rejet des ciphertexts altérés et des anciens formats ; reconnexion requise. Le chiffrement SMS existant n’est pas modifié. |
+| Moyenne | Les limites du corps étaient appliquées après son téléchargement ; les passages IMAP pouvaient parcourir une charge importante. | Vérification de la taille totale annoncée avant lecture du corps (2 Mio), 50 candidats par passage, curseur UID persistant, budget de temps entre messages, délais réseau et profondeur/largeur MIME bornés. Les charsets inconnus ne font plus échouer le lot. |
+| Moyenne | Pas de quotas spécifiques pour tester la connexion, synchroniser ou répondre. | Limiteurs Symfony : 5 connexions/minute, 2 synchronisations manuelles/minute, 20 réponses/minute, communs à la boîte et indépendants du canal de réponse. Quota de 5 avis anonymes/heure/IP pour réduire le spam de notifications. |
+| Moyenne | Les adresses sortantes dépendaient uniquement de leur validation lors de l’import. | Nouvelle validation stricte avant envoi : une seule adresse, absence de contrôles/espaces, taille bornée. Suppression des caractères de contrôle du sujet, en-têtes fixes sous forme de tableau et aucun paramètre de commande `mail()` fourni par l’utilisateur. |
+| Moyenne | Les données de gestion et le mot de passe soumis pouvaient être conservés par les caches ou le profiler de développement. | `private, no-store` sur les API de gestion, désactivation de la collecte du profiler Symfony pour ces requêtes, arguments sensibles marqués `SensitiveParameter`, secret effacé du formulaire à la fermeture/démontage. Les proxies/APM externes restent à configurer. |
+| Fonctionnelle / confidentialité | Les accès et notifications ne couvraient que l’admin ; les nouveaux avis ne notifiaient personne. | Voter partagé admin/réception/réceptionniste actifs, routes/API alignées, notifications mail et trois types d’avis vers ces seuls rôles. Les comptes inactifs ou ayant désactivé les notifications sont exclus par le résolveur existant. Aucun nom, email ou contenu patient dans les nouvelles notifications. |
+| Moyenne, adjacente | L’endpoint anonyme acceptait `isPublished=true`, ce qui pouvait contourner le masquage initial. | Les payloads patients/anonymes ne pilotent plus la visibilité initiale. Les avis anonymes restent masqués ; la modération admin/réception garde le contrôle. |
+
+## Protections confirmées dans le code
+
+- JWT requis pour les API privées ; le pare-feu et le voter refusent les rôles médecin/patient. La connexion du navigateur utilise l’en-tête `Authorization`, sans authentification implicite par cookie pour ces API. Les prévols CORS ne donnent aucun accès aux données.
+- IMAP sur le port 993, TLS avec validation de certificat explicitement activée, sans option de désactivation. L’option `/norsh` interdit les sessions préauthentifiées par rsh/ssh. La boîte est ouverte en lecture seule et les corps lus avec `FT_PEEK`.
+- Aucun rendu `v-html`, chargement de pièce jointe ou image distante dans la Vitrine : les contenus non fiables sont affichés comme du texte échappé par Vue. La conversion HTML vers texte ne constitue pas un assainisseur HTML ; sa sécurité repose sur l’affichage en texte.
+- Aucun envoi automatique à `Reply-To` : un opérateur doit écrire et envoyer la réponse. L’adresse est revalidée au moment de l’envoi.
+- Secret non renvoyé dans la configuration GET, erreur IMAP générique sans détail du protocole ni mot de passe, purge de la file d’erreurs IMAP, requêtes Doctrine paramétrées et verrou local sur la synchronisation.
+
+## Risques résiduels et conditions de production
+
+1. **DNS / sorties réseau :** la bibliothèque IMAP résout le nom une nouvelle fois après le contrôle DNS applicatif. La liste de confiance réduit l’exposition mais ne supprime pas ce décalage. N’y inscrire aucun domaine contrôlé par un utilisateur non fiable ; appliquer un filtrage réseau sortant vers les serveurs autorisés. Ne pas présenter la protection applicative comme une garantie absolue contre le DNS rebinding.
+2. **Transport email sortant :** `mail()` confie les données au transport PHP/MTA. Le code ne garantit ni TLS SMTP ni authentification du relais, livraison, SPF/DKIM/DMARC ou traitement des rebonds. Configurer et vérifier ces propriétés sur le relais. Une réponse « acceptée » n’est pas un accusé de livraison. Pour gérer ces garanties depuis l’application, une évolution vers un transport SMTP explicite sera nécessaire.
+3. **Usurpation / hameçonnage :** le filtre d’objet, `From` et `Reply-To` ne prouvent pas qu’une demande vient du site ou d’un patient identifié. Une boîte dédiée, l’antispam du fournisseur et la vérification des destinataires par l’opérateur restent nécessaires ; ne pas envoyer automatiquement de données de santé en réponse à ces messages. Pour prouver l’origine du site, prévoir un canal signé plutôt qu’un simple objet email.
+4. **Données au repos :** les corps et historiques de réponse sont stockés en clair dans la base, contrairement au mot de passe IMAP. La clé dérive du secret applicatif ; compromettre simultanément ce secret et la base permet de déchiffrer les identifiants. Restreindre les accès base/sauvegardes, définir une durée de conservation et organiser la purge ; aucun mécanisme automatique de rétention n’est ajouté ici.
+5. **Multi-instance / disponibilité :** le verrou est local, les quotas reposent sur le cache configuré, la commande planifiée contourne volontairement le quota HTTP de synchronisation. Exécuter un seul ordonnanceur et utiliser un stockage partagé de quotas si plusieurs instances exposent l’API. Le budget de temps n’interrompt pas une opération IMAP déjà en cours ; appliquer aussi des limites côté fournisseur et serveur web. La notification et l’import ne forment pas une outbox transactionnelle : une panne entre sauvegarde et publication peut empêcher une notification, et un renvoi manuel peut doubler une réponse en cas d’erreur réseau après acceptation.
+6. **Environnement :** HTTPS, secret fort, `APP_ENV=prod`, `APP_DEBUG=0`, pas de journalisation externe des corps sensibles. Un mot de passe d’application dédié et révocable limite l’impact d’une fuite. L’application ne met pas en place OAuth IMAP dans cette version.
+7. **Abus des avis :** le quota IP sur les avis anonymes n’arrête pas une attaque distribuée. Les avis identifiés conservent leur comportement de publication initiale existant ; le quota ajouté ne couvre que l’entrée anonyme. Une protection antispam globale relève du reverse proxy et du produit.
+
+## Vérifications automatisées et manuelles
+
+Validation réalisée : **16 tests / 116 assertions réussis**, aucune erreur ESLint sur les fichiers frontend concernés, conteneur Symfony valide et trois fichiers YAML de sécurité/configuration valides. Les tests de communication couvrent la matrice d’accès des six rôles, les comptes désactivés, le chiffrement/tampering/changement de contexte, le refus de réutilisation d’un secret vers un autre serveur, la liste d’hôtes exacte, les IP privées/réservées et DNS mixtes, les injections d’en-têtes et de destinataires multiples, les gardes API, le dépassement des quotas avant accès réseau, la confidentialité cache/profiler, l’anonymat de l’export, la réinitialisation des mots de passe et la validation des identifiants. Pour chacun des trois parcours de création d’avis, les tests vérifient les destinataires et l’émission de mises à jour Mercure et de messages Web Push, sans contenu patient. Ils ne prouvent pas la livraison réseau.
+
+Avant mise en production : suivre la [procédure Vitrine](./vitrine.md), tester la connexion avec un certificat valide et invalide sur un environnement contrôlé, les refus `403` et `429`, un import dédoublonné, les corps volumineux/malformés, la réception et la livraison de réponses avec des boîtes de test autorisées, puis Mercure et push avec un compte réception et un compte médecin. Vérifier également les logs proxy/APM et la politique de sauvegarde/rétention.
+
+## Références
+
+- [OWASP — prévention SSRF](https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html) : liste de confiance, contrôle des destinations et défense réseau.
+- [PHP — imap_open](https://www.php.net/manual/en/function.imap-open.php) : options SSL, validation de certificat, lecture seule et `/norsh`.
+- [PHP — mail](https://www.php.net/manual/en/function.mail.php) : validation des en-têtes et distinction entre acceptation du transport et livraison.

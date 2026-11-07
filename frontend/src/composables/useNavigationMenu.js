@@ -42,6 +42,17 @@ export function useNavigationMenu() {
             }
         ];
 
+        if (hasAnyRole(['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_RECEPTIONNISTE'])) {
+            menu.push({
+                label: 'Vitrine',
+                items: [
+                    { label: 'Messagerie', icon: 'pi pi-fw pi-inbox', iconKey: 'vitrine-messagerie', to: '/vitrine/messagerie' },
+                    { label: 'Les avis patients', icon: 'pi pi-fw pi-star', iconKey: 'avis-retours', to: '/vitrine/avis-patients' },
+                    { label: 'Portail Patient', icon: 'pi pi-fw pi-id-card', iconKey: 'vitrine-portails', to: '/vitrine/portail-patient' }
+                ]
+            });
+        }
+
         if (hasAnyRole(['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_MEDECIN'])) {
             const agendaItems = [];
             agendaItems.push({
@@ -176,12 +187,6 @@ export function useNavigationMenu() {
                     icon: 'pi pi-fw pi-bell',
                     iconKey: 'notifications',
                     to: router.resolve({ name: 'administration-notifications' }).href
-                },
-                {
-                    label: 'Avis & retours patients',
-                    icon: 'pi pi-fw pi-comments',
-                    iconKey: 'avis-retours',
-                    to: router.resolve({ name: 'administration-avis-retours-patients' }).href
                 }
             );
         }

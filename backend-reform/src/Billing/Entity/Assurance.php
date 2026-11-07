@@ -42,7 +42,8 @@ class Assurance
     #[ORM\Column(type: 'json', nullable: true)]
     private ?array $formSchema = [];
 
-    #[ORM\OneToMany(mappedBy: 'assurance', targetEntity: Facture::class)]
+    /** @var Collection<int, FactureAssurance> */
+    #[ORM\OneToMany(mappedBy: 'assurance', targetEntity: FactureAssurance::class)]
     private Collection $factures;
 
     public function __construct()
@@ -115,6 +116,7 @@ class Assurance
         return $this;
     }
 
+    /** @return Collection<int, FactureAssurance> */
     public function getFactures(): Collection
     {
         return $this->factures;

@@ -7,12 +7,15 @@ use App\Patient\Entity\Appreciation;
 use App\Patient\Entity\Patient;
 use App\Patient\Repository\AppreciationRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use App\Communication\Service\NotificationService;
+use App\Communication\Security\VitrineVoter;
 
 class AppreciationService
 {
     public function __construct(
         private readonly AppreciationRepository $appreciationRepository,
         private readonly EntityManagerInterface $entityManager,
+        private readonly NotificationService $notifications,
     ) {
     }
 
@@ -29,6 +32,8 @@ class AppreciationService
 
         $this->entityManager->persist($appreciation);
         $this->entityManager->flush();
+
+        $this->notifyNewReview();
 
         return $appreciation;
     }
@@ -50,6 +55,8 @@ class AppreciationService
 
         $this->entityManager->persist($appreciation);
         $this->entityManager->flush();
+
+        $this->notifyNewReview();
 
         return $appreciation;
     }
@@ -80,7 +87,15 @@ class AppreciationService
         $this->entityManager->persist($appreciation);
         $this->entityManager->flush();
 
+        $this->notifyNewReview();
+
         return $appreciation;
+    }
+
+    private function notifyNewReview(): void
+    {
+        // No patient identity or review content in push notifications / lock screens.
+        $this->notifications->notifyRoles(VitrineVoter::ROLES, 'Un nouvel avis patient a été déposé.', '/vitrine/avis-patients');
     }
 
     /** @return Appreciation[] */
@@ -157,9 +172,8 @@ class AppreciationService
             throw new \InvalidArgumentException('Le commentaire est trop long (5000 caracteres max).');
         }
 
-        $published = array_key_exists('isPublished', $payload)
-            ? (bool) $payload['isPublished']
-            : ($defaultPublished ?? true);
+        // Public / patient payloads cannot override moderation decisions.
+        $published = $defaultPublished ?? true;
 
         return $appreciation
             ->setRating($rating)

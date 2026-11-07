@@ -93,7 +93,7 @@ final class NotificationRecipientResolver
                 continue;
             }
 
-            if (!$user->isNotificationsEnabled()) {
+            if (!$user->isActive() || !$user->isNotificationsEnabled()) {
                 continue;
             }
 

@@ -154,8 +154,26 @@ const router = createRouter({
                 {
                     path: '/administration/avis-retours-patients',
                     name: 'administration-avis-retours-patients',
+                    redirect: '/vitrine/avis-patients',
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_RECEPTIONNISTE'] }
+                },
+                {
+                    path: '/vitrine/avis-patients',
+                    name: 'vitrine-avis-patients',
                     component: () => import('@/views/administration/AvisRetoursPatients.vue'),
-                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN'] }
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_RECEPTIONNISTE'] }
+                },
+                {
+                    path: '/vitrine/messagerie',
+                    name: 'vitrine-messagerie',
+                    component: () => import('@/views/vitrine/Messagerie.vue'),
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_RECEPTIONNISTE'] }
+                },
+                {
+                    path: '/vitrine/portail-patient',
+                    name: 'vitrine-portails',
+                    component: () => import('@/views/vitrine/PortailPatient.vue'),
+                    meta: { requiresAuth: true, roles: ['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_RECEPTIONNISTE'] }
                 },
                 {
                     path: '/profile',

@@ -34,7 +34,7 @@ class FactureAssurance
     #[ORM\JoinColumn(nullable: false)]
     private ?Patient $patient = null;
 
-    #[ORM\ManyToOne(targetEntity: Assurance::class)]
+    #[ORM\ManyToOne(targetEntity: Assurance::class, inversedBy: 'factures')]
     #[ORM\JoinColumn(nullable: false)]
     private ?Assurance $assurance = null;
 

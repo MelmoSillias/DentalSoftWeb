@@ -9,12 +9,15 @@ use App\Patient\Entity\Appreciation;
 use App\Patient\Entity\Patient;
 use App\Patient\Repository\PatientRepository;
 use App\Patient\Service\AppreciationService;
+use App\Communication\Security\VitrineVoter;
 use App\Settings\Service\GlobalSettingsService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\RateLimiter\RateLimiterFactory;
 
 #[Route('/api', name: 'api_appreciation_')]
 final class AppreciationController extends AbstractController
@@ -40,6 +43,7 @@ final class AppreciationController extends AbstractController
     }
 
     #[Route('/appreciations/public', name: 'public_list', methods: ['GET'])]
+    #[Route('/appreciations/public/export', name: 'public_export', methods: ['GET'])]
     public function listPublicAppreciations(Request $request): JsonResponse
     {
         $limit = (int) $request->query->get('limit', 50);
@@ -56,8 +60,12 @@ final class AppreciationController extends AbstractController
     }
 
     #[Route('/appreciations/anonymous', name: 'anonymous_create', methods: ['POST'])]
-    public function createAnonymous(Request $request): JsonResponse
+    public function createAnonymous(Request $request,
+        #[Autowire(service: 'limiter.vitrine_anonymous_review')] RateLimiterFactory $limiter): JsonResponse
     {
+        if (!$limiter->create($request->getClientIp() ?? 'unknown')->consume()->isAccepted()) {
+            return $this->json(['error' => 'Trop d’avis envoyés. Réessayez plus tard.'], 429, ['Retry-After' => '3600']);
+        }
         $payload = json_decode($request->getContent(), true) ?? [];
 
         try {
@@ -154,7 +162,7 @@ final class AppreciationController extends AbstractController
     }
 
     #[Route('/administration/appreciations', name: 'admin_list', methods: ['GET'])]
-    #[IsGranted('ROLE_ADMIN')]
+    #[IsGranted(VitrineVoter::ACCESS)]
     public function listAdminAppreciations(Request $request): JsonResponse
     {
         $limit = (int) $request->query->get('limit', 200);
@@ -171,7 +179,7 @@ final class AppreciationController extends AbstractController
     }
 
     #[Route('/administration/appreciations/{id}/publish', name: 'admin_publish', methods: ['PATCH'])]
-    #[IsGranted('ROLE_ADMIN')]
+    #[IsGranted(VitrineVoter::ACCESS)]
     public function setAdminAppreciationPublished(int $id, Request $request): JsonResponse
     {
         $payload = json_decode($request->getContent(), true) ?? [];
@@ -189,7 +197,7 @@ final class AppreciationController extends AbstractController
     }
 
     #[Route('/administration/appreciations/{id}', name: 'admin_delete', methods: ['DELETE'])]
-    #[IsGranted('ROLE_ADMIN')]
+    #[IsGranted(VitrineVoter::ACCESS)]
     public function deleteAdminAppreciation(int $id): JsonResponse
     {
         try {
@@ -207,8 +215,6 @@ final class AppreciationController extends AbstractController
         if (!$appreciation->isAnonymous()) {
             $displayName = $appreciation->getAuthorName()
                 ?: $appreciation->getPatient()?->getFullName();
-        } elseif ($appreciation->getAuthorName()) {
-            $displayName = $appreciation->getAuthorName();
         }
 
         return [

@@ -17,6 +17,7 @@ import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import { deleteAdminAppreciation, fetchAdminAppreciations, setAdminAppreciationPublished } from '@/services/appreciationAdminService';
 import { getHttpErrorMessage } from '@/service/http';
+import { apiPrefix } from '@/config';
 
 const token = localStorage.getItem('token');
 const confirm = useConfirm();
@@ -35,6 +36,15 @@ const items = ref([]);
 
 const q = ref('');
 const modeFilter = ref('all');
+const categoryFilter = ref(null);
+const categoryOptions = [
+    { label: 'Toutes les catégories', value: null },
+    { label: 'Insatisfait (1–2)', value: 'negative' },
+    { label: 'Neutre (3)', value: 'neutral' },
+    { label: 'Satisfait (4)', value: 'positive' },
+    { label: 'Très satisfait (5)', value: 'excellent' }
+];
+const exportUrl = `${apiPrefix}/appreciations/public/export`;
 
 const modeOptions = [
     { label: 'Tous', value: 'all' },
@@ -45,7 +55,7 @@ const modeOptions = [
 ];
 
 const breadcrumbHome = { icon: 'pi pi-home', to: '/dashboard' };
-const breadcrumbItems = [{ label: 'Administration' }, { label: 'Avis & retours patients' }];
+const breadcrumbItems = [{ label: 'Vitrine' }, { label: 'Les avis patients' }];
 
 const filteredItems = computed(() => {
     const needle = String(q.value || '')
@@ -53,6 +63,11 @@ const filteredItems = computed(() => {
         .trim();
 
     return items.value.filter((item) => {
+        const rating = Number(item.rating);
+        if (categoryFilter.value === 'negative' && rating > 2) return false;
+        if (categoryFilter.value === 'neutral' && rating !== 3) return false;
+        if (categoryFilter.value === 'positive' && rating !== 4) return false;
+        if (categoryFilter.value === 'excellent' && rating !== 5) return false;
         if (modeFilter.value === 'anonymous' && item.isAnonymous !== true) return false;
         if (modeFilter.value === 'identified' && item.isAnonymous === true) return false;
         if (modeFilter.value === 'published' && item.isPublished !== true) return false;
@@ -219,7 +234,7 @@ onMounted(load);
 
         <template #header>
             <PageHeader
-                title="Avis & retours patients"
+                title="Les avis patients"
                 subtitle="Modérez et publiez les retours patients."
                 icon="pi pi-star-fill"
                 tour-id="admin-avis-retours.header"
@@ -227,6 +242,7 @@ onMounted(load);
                 :breadcrumb-home="breadcrumbHome"
             >
                 <template #actions>
+                    <Button as="a" :href="exportUrl" target="_blank" rel="noopener" icon="pi pi-download" label="Export site web (JSON)" severity="secondary" outlined size="small" />
                     <Button icon="pi pi-refresh" label="Actualiser" severity="secondary" outlined size="small" :loading="loading" @click="load" />
                 </template>
             </PageHeader>
@@ -274,6 +290,7 @@ onMounted(load);
                     </IconField>
 
                     <Select v-model="modeFilter" :options="modeOptions" optionLabel="label" optionValue="value" placeholder="Filtrer par statut" class="w-full md:w-64" fluid />
+                    <Select v-model="categoryFilter" :options="categoryOptions" optionLabel="label" optionValue="value" placeholder="Toutes les catégories" class="w-full md:w-64" fluid />
                 </div>
 
                 <!-- États de chargement / erreur / vide -->

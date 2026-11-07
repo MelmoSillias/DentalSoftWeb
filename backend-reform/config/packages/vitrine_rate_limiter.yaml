@@ -1,0 +1,18 @@
+framework:
+    rate_limiter:
+        vitrine_mail_connect:
+            policy: fixed_window
+            limit: 5
+            interval: '1 minute'
+        vitrine_mail_sync:
+            policy: fixed_window
+            limit: 2
+            interval: '1 minute'
+        vitrine_mail_reply:
+            policy: sliding_window
+            limit: 20
+            interval: '1 minute'
+        vitrine_anonymous_review:
+            policy: sliding_window
+            limit: 5
+            interval: '1 hour'
