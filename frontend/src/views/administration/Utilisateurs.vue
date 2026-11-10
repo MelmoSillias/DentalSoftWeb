@@ -9,7 +9,6 @@ import ConfirmPopup from 'primevue/confirmpopup';
 import DataTable from 'primevue/datatable';
 import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
-import SelectButton from 'primevue/selectbutton';
 import Tag from 'primevue/tag';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
@@ -26,7 +25,7 @@ const confirm = useConfirm();
 const breadcrumbHome = { icon: 'pi pi-home', to: '/dashboard' };
 const breadcrumbItems = [{ label: 'Administration' }, { label: 'Utilisateurs' }];
 
-const { users, loading, error, fetchUsers, fetchUserAssociations, availableEmployees, availablePatients, addUser, updateUser, resetPassword, deleteUser, toggleUserStatus } = useUsers();
+const { users, loading, error, fetchUsers, fetchUserAssociations, availableEmployees, addUser, updateUser, resetPassword, deleteUser } = useUsers();
 
 const search = ref('');
 const filters = ref({
@@ -44,13 +43,6 @@ const resetTargetUser = ref(null);
 const groupByType = ref(false);
 const expandedGroups = ref([]);
 let guidedTourDemoActive = false;
-const usersAssociationView = ref('employees');
-
-const usersAssociationOptions = [
-    { label: 'Employes', value: 'employees' },
-    { label: 'Patients', value: 'patients' }
-];
-
 const usersView = computed(() =>
     (users.value || []).map((user) => {
         const roles = Array.isArray(user?.roles) ? user.roles : user?.role ? [user.role] : [];
@@ -81,9 +73,7 @@ const usersView = computed(() =>
     })
 );
 
-const filteredUsersView = computed(() => usersView.value.filter((user) => user.associationType === usersAssociationView.value));
-
-const associationColumnHeader = computed(() => (usersAssociationView.value === 'patients' ? 'Patient associe' : 'Employe associe'));
+const filteredUsersView = computed(() => usersView.value.filter((user) => user.associationType !== 'patients'));
 
 const loadUsers = async () => {
     await fetchUsers();
@@ -188,30 +178,6 @@ const confirmResetPassword = (event) => {
                 resetDialogVisible.value = false;
             } catch (err) {
                 toast.add({ severity: 'error', summary: 'Erreur', detail: err?.message || 'Réinitialisation impossible.', life: 4000 });
-            }
-        }
-    });
-};
-
-const confirmToggleStatus = (user, event) => {
-    if (user?.isActive === null) {
-        return;
-    }
-    const action = user.isActive ? 'deactivate' : 'activate';
-    const label = user.isActive ? 'désactiver' : 'activer';
-    confirm.require({
-        target: event?.currentTarget,
-        message: `Confirmer pour ${label} cet utilisateur ?`,
-        icon: 'pi pi-refresh',
-        acceptLabel: 'Confirmer',
-        rejectLabel: 'Annuler',
-        accept: async () => {
-            try {
-                await toggleUserStatus(user.id, action);
-                toast.add({ severity: 'success', summary: 'Succès', detail: 'Statut mis à jour.', life: 3000 });
-                await loadUsers();
-            } catch (err) {
-                toast.add({ severity: 'error', summary: 'Erreur', detail: err?.message || 'Mise à jour impossible.', life: 4000 });
             }
         }
     });
@@ -333,31 +299,13 @@ onBeforeUnmount(() => {
             </PageHeader>
         </template>
 
-        <template #toolbar>
-            <PageSection title="Recherche" padded tour-id="admin-users.search">
-                <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                    <div class="md:col-span-6">
-                        <IconField class="p-input-icon-left w-full">
-                            <InputIcon class="pi pi-search text-surface-400" />
-                            <InputText
-                                v-model="search"
-                                placeholder="Nom d'utilisateur, employé, type..."
-                                name="users-search"
-                                autocomplete="off"
-                                data-lpignore="true"
-                                class="w-full"
-                            />
-                        </IconField>
-                    </div>
-                    <div class="md:col-span-6">
-                        <label class="block text-sm font-medium text-surface-700 dark:text-surface-200 mb-2">Afficher</label>
-                        <SelectButton v-model="usersAssociationView" :options="usersAssociationOptions" optionLabel="label" optionValue="value" :allowEmpty="false" class="w-full" />
-                    </div>
-                </div>
-            </PageSection>
-        </template>
-
         <PageSection title="Liste des utilisateurs" subtitle="Consultez et gérez les comptes existants." tour-id="admin-users.table">
+            <template #headerActions>
+                <IconField data-tour="admin-users.search" class="w-full sm:w-80">
+                    <InputIcon class="pi pi-search text-surface-400" />
+                    <InputText v-model="search" placeholder="Rechercher un utilisateur..." aria-label="Rechercher un utilisateur" name="users-search" autocomplete="off" data-lpignore="true" class="w-full" />
+                </IconField>
+            </template>
             <div class="page-table-scroll">
             <DataTable
                 :value="filteredUsersView"
@@ -366,7 +314,7 @@ onBeforeUnmount(() => {
                 :rows="10"
                 :rowsPerPageOptions="[10, 20, 50]"
                 :filters="filters"
-                :globalFilterFields="['username', 'employeeLabel', 'patientLabel', 'associationLabel', 'typeLabel', 'roleLabel']"
+                :globalFilterFields="['username', 'employeeLabel', 'associationLabel', 'typeLabel', 'roleLabel']"
                 :loading="loading"
                 sortMode="multiple"
                 :rowGroupMode="groupByType ? 'subheader' : null"
@@ -395,7 +343,7 @@ onBeforeUnmount(() => {
                         <div class="font-medium text-surface-900 dark:text-surface-100">{{ data.username }}</div>
                     </template>
                 </Column>
-                <Column field="associationLabel" :header="associationColumnHeader" sortable headerClass="hidden md:table-cell" bodyClass="hidden md:table-cell"></Column>
+                <Column field="associationLabel" header="Employé associé" sortable headerClass="hidden md:table-cell" bodyClass="hidden md:table-cell"></Column>
                 <Column field="typeLabel" header="Type de poste" sortable headerClass="hidden lg:table-cell" bodyClass="hidden lg:table-cell">
                     <template #body="{ data }">
                         <Tag :value="data.typeLabel" severity="info" />
@@ -423,7 +371,7 @@ onBeforeUnmount(() => {
             </div>
         </PageSection>
 
-        <UserForm v-model:visible="formVisible" :mode="formMode" :user="currentUser" :employees="availableEmployees" :patients="availablePatients" :loading="loading" tourTarget="admin-users.dialog.create" @submit="confirmFormSubmit" />
+        <UserForm v-model:visible="formVisible" :mode="formMode" :user="currentUser" :employees="availableEmployees" :loading="loading" tourTarget="admin-users.dialog.create" @submit="confirmFormSubmit" />
 
         <AppDialog
             v-model:visible="resetDialogVisible"

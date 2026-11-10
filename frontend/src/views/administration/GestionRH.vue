@@ -17,6 +17,7 @@ import Tag from 'primevue/tag';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import EmployeeForm from '@/components/administration/EmployeeForm.vue';
+import UserForm from '@/components/administration/UserForm.vue';
 import AppDialog from '@/components/layout/AppDialog.vue';
 import LeaveFormDialog from '@/components/administration/LeaveFormDialog.vue';
 import PayrollPaymentDialog from '@/components/administration/PayrollPaymentDialog.vue';
@@ -28,12 +29,13 @@ import DailyPayrollPaymentDialog from '@/components/administration/DailyPayrollP
 import PrintDataTablePage from '@/components/print/PrintDataTablePage.vue';
 import PrintPayrollSlipPage from '@/components/print/PrintPayrollSlipPage.vue';
 import { useEmployees } from '@/composables/useEmployees';
+import { useUsers } from '@/composables/useUsers';
 import { useLeaves } from '@/composables/useLeaves';
 import { usePayrolls } from '@/composables/usePayrolls';
 import { usePrinter } from '@/composables/usePrinter';
 import { activateAdminTourMock, deactivateAdminTourMock, resetAdminTourMockData } from '@/services/adminTourMock';
 import { useGuidedTour } from '@/composables/useGuidedTour';
-import { employeeTypeInfirmierOption, formatEmployeeTypeLabel } from '@/utils/employeeTypeUtils';
+import { employeeTypeInfirmierOption, formatEmployeeTypeLabel, suggestRoleFromEmployeeType } from '@/utils/employeeTypeUtils';
 
 const router = useRouter();
 const toast = useToast();
@@ -55,6 +57,17 @@ const typeOptions = [
 ];
 
 const { employees, totalRecords, loading: employeesLoading, error: employeesError, fetchEmployees, fetchEmployeesTrash, addEmployee, updateEmployee, deleteEmployee, restoreEmployee } = useEmployees();
+const { addUser, updateUser } = useUsers();
+const accountDialogVisible = ref(false);
+const accountEmployee = ref(null);
+const accountSaving = ref(false);
+const accountMode = computed(() => accountEmployee.value?.user ? 'edit' : 'create');
+const accountUser = computed(() => accountEmployee.value ? {
+    ...accountEmployee.value.user,
+    employee: accountEmployee.value,
+    employee_id: accountEmployee.value.id,
+    role: suggestRoleFromEmployeeType(accountEmployee.value.type) || accountEmployee.value.user?.role
+} : null);
 
 const {
     payrolls,
@@ -265,6 +278,35 @@ const openEditEmployee = (employee) => {
 
 const openDetails = (employee) => {
     router.push({ name: 'administration-employee-details', params: { id: employee.id } });
+};
+
+const openEmployeeAccount = (employee) => {
+    if (!employee.user && !suggestRoleFromEmployeeType(employee.type)) return;
+    accountEmployee.value = employee;
+    accountDialogVisible.value = true;
+};
+
+const saveEmployeeAccount = async (payload) => {
+    if (accountSaving.value || !accountEmployee.value) return;
+    accountSaving.value = true;
+    const employee = accountEmployee.value;
+    const role = suggestRoleFromEmployeeType(employee.type);
+    try {
+        if (!role) throw new Error('Ce poste ne permet pas de créer un compte utilisateur.');
+        const data = { ...payload, employee_id: employee.id, role };
+        if (employee.user) {
+            await updateUser(employee.user.id, data);
+        } else {
+            await addUser(data);
+        }
+        toast.add({ severity: 'success', summary: 'Succès', detail: employee.user ? 'Compte utilisateur mis à jour.' : 'Compte utilisateur créé.', life: 3000 });
+        accountDialogVisible.value = false;
+        await loadEmployees();
+    } catch (err) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Enregistrement du compte impossible.', life: 4000 });
+    } finally {
+        accountSaving.value = false;
+    }
 };
 
 const confirmEmployeeSave = (payload, event) => {
@@ -600,6 +642,7 @@ const confirmDeleteLeave = (event, row) => {
 };
 
 const closeRhTourDialogs = () => {
+    accountDialogVisible.value = false;
     dailyPayrollDialogVisible.value = false;
     formVisible.value = false;
     leaveDialogVisible.value = false;
@@ -792,14 +835,24 @@ onBeforeUnmount(() => {
                                 </template>
                             </Column>
                             <Column field="telephone" header="Telephone" />
+                            <Column header="Compte utilisateur" style="min-width: 190px">
+                                <template #body="{ data }">
+                                    <div class="flex flex-col items-start gap-2">
+                                        <Tag :icon="data.user ? 'pi pi-user' : 'pi pi-user-minus'" :value="data.user ? 'Compte lié' : 'Sans compte'" :severity="data.user ? 'success' : 'secondary'" />
+                                        <span v-if="data.user" class="text-sm text-surface-500">{{ data.user.username }}</span>
+                                        <small v-if="!data.user && !suggestRoleFromEmployeeType(data.type)" class="text-surface-500">Poste non habilité</small>
+                                    </div>
+                                </template>
+                            </Column>
                             <Column field="dateEmbauche" header="Date d'embauche">
                                 <template #body="{ data }">{{ formatDate(data.dateEmbauche) }}</template>
                             </Column>
-                            <Column header="Actions" style="min-width: 170px">
+                            <Column header="Actions" style="min-width: 210px">
                                 <template #body="{ data }">
                                     <div data-tour="admin-rh.actions" class="flex items-center gap-2">
                                         <Button icon="pi pi-eye" text rounded severity="secondary" @click="openDetails(data)" />
                                         <Button icon="pi pi-pen-to-square" text rounded severity="info" @click="openEditEmployee(data)" />
+                                        <Button v-if="data.user || suggestRoleFromEmployeeType(data.type)" :icon="data.user ? 'pi pi-user-edit' : 'pi pi-user-plus'" :title="data.user ? 'Modifier le compte' : 'Créer un compte'" :aria-label="data.user ? 'Modifier le compte' : 'Créer un compte'" text rounded :disabled="accountSaving" @click="openEmployeeAccount(data)" />
                                         <Button icon="pi pi-trash" text rounded severity="danger" @click="(event) => confirmEmployeeDelete(event, data)" />
                                     </div>
                                 </template>
@@ -926,6 +979,7 @@ onBeforeUnmount(() => {
         </Tabs>
 
         <EmployeeForm v-model:visible="formVisible" :mode="formMode" :employee="currentEmployee" :loading="employeesLoading" tourTarget="admin-rh.dialog.form" @submit="confirmEmployeeSave" />
+        <UserForm v-model:visible="accountDialogVisible" :mode="accountMode" :user="accountUser" :employees="accountEmployee ? [accountEmployee] : []" employee-locked :loading="accountSaving" @submit="saveEmployeeAccount" />
 
         <PayrollPaymentDialog
             v-model:visible="payrollDialogVisible"

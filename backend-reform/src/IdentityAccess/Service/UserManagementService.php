@@ -64,6 +64,7 @@ class UserManagementService
         $employees = array_values(array_filter(
             $this->employeRepo->findBy(['user' => null], ['nom' => 'ASC', 'prenom' => 'ASC']),
             static fn (Employe $employee): bool => !$employee->isDeleted()
+                && self::accountRoleForEmployee($employee) !== null
         ));
         $patients = $this->patientRepo->findBy(['portalUser' => null], ['nom' => 'ASC', 'prenom' => 'ASC']);
 
@@ -166,6 +167,10 @@ class UserManagementService
             }
         }
 
+        if ($error = $this->validateEmployeeRole($employee, $normalizedRole)) {
+            return $error;
+        }
+
         $patient = null;
         if ($patientId !== null) {
             $patient = $this->patientRepo->find($patientId);
@@ -187,7 +192,6 @@ class UserManagementService
 
         if ($employee) {
             $employee->setUser($user);
-            StaffRoleCatalog::syncEmployeeTypeFromRole($employee, $data['role'] ?? null);
             $this->em->persist($employee);
         }
 
@@ -272,6 +276,10 @@ class UserManagementService
             }
         }
 
+        if ($error = $this->validateEmployeeRole($targetEmployee, $normalizedRole)) {
+            return $error;
+        }
+
         $targetPatient = null;
         if ($patientId !== null) {
             $targetPatient = $this->patientRepo->find($patientId);
@@ -300,7 +308,6 @@ class UserManagementService
             if ($targetEmployee->getUser()?->getId() !== $user->getId()) {
                 $targetEmployee->setUser($user);
             }
-            StaffRoleCatalog::syncEmployeeTypeFromRole($targetEmployee, $data['role'] ?? null);
             $this->em->persist($targetEmployee);
         }
 
@@ -373,6 +380,35 @@ class UserManagementService
         $this->notifyAdmins($message, $actor, 'warning', 'warning');
 
         return ['success' => true];
+    }
+
+    private static function accountRoleForEmployee(Employe $employee): ?string
+    {
+        return match (strtolower(trim((string) $employee->getType()))) {
+            'admin' => StaffRoleCatalog::INPUT_ADMIN,
+            'medecin', 'médecin' => StaffRoleCatalog::INPUT_MEDECIN,
+            'receptionniste', 'reception' => StaffRoleCatalog::INPUT_RECEPTIONNISTE,
+            default => null,
+        };
+    }
+
+    private function validateEmployeeRole(?Employe $employee, ?string $role): ?array
+    {
+        if (!$employee) {
+            return $role === StaffRoleCatalog::INPUT_MEDECIN
+                ? ['error' => 'Un compte médecin doit être lié à un employé médecin.', 'status' => 400]
+                : null;
+        }
+
+        $employeeRole = self::accountRoleForEmployee($employee);
+        if ($employeeRole === null) {
+            return ['error' => 'Ce poste ne permet pas de créer un compte utilisateur.', 'status' => 400];
+        }
+        if ($employeeRole !== $role) {
+            return ['error' => "Le rôle utilisateur doit correspondre au poste de l'employé.", 'status' => 400];
+        }
+
+        return null;
     }
 
     private function extractUserId(array $data): ?int

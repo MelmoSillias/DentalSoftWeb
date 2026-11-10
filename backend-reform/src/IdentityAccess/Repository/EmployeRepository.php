@@ -127,7 +127,9 @@ class EmployeRepository extends ServiceEntityRepository
 
     public function findEmployeesWithPagination(int $start, int $length, string $searchValue): array
     {
-        $qb = $this->activeEmployeesQuery($searchValue);
+        $qb = $this->activeEmployeesQuery($searchValue)
+            ->leftJoin('e.user', 'account')
+            ->addSelect('account');
 
         return $qb->orderBy('e.type', 'ASC')
             ->addOrderBy('e.nom', 'ASC')

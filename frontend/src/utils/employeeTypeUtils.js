@@ -53,7 +53,7 @@ export function suggestRoleFromEmployeeType(type) {
 
     if (normalized === 'admin') return STAFF_ROLE_ADMIN;
     if (normalized === 'medecin' || normalized === 'médecin') return STAFF_ROLE_MEDECIN;
-    if (normalized === 'infirmier' || normalized === 'receptionniste' || normalized === 'reception') {
+    if (normalized === 'receptionniste' || normalized === 'reception') {
         return STAFF_ROLE_RECEPTIONNISTE;
     }
 

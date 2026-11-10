@@ -39,10 +39,6 @@ watch(
             <Select :inputId="instanceId + '-section'" :modelValue="activeSection" :options="sections" optionLabel="label" optionValue="id" aria-label="Rubrique de la fiche médicale" @update:modelValue="navigate" />
         </div>
         <div :id="`${instanceId}-content`" ref="content" class="medical-record__content" tabindex="-1" :aria-labelledby="`${instanceId}-title`">
-            <header class="medical-record__heading">
-                <h3 :id="`${instanceId}-title`">{{ current?.label }}</h3>
-                <p>{{ current?.description }}</p>
-            </header>
             <div v-for="section in sections" v-show="activeSection === section.id" :key="section.id" class="medical-record__section">
                 <slot :name="section.id" />
             </div>
@@ -114,21 +110,6 @@ watch(
     overflow-y: auto;
     scrollbar-gutter: stable;
     padding-right: 0.5rem;
-}
-.medical-record__heading {
-    margin-bottom: var(--page-content-gap);
-}
-.medical-record__heading h3 {
-    margin: 0;
-    font-size: var(--page-section-title-size);
-    font-weight: 600;
-    line-height: 1.3;
-}
-.medical-record__heading p {
-    margin: 0.25rem 0 0;
-    font-size: var(--page-section-subtitle-size);
-    color: var(--text-color-secondary);
-    line-height: 1.4;
 }
 .medical-record__pager {
     display: flex;

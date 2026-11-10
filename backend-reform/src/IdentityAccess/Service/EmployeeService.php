@@ -38,6 +38,7 @@ class EmployeeService
         $filteredRecords = $this->employeRepo->countFiltered($searchValue);
 
         $data = array_map(function (Employe $employee) {
+            $user = $employee->getUser();
             return [
                 'id' => $employee->getId(),
                 'nom' => $employee->getNom(),
@@ -57,6 +58,12 @@ class EmployeeService
                 'frequencePaiement' => $employee->getFrequencePaiement(),
                 'typePrime' => $employee->getTypePrime(),
                 'administrativeFiles' => $employee->getAdministrativeFiles(),
+                'user' => $user ? [
+                    'id' => $user->getId(),
+                    'username' => $user->getUsername(),
+                    'roles' => $user->getRoles(),
+                    'role' => StaffRoleCatalog::labelFromRoles($user->getRoles()),
+                ] : null,
             ];
         }, $employees);
 
