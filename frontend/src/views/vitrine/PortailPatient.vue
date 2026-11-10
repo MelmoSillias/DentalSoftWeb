@@ -10,6 +10,11 @@ import Dialog from 'primevue/dialog';
 import Message from 'primevue/message';
 import PageShell from '@/components/layout/PageShell.vue';
 import PageHeader from '@/components/layout/PageHeader.vue';
+import PageSection from '@/components/layout/PageSection.vue';
+import IconField from 'primevue/iconfield';
+import InputIcon from 'primevue/inputicon';
+import VitrineFilterBar from '@/components/vitrine/VitrineFilterBar.vue';
+import VitrineEmptyState from '@/components/vitrine/VitrineEmptyState.vue';
 import { getPortals, changePortalUsername, resetPortalPassword } from '@/services/vitrineService';
 import { createPatientPortalUser, togglePatientPortalUser } from '@/services/patients';
 import { getHttpErrorMessage } from '@/service/http';
@@ -34,6 +39,7 @@ async function load() {
     const request = new AbortController();
     controller = request;
     loading.value = true;
+    error.value = '';
     try {
         const data = await getPortals({ q: search.value, scope: scope.value }, request.signal);
         if (!request.signal.aborted) items.value = data.items;
@@ -99,69 +105,95 @@ onUnmounted(() => {
 
 <template>
     <PageShell>
-        <template #header><PageHeader title="Portail Patient" subtitle="Gérez les accès des patients à leur espace personnel." icon="pi pi-id-card" :breadcrumb-items="[{ label: 'Vitrine' }, { label: 'Portail Patient' }]" /></template>
+        <template #header>
+            <PageHeader title="Portail patient" subtitle="Gérez les accès des patients à leur espace personnel." icon="pi pi-id-card" :breadcrumb-items="[{ label: 'Vitrine' }, { label: 'Portail patient' }]">
+                <template #actions><Button label="Actualiser" icon="pi pi-refresh" severity="secondary" outlined size="small" :loading="loading" :disabled="busy" @click="load" /></template>
+            </PageHeader>
+        </template>
         <Message v-if="error" severity="error" :closable="false">{{ error }}</Message>
         <Message v-if="info" severity="success" :closable="false">{{ info }}</Message>
-        <div class="portal-card">
-            <div class="portal-filters">
-                <div class="search"><label for="portal-search">Rechercher un patient</label><InputText id="portal-search" v-model="search" placeholder="Nom, prénom, carnet ou identifiant…" fluid /></div>
-                <Select
-                    v-model="scope"
-                    :options="[
-                        { label: 'Portails créés', value: 'opened' },
-                        { label: 'Tous les patients', value: 'all' }
-                    ]"
-                    option-label="label"
-                    option-value="value"
-                    aria-label="Patients à afficher"
-                />
-                <Button label="Actualiser" icon="pi pi-refresh" severity="secondary" outlined :loading="loading" @click="load" />
-            </div>
-            <p class="text-muted-color">Recherchez parmi tous les patients pour créer un portail ou réactiver un accès. Les résultats sont limités à 100 patients par recherche.</p>
-            <DataTable :value="items" :loading="loading" paginator :rows="15" data-key="id" responsive-layout="scroll">
-                <template #empty>Aucun patient ne correspond à cette recherche.</template>
-                <Column field="name" header="Patient" sortable /><Column field="numCarnet" header="Carnet" />
-                <Column field="username" header="Identifiant"
-                    ><template #body="{ data }">{{ data.username || 'Pas encore de compte' }}</template></Column
+        <PageSection title="Accès des patients" subtitle="Créez un portail, modifiez un identifiant ou gérez un accès." padded>
+            <template #headerActions><Tag :value="`${items.length} résultat${items.length > 1 ? 's' : ''}`" severity="secondary" /></template>
+            <VitrineFilterBar>
+                <div class="vitrine-filter vitrine-filter--search">
+                    <label for="portal-search">Rechercher un patient</label><IconField><InputIcon class="pi pi-search" /><InputText id="portal-search" v-model="search" placeholder="Nom, prénom, carnet ou identifiant…" fluid /></IconField>
+                </div>
+                <div class="vitrine-filter">
+                    <label for="portal-scope">Patients à afficher</label>
+                    <Select
+                        input-id="portal-scope"
+                        v-model="scope"
+                        :options="[
+                            { label: 'Portails créés', value: 'opened' },
+                            { label: 'Tous les patients', value: 'all' }
+                        ]"
+                        option-label="label"
+                        option-value="value"
+                        aria-label="Patients à afficher"
+                    />
+                </div>
+            </VitrineFilterBar>
+            <p class="portal-hint"><i class="pi pi-info-circle" aria-hidden="true" /> Choisissez « Tous les patients » pour créer un accès. Jusqu’à 100 patients par recherche.</p>
+            <div class="page-table-scroll">
+                <DataTable
+                    :value="items"
+                    :loading="loading"
+                    paginator
+                    :rows="15"
+                    :rows-per-page-options="[15, 30, 50]"
+                    data-key="id"
+                    :table-style="{ minWidth: '54rem' }"
+                    paginator-template="PrevPageLink PageLinks NextPageLink RowsPerPageDropdown"
+                    :always-show-paginator="false"
                 >
-                <Column header="Accès"
-                    ><template #body="{ data }"><Tag :value="!data.hasPortal ? 'À créer' : data.active ? 'Ouvert' : 'Désactivé'" :severity="data.active ? 'success' : 'secondary'" /></template
-                ></Column>
-                <Column header="Actions"
-                    ><template #body="{ data }"
-                        ><div class="portal-actions">
-                            <Button v-if="data.hasPortal" label="Modifier l’identifiant" icon="pi pi-pencil" size="small" severity="secondary" outlined :disabled="busy" @click="edit(data)" />
-                            <Button v-if="data.hasPortal" label="Réinitialiser" icon="pi pi-key" size="small" severity="warn" outlined :disabled="busy" @click="resetTarget = data" />
-                            <Button v-if="!data.hasPortal || !data.active" label="Ouvrir le portail" icon="pi pi-lock-open" size="small" :disabled="busy" @click="openPortal(data)" />
-                            <Button
-                                v-else
-                                label="Désactiver"
-                                icon="pi pi-lock"
-                                size="small"
-                                severity="secondary"
-                                text
-                                :disabled="busy"
-                                @click="
-                                    run(async () => {
-                                        await togglePatientPortalUser(data.id, false, token);
-                                        info = 'Accès désactivé.';
-                                    })
-                                "
-                            /></div></template
-                ></Column>
-            </DataTable>
-        </div>
-        <Dialog :visible="!!editing" modal header="Modifier l’identifiant" :closable="!busy" :style="{ width: '28rem' }" @update:visible="editing = null">
+                    <template #empty><VitrineEmptyState title="Aucun patient trouvé" description="Essayez un autre nom ou élargissez la recherche à tous les patients." /></template>
+                    <Column field="name" header="Patient" sortable
+                        ><template #body="{ data }"
+                            ><span class="patient-name">{{ data.name }}</span></template
+                        ></Column
+                    ><Column field="numCarnet" header="Carnet" />
+                    <Column field="username" header="Identifiant"
+                        ><template #body="{ data }">{{ data.username || 'Pas encore de compte' }}</template></Column
+                    >
+                    <Column header="Accès"
+                        ><template #body="{ data }"><Tag :value="!data.hasPortal ? 'À créer' : data.active ? 'Ouvert' : 'Désactivé'" :severity="data.active ? 'success' : 'secondary'" /></template
+                    ></Column>
+                    <Column header="Actions"
+                        ><template #body="{ data }"
+                            ><div class="portal-actions">
+                                <Button v-if="data.hasPortal" label="Identifiant" :aria-label="`Modifier l’identifiant de ${data.name}`" icon="pi pi-pencil" size="small" severity="secondary" outlined :disabled="busy" @click="edit(data)" />
+                                <Button v-if="data.hasPortal" label="Réinitialiser" icon="pi pi-key" size="small" severity="warn" outlined :disabled="busy" @click="resetTarget = data" />
+                                <Button v-if="!data.hasPortal || !data.active" label="Ouvrir le portail" icon="pi pi-lock-open" size="small" :disabled="busy" @click="openPortal(data)" />
+                                <Button
+                                    v-else
+                                    label="Désactiver"
+                                    icon="pi pi-lock"
+                                    size="small"
+                                    severity="secondary"
+                                    text
+                                    :disabled="busy"
+                                    @click="
+                                        run(async () => {
+                                            await togglePatientPortalUser(data.id, false, token);
+                                            info = 'Accès désactivé.';
+                                        })
+                                    "
+                                /></div></template
+                    ></Column>
+                </DataTable>
+            </div>
+        </PageSection>
+        <Dialog :visible="!!editing" modal header="Modifier l’identifiant" :closable="!busy" :style="{ width: '28rem', maxWidth: 'calc(100vw - 2rem)' }" @update:visible="editing = null">
             <form class="portal-form" @submit.prevent="saveUsername">
                 <label for="portal-username">Nouvel identifiant de {{ editing?.name }}</label
                 ><InputText id="portal-username" v-model="username" minlength="3" maxlength="180" required fluid :disabled="busy" /><Button label="Enregistrer" type="submit" :loading="busy" />
             </form>
         </Dialog>
-        <Dialog :visible="!!resetTarget" modal header="Réinitialiser le mot de passe" :closable="!busy" :style="{ width: '28rem' }" @update:visible="resetTarget = null">
+        <Dialog :visible="!!resetTarget" modal header="Réinitialiser le mot de passe" :closable="!busy" :style="{ width: '28rem', maxWidth: 'calc(100vw - 2rem)' }" @update:visible="resetTarget = null">
             <p>Générer un nouveau mot de passe pour {{ resetTarget?.name }} ? L’ancien mot de passe sera remplacé.</p>
             <Button label="Réinitialiser" icon="pi pi-key" :loading="busy" @click="reset" />
         </Dialog>
-        <Dialog :visible="!!credentials" modal header="Identifiants du portail" :style="{ width: '28rem' }" @update:visible="credentials = null">
+        <Dialog :visible="!!credentials" modal header="Identifiants du portail" :style="{ width: '28rem', maxWidth: 'calc(100vw - 2rem)' }" @update:visible="credentials = null">
             <p>Transmettez ces identifiants au patient. Le mot de passe est affiché uniquement ici.</p>
             <p>
                 Identifiant : <strong>{{ credentials?.username }}</strong>
@@ -175,26 +207,21 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.portal-card {
-    padding: 1.5rem;
-    border: 1px solid var(--surface-border);
-    border-radius: 1rem;
-    background: var(--surface-card);
-}
-.portal-filters,
 .portal-actions {
     display: flex;
-    gap: 0.75rem;
-    align-items: end;
-    flex-wrap: wrap;
+    gap: 0.375rem;
+    align-items: center;
+    flex-wrap: nowrap;
 }
-.search {
-    flex: 1;
-    min-width: 220px;
+.patient-name {
+    font-weight: 600;
 }
-.search label {
-    display: block;
-    margin-bottom: 0.5rem;
+.portal-hint {
+    display: flex;
+    gap: 0.5rem;
+    align-items: baseline;
+    margin: 0 0 1rem;
+    color: var(--text-color-secondary);
 }
 .portal-form {
     display: flex;

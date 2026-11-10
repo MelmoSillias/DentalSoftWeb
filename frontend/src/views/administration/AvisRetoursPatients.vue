@@ -11,7 +11,8 @@ import Message from 'primevue/message';
 import Button from 'primevue/button';
 import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
-import Badge from 'primevue/badge';
+import VitrineFilterBar from '@/components/vitrine/VitrineFilterBar.vue';
+import VitrineEmptyState from '@/components/vitrine/VitrineEmptyState.vue';
 import ConfirmPopup from 'primevue/confirmpopup';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
@@ -94,13 +95,6 @@ function ratingLabel(rating) {
     if (n === 3) return 'Neutre';
     if (n === 4) return 'Satisfait';
     return 'Très satisfait';
-}
-
-function ratingSeverity(rating) {
-    const n = Number(rating || 0);
-    if (n <= 2) return 'danger';
-    if (n === 3) return 'warning';
-    return 'success';
 }
 
 function stars(rating) {
@@ -233,14 +227,7 @@ onMounted(load);
         <ConfirmPopup />
 
         <template #header>
-            <PageHeader
-                title="Les avis patients"
-                subtitle="Modérez et publiez les retours patients."
-                icon="pi pi-star-fill"
-                tour-id="admin-avis-retours.header"
-                :breadcrumb-items="breadcrumbItems"
-                :breadcrumb-home="breadcrumbHome"
-            >
+            <PageHeader title="Les avis patients" subtitle="Modérez et publiez les retours patients." icon="pi pi-star-fill" tour-id="admin-avis-retours.header" :breadcrumb-items="breadcrumbItems" :breadcrumb-home="breadcrumbHome">
                 <template #actions>
                     <Button as="a" :href="exportUrl" target="_blank" rel="noopener" icon="pi pi-download" label="Export site web (JSON)" severity="secondary" outlined size="small" />
                     <Button icon="pi pi-refresh" label="Actualiser" severity="secondary" outlined size="small" :loading="loading" @click="load" />
@@ -281,111 +268,179 @@ onMounted(load);
             </div>
         </template>
 
-        <PageSection title="Liste des avis" subtitle="Filtrez et modérez les retours patients." padded>
-                <div class="flex flex-col md:flex-row gap-4 mb-6">
-                    <!-- Recherche avec IconField PrimeVue V4 -->
-                    <IconField class="flex-1" iconPosition="left">
-                        <InputIcon class="pi pi-search" />
-                        <InputText v-model="q" placeholder="Rechercher commentaire, auteur, patient..." class="w-full" fluid />
-                    </IconField>
-
-                    <Select v-model="modeFilter" :options="modeOptions" optionLabel="label" optionValue="value" placeholder="Filtrer par statut" class="w-full md:w-64" fluid />
-                    <Select v-model="categoryFilter" :options="categoryOptions" optionLabel="label" optionValue="value" placeholder="Toutes les catégories" class="w-full md:w-64" fluid />
+        <PageSection title="Liste des avis" subtitle="Consultez les retours et choisissez les avis visibles sur le site." padded>
+            <template #headerActions><Tag :value="`${filteredItems.length} avis affiché${filteredItems.length > 1 ? 's' : ''}`" severity="secondary" /></template>
+            <VitrineFilterBar>
+                <div class="vitrine-filter vitrine-filter--search">
+                    <label for="review-search">Rechercher un avis</label>
+                    <IconField><InputIcon class="pi pi-search" /><InputText id="review-search" v-model="q" placeholder="Commentaire, auteur ou patient…" fluid /></IconField>
                 </div>
-
-                <!-- États de chargement / erreur / vide -->
-                <div v-if="loading" class="grid gap-3">
-                    <Skeleton height="7rem" class="rounded-lg" />
-                    <Skeleton height="7rem" class="rounded-lg" />
-                    <Skeleton height="7rem" class="rounded-lg" />
+                <div class="vitrine-filter">
+                    <label for="review-mode">Visibilité et auteur</label><Select input-id="review-mode" v-model="modeFilter" :options="modeOptions" option-label="label" option-value="value" aria-label="Visibilité et auteur" fluid />
                 </div>
-
-                <Message v-else-if="errorMessage" severity="error" :closable="false" class="rounded-lg">
-                    {{ errorMessage }}
-                </Message>
-
-                <Message v-else-if="filteredItems.length === 0" severity="info" :closable="false" class="rounded-lg">
-                    <i class="pi pi-info-circle mr-2"></i>
-                    Aucun avis ne correspond au filtre courant.
-                </Message>
-
-                <!-- Liste des avis améliorée -->
-                <div v-else class="grid gap-4">
-                    <article v-for="item in filteredItems" :key="item.id" class="feedback-item p-4 rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 transition-all duration-200 hover:shadow-md">
-                        <header class="flex flex-wrap justify-between items-start gap-3 mb-3">
-                            <div class="flex flex-wrap items-center gap-2">
-                                <Tag :value="stars(item.rating)" :severity="ratingSeverity(item.rating)" rounded />
-                                <Tag :value="ratingLabel(item.rating)" :severity="ratingSeverity(item.rating)" rounded />
-                                <Tag :value="item.isAnonymous ? 'Anonyme' : 'Identifié'" :severity="item.isAnonymous ? 'secondary' : 'info'" rounded />
-                                <Tag :value="item.isPublished ? 'Publié' : 'Non publié'" :severity="item.isPublished ? 'success' : 'warning'" rounded />
-                            </div>
-                            <div class="flex flex-wrap items-center gap-2">
-                                <Badge :value="formatDate(item.createdAt)" severity="secondary" class="whitespace-nowrap" />
-                                <Button
-                                    :icon="item.isPublished ? 'pi pi-eye-slash' : 'pi pi-globe'"
-                                    :label="item.isPublished ? 'Masquer' : 'Publier'"
-                                    :severity="item.isPublished ? 'warning' : 'success'"
-                                    size="small"
-                                    outlined
-                                    rounded
-                                    :loading="actionLoadingId === item.id"
-                                    @click="handleTogglePublish($event, item)"
-                                />
-                                <Button icon="pi pi-trash" label="Supprimer" severity="danger" size="small" outlined rounded :loading="actionLoadingId === item.id" @click="handleDelete($event, item)" />
-                            </div>
-                        </header>
-
-                        <p class="m-0 text-surface-700 dark:text-surface-300 leading-relaxed mb-4">
-                            {{ item.comment }}
-                        </p>
-
-                        <footer class="flex flex-wrap gap-x-4 gap-y-2 text-sm text-surface-500 dark:text-surface-400 border-t border-surface-100 dark:border-surface-800 pt-3">
-                            <div class="flex items-center gap-1">
-                                <i class="pi pi-user text-xs"></i>
-                                <span>Auteur: {{ item.isAnonymous ? 'Masqué' : item.authorName || 'N/A' }}</span>
-                            </div>
-                            <div v-if="!item.isAnonymous && item.authorEmail" class="flex items-center gap-1">
-                                <i class="pi pi-envelope text-xs"></i>
-                                <span>{{ item.authorEmail }}</span>
-                            </div>
-                            <div class="flex items-center gap-1">
-                                <i class="pi pi-id-card text-xs"></i>
-                                <span>{{ item.patientName }}</span>
-                            </div>
-                            <div v-if="item.consultationId" class="flex items-center gap-1">
-                                <i class="pi pi-calendar text-xs"></i>
-                                <span>Consultation #{{ item.consultationId }}</span>
-                            </div>
-                        </footer>
-                    </article>
+                <div class="vitrine-filter">
+                    <label for="review-category">Satisfaction</label
+                    ><Select input-id="review-category" v-model="categoryFilter" :options="categoryOptions" option-label="label" option-value="value" placeholder="Toutes les catégories" aria-label="Satisfaction" fluid />
                 </div>
+                <Button
+                    v-if="q || modeFilter !== 'all' || categoryFilter"
+                    label="Effacer"
+                    icon="pi pi-filter-slash"
+                    severity="secondary"
+                    text
+                    @click="
+                        q = '';
+                        modeFilter = 'all';
+                        categoryFilter = null;
+                    "
+                />
+            </VitrineFilterBar>
+            <div v-if="loading" class="feedback-list" role="status" aria-label="Chargement des avis"><Skeleton v-for="n in 3" :key="n" height="9rem" /></div>
+            <Message v-else-if="errorMessage" severity="error" :closable="false">{{ errorMessage }}</Message>
+            <VitrineEmptyState
+                v-else-if="!filteredItems.length"
+                icon="pi pi-star"
+                :title="items.length ? 'Aucun avis pour ces filtres' : 'Aucun avis reçu'"
+                :description="items.length ? 'Modifiez la recherche ou effacez les filtres pour retrouver les avis.' : 'Les retours des patients apparaîtront ici pour être consultés et publiés.'"
+            />
+            <div v-else class="feedback-list">
+                <article v-for="item in filteredItems" :key="item.id" class="feedback-item">
+                    <header class="feedback-header">
+                        <div class="feedback-identity">
+                            <span class="feedback-avatar" aria-hidden="true"><i :class="item.isAnonymous ? 'pi pi-user-minus' : 'pi pi-user'" /></span>
+                            <div>
+                                <h4>{{ item.isAnonymous ? 'Patient anonyme' : item.authorName || item.patientName }}</h4>
+                                <span class="feedback-date">{{ formatDate(item.createdAt) }}</span>
+                            </div>
+                        </div>
+                        <Tag :value="item.isPublished ? 'Publié' : 'Non publié'" :severity="item.isPublished ? 'success' : 'secondary'" :icon="item.isPublished ? 'pi pi-globe' : 'pi pi-eye-slash'" />
+                    </header>
+                    <div class="feedback-rating">
+                        <span class="feedback-stars" role="img" :aria-label="`${item.rating} sur 5`">{{ stars(item.rating) }}</span
+                        ><span>{{ ratingLabel(item.rating) }}</span>
+                    </div>
+                    <p class="feedback-comment">{{ item.comment || 'Aucun commentaire ajouté.' }}</p>
+                    <footer class="feedback-footer">
+                        <div class="feedback-meta">
+                            <span v-if="!item.isAnonymous"><i class="pi pi-id-card" aria-hidden="true" /> {{ item.patientName }}</span>
+                            <span v-if="!item.isAnonymous && item.authorEmail"><i class="pi pi-envelope" aria-hidden="true" /> {{ item.authorEmail }}</span>
+                            <span v-if="item.consultationId"><i class="pi pi-calendar" aria-hidden="true" /> Consultation #{{ item.consultationId }}</span>
+                        </div>
+                        <div class="feedback-actions">
+                            <Button
+                                :icon="item.isPublished ? 'pi pi-eye-slash' : 'pi pi-globe'"
+                                :label="item.isPublished ? 'Masquer' : 'Publier'"
+                                :severity="item.isPublished ? 'secondary' : 'primary'"
+                                size="small"
+                                outlined
+                                :loading="actionLoadingId === item.id"
+                                :disabled="actionLoadingId !== null"
+                                @click="handleTogglePublish($event, item)"
+                            />
+                            <Button icon="pi pi-trash" label="Supprimer" severity="danger" size="small" text :loading="actionLoadingId === item.id" :disabled="actionLoadingId !== null" @click="handleDelete($event, item)" />
+                        </div>
+                    </footer>
+                </article>
+            </div>
         </PageSection>
     </PageShell>
 </template>
 
 <style scoped>
-.stat-card {
-    transition:
-        transform 0.2s ease,
-        box-shadow 0.2s ease;
+.feedback-list {
+    display: grid;
+    gap: 0.75rem;
 }
-
-.stat-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
-}
-
-/* Animation subtile pour les items d'avis */
 .feedback-item {
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 1rem;
+    border: 1px solid var(--surface-border);
+    border-radius: var(--page-section-radius);
+    background: var(--surface-card);
+    min-width: 0;
 }
-
-.feedback-item:hover {
-    border-color: var(--primary-color);
+.feedback-header,
+.feedback-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
 }
-
-/* Ajustements pour dark mode */
-:root.dark .feedback-item {
-    background-color: var(--surface-900);
+.feedback-identity {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    min-width: 0;
+}
+.feedback-identity h4 {
+    margin: 0 0 0.125rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+.feedback-avatar {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--p-primary-color) 8%, var(--surface-card));
+    color: var(--p-primary-color);
+}
+.feedback-date,
+.feedback-meta {
+    color: var(--text-color-secondary);
+    font-size: var(--page-kpi-meta-size);
+}
+.feedback-rating {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.625rem;
+    margin-top: 0.875rem;
+    color: var(--text-color-secondary);
+}
+.feedback-stars {
+    color: var(--p-primary-color);
+    letter-spacing: 0.15em;
+    font-size: 1rem;
+}
+.feedback-comment {
+    margin: 0.625rem 0 1rem;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    line-height: 1.6;
+}
+.feedback-footer {
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--surface-border);
+}
+.feedback-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    min-width: 0;
+    flex: 1 1 16rem;
+}
+.feedback-meta span {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.375rem;
+    overflow-wrap: anywhere;
+    min-width: 0;
+}
+.feedback-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+}
+@media (max-width: 639px) {
+    .feedback-item {
+        padding: 0.75rem;
+    }
+    .feedback-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
 }
 </style>

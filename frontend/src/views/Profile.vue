@@ -1,5 +1,6 @@
 <script setup>
-import Breadcrumb from 'primevue/breadcrumb';
+import PageShell from '@/components/layout/PageShell.vue';
+import PageHeader from '@/components/layout/PageHeader.vue';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, ref } from 'vue';
 import { useProfile } from '@/composables/useProfile';
@@ -135,23 +136,12 @@ onMounted(async () => {
 </script>
 
 <template>
-    <section class="min-h-screen p-4 md:p-6 lg:p-8 transition-colors duration-300">
-        <div class="mb-6 md:mb-8">
-            <div class="mb-6">
-                <div class="inline-flex items-center gap-3 mb-4 p-3 rounded-2xl bg-surface-0/80 dark:bg-surface-800/80 backdrop-blur-sm border border-surface-200/50 dark:border-surface-700/50">
-                    <div class="p-2.5 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600">
-                        <i class="pi pi-user text-white text-xl"></i>
-                    </div>
-                    <div>
-                        <h1 class="text-2xl md:text-3xl font-bold text-surface-900 dark:text-surface-50">Profil</h1>
-                        <p class="text-sm text-surface-600 dark:text-surface-300">Votre espace personnel et vos notifications.</p>
-                    </div>
-                </div>
-                <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="text-sm" />
-            </div>
-        </div>
+    <PageShell>
+        <template #header>
+            <PageHeader title="Profil" subtitle="Votre espace personnel et vos notifications." icon="pi pi-user" :breadcrumb-home="breadcrumbHome" :breadcrumb-items="breadcrumbItems" />
+        </template>
 
-        <ProfileStatsSection :stats="stats" :unread-count="unreadCount" class="mb-6" />
+        <ProfileStatsSection :stats="stats" :unread-count="unreadCount" />
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-1 space-y-6">
@@ -177,5 +167,5 @@ onMounted(async () => {
                 />
             </div>
         </div>
-    </section>
+    </PageShell>
 </template>
