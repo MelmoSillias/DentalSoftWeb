@@ -1,5 +1,6 @@
 <script setup>
 import Button from 'primevue/button';
+import MedicalRecordLayout from '@/components/fiche-medicale/MedicalRecordLayout.vue';
 import Galleria from 'primevue/galleria';
 import SelectButton from 'primevue/selectbutton';
 import { computed, ref, watch } from 'vue';
@@ -37,6 +38,62 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['print']);
+const recordSections = [
+    {
+        id: 'entretien',
+        label: 'Entretien médical',
+        icon: 'pi-comments',
+        description: 'Motif de consultation, antécédents, médicaments et habitudes.'
+    },
+    {
+        id: 'exobuccal',
+        label: 'Examen exobuccal',
+        icon: 'pi-eye',
+        description: 'Inspection, palpation et chaînes ganglionnaires.'
+    },
+    {
+        id: 'endobuccal',
+        label: 'Examen endobuccal',
+        icon: 'pi-search',
+        description: 'Bouche fermée, bouche ouverte et canaux excréteurs.'
+    },
+    {
+        id: 'tissus',
+        label: 'Tissus mous et durs',
+        icon: 'pi-table',
+        description: 'Observations par tissu et par zone anatomique.'
+    },
+    {
+        id: 'examens',
+        label: 'Examens complémentaires',
+        icon: 'pi-clipboard',
+        description: 'Examens biologiques, résultats et diagnostic supposé.'
+    },
+    {
+        id: 'documents',
+        label: 'Images et documents',
+        icon: 'pi-images',
+        description: 'Pièces jointes, aperçu des images et téléchargement.'
+    },
+    {
+        id: 'plans',
+        label: 'Plan de traitement',
+        icon: 'pi-list-check',
+        description: 'Traitements prévus, descriptions et dates envisagées.'
+    },
+    {
+        id: 'bilans',
+        label: 'Bilans et diagnostic',
+        icon: 'pi-chart-bar',
+        description: 'Formule dentaire, bilans radiographique et sanguin, diagnostic positif.'
+    },
+    {
+        id: 'seances',
+        label: 'Séances passées',
+        icon: 'pi-history',
+        description: 'Historique des consultations, actes réalisés et notes de séance.'
+    }
+];
 
 const dentitionType = ref(defaultDentitionFromAge(props.patientAge));
 
@@ -125,7 +182,7 @@ const formatDateShort = (date) => {
     });
 };
 
-const formatBool = (value) => (value === true ? 'Oui' : value === false ? 'Non' : '--');
+const formatBool = (value) => (value === true ? 'Oui' : value === false ? 'Non' : 'Non renseigné');
 
 const resolveUrl = (url) => {
     if (!url || typeof url !== 'string') return '';
@@ -299,12 +356,15 @@ const sessions = computed(() =>
                 </div>
             </div>
 
-            <div class="fiche-book" :class="{ 'fiche-book--tall': tall }">
-                <div class="fiche-book__pages">
-                    <h3 class="fiche-book__title">Questionnaire médical</h3>
+            <MedicalRecordLayout :sections="recordSections" :tall="tall" class="medical-record-reader">
+                <template #entretien>
                     <div class="fiche-book__line">
-                        <span class="fiche-book__label">Anamnèse</span>
+                        <span class="fiche-book__label">Motif de consultation</span>
                         <span class="fiche-book__value">{{ entretien.motifConsultation || '—' }}</span>
+                    </div>
+                    <div class="fiche-book__line">
+                        <span class="fiche-book__label">Anamnèse détaillée</span>
+                        <span class="fiche-book__value">{{ entretien.anamnese || 'Non renseignée' }}</span>
                     </div>
 
                     <template v-if="isFemalePatient">
@@ -341,7 +401,7 @@ const sessions = computed(() =>
                                 <tr v-for="row in antecedentsRows" :key="row.key">
                                     <td>{{ row.type }}</td>
                                     <td>{{ row.nom }}</td>
-                                    <td>{{ row.etat ? 'Oui' : 'Non' }}</td>
+                                    <td>{{ formatBool(row.etat) }}</td>
                                     <td>{{ row.details || '—' }}</td>
                                 </tr>
                             </tbody>
@@ -351,37 +411,38 @@ const sessions = computed(() =>
                     <template v-if="(entretien.questions || []).length || (entretien.habitudes || []).length">
                         <h4 class="fiche-book__title">Questionnaire et habitudes</h4>
                         <div v-for="q in entretien.questions" :key="q.id || q.question" class="fiche-book__line">
-                            <span class="fiche-book__label">{{ q.question }} — {{ q.reponse === true ? 'Oui' : q.reponse === false ? 'Non' : '--' }}</span>
+                            <span class="fiche-book__label">{{ q.question }} — {{ formatBool(q.reponse) }}</span>
                             <span class="fiche-book__value">{{ q.precision || '—' }}</span>
                         </div>
                         <div v-for="h in entretien.habitudes || []" :key="h.id || h.type" class="fiche-book__line">
-                            <span class="fiche-book__label">Habitude : {{ h.type || '—' }} — {{ h.estPresente ? 'Oui' : 'Non' }}</span>
+                            <span class="fiche-book__label">Habitude : {{ h.type || '—' }} — {{ formatBool(h.estPresente) }}</span>
                             <span class="fiche-book__value">{{ h.quantite || '—' }}</span>
                         </div>
                     </template>
-
-                    <h3 class="fiche-book__title">Examen</h3>
+                </template>
+                <template #exobuccal>
                     <h4 class="fiche-book__title">Exobuccal — inspection</h4>
                     <div v-for="[label, value] in mapEntries(examens.exobuccalInspection)" :key="`insp-${label}`" class="fiche-book__line">
                         <span class="fiche-book__label">{{ label }}</span>
-                        <span class="fiche-book__value">{{ value || '—' }}</span>
+                        <span class="fiche-book__value">{{ typeof value === 'boolean' ? formatBool(value) : (value ?? 'Non renseigné') }}</span>
                     </div>
                     <p v-if="!mapEntries(examens.exobuccalInspection).length" class="fiche-book__empty">—</p>
 
                     <h4 class="fiche-book__title">Exobuccal — palpation</h4>
                     <div v-for="[label, value] in mapEntries(examens.exobuccalPalpation)" :key="`palp-${label}`" class="fiche-book__line">
                         <span class="fiche-book__label">{{ label }}</span>
-                        <span class="fiche-book__value">{{ value || '—' }}</span>
+                        <span class="fiche-book__value">{{ typeof value === 'boolean' ? formatBool(value) : (value ?? 'Non renseigné') }}</span>
                     </div>
                     <p v-if="!mapEntries(examens.exobuccalPalpation).length" class="fiche-book__empty">—</p>
 
                     <h4 class="fiche-book__title">Chaînes ganglionnaires</h4>
                     <div v-for="[label, value] in mapEntries(examens.chainesGanglionnaires)" :key="`gang-${label}`" class="fiche-book__line">
                         <span class="fiche-book__label">{{ label }}</span>
-                        <span class="fiche-book__value">{{ value ? 'Oui' : 'Non' }}</span>
+                        <span class="fiche-book__value">{{ formatBool(value) }}</span>
                     </div>
                     <p v-if="!mapEntries(examens.chainesGanglionnaires).length" class="fiche-book__empty">—</p>
-
+                </template>
+                <template #endobuccal>
                     <h4 class="fiche-book__title">Bouche fermée</h4>
                     <div class="fiche-book__line">
                         <span class="fiche-book__label">Occlusion</span>
@@ -402,7 +463,7 @@ const sessions = computed(() =>
 
                     <h4 class="fiche-book__title">Bouche ouverte</h4>
                     <div class="fiche-book__line">
-                        <span class="fiche-book__label">HBD</span>
+                        <span class="fiche-book__label">Hygiène bucco-dentaire (HBD)</span>
                         <span class="fiche-book__value">{{ examens.endobuccalBoucheOuverte?.hbd || '—' }}</span>
                     </div>
                     <div class="fiche-book__line">
@@ -438,7 +499,8 @@ const sessions = computed(() =>
                         <span class="fiche-book__label">Canaux excréteurs</span>
                         <span class="fiche-book__value">{{ examens.examenCanauxExcreteurs || '—' }}</span>
                     </div>
-
+                </template>
+                <template #tissus>
                     <h4 class="fiche-book__title">Tissus mous</h4>
                     <div class="fiche-book__block">
                         <table>
@@ -474,7 +536,8 @@ const sessions = computed(() =>
                             </tbody>
                         </table>
                     </div>
-
+                </template>
+                <template #examens>
                     <h4 class="fiche-book__title">Examens biologiques</h4>
                     <div class="fiche-book__line">
                         <span class="fiche-book__label">Bactériologiques</span>
@@ -517,8 +580,8 @@ const sessions = computed(() =>
                         <span class="fiche-book__label">Diagnostic supposé</span>
                         <span class="fiche-book__value">{{ examens.diagnosticSupposeExamens }}</span>
                     </div>
-
-                    <h3 class="fiche-book__title">Images et documents</h3>
+                </template>
+                <template #documents>
                     <template v-if="documentsView.length">
                         <div v-for="(item, idx) in documentsView" :key="idx" class="fiche-book__block">
                             <div class="fiche-book__line">
@@ -526,13 +589,7 @@ const sessions = computed(() =>
                                 <span class="fiche-book__value">{{ item.title }}</span>
                             </div>
                             <div v-if="item.entries.length" class="flex flex-wrap gap-2">
-                                <button
-                                    v-for="entry in item.entries"
-                                    :key="entry.entryKey"
-                                    type="button"
-                                    class="fiche-book__thumb"
-                                    @click="openPreviewByKey(entry.entryKey)"
-                                >
+                                <button v-for="entry in item.entries" :key="entry.entryKey" type="button" class="fiche-book__thumb" :aria-label="`Ouvrir ${entry.fileName || item.title}`" @click="openPreviewByKey(entry.entryKey)">
                                     <img v-if="entry.isImage && entry.previewSrc" :src="entry.previewSrc" :alt="item.title" />
                                     <span v-else>{{ entry.extension || 'fichier' }}</span>
                                 </button>
@@ -541,15 +598,15 @@ const sessions = computed(() =>
                         </div>
                     </template>
                     <p v-else class="fiche-book__empty">Aucun document.</p>
-
-                    <h3 class="fiche-book__title">Plan de traitement</h3>
+                </template>
+                <template #plans>
                     <p v-if="!sortedPlans.length" class="fiche-book__empty">Aucun plan de traitement.</p>
                     <div v-for="(plan, idx) in sortedPlans" :key="plan.id || idx" class="fiche-book__line">
                         <span class="fiche-book__label">{{ plan.type || `Plan ${idx + 1}` }} — {{ formatPlanDate(plan.dateSupposed) }}</span>
                         <span class="fiche-book__value">{{ plan.description || 'Aucune description.' }}</span>
                     </div>
-
-                    <h3 class="fiche-book__title">Bilan</h3>
+                </template>
+                <template #bilans>
                     <div class="fiche-book__block">
                         <div class="mb-2">
                             <SelectButton v-model="dentitionType" :options="DENTITION_OPTIONS" optionLabel="label" optionValue="value" :allowEmpty="false" />
@@ -564,21 +621,26 @@ const sessions = computed(() =>
                         <span class="fiche-book__label">Diagnostic positif</span>
                         <span class="fiche-book__value">{{ diagnosticPositifValue || '—' }}</span>
                     </div>
-
+                    <div class="fiche-book__line">
+                        <span class="fiche-book__label">Avis médicaux</span>
+                        <span class="fiche-book__value">{{ bilans.avisMedicales || 'Non renseignés' }}</span>
+                    </div>
+                </template>
+                <template #seances>
                     <SeancesSection v-if="sessions.length" :sessions="sessions" layout="book" />
                     <template v-else>
                         <h3 class="fiche-book__title">Séances passées</h3>
                         <p class="fiche-book__empty">Aucune séance précédente.</p>
                     </template>
-                </div>
-            </div>
+                </template>
+            </MedicalRecordLayout>
 
             <div v-if="!hideActions" class="px-5 py-4 border-t border-surface-200/50 dark:border-surface-700/50 bg-surface-50/50 dark:bg-surface-900/50">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-4">
                         <Button icon="pi pi-print" label="Imprimer" severity="secondary" outlined size="small" @click="emit('print')" :pt="{ label: { class: 'hidden sm:inline' } }" />
                     </div>
-                    <div class="text-sm text-surface-600 dark:text-surface-400">Dernière modification : {{ formatDate(props.fiche?.createdAt || props.fiche?.dateCreation) }}</div>
+                    <div class="text-sm text-surface-600 dark:text-surface-400">Créée le {{ formatDate(props.fiche?.createdAt || props.fiche?.dateCreation) }}</div>
                 </div>
             </div>
         </div>
@@ -635,3 +697,104 @@ const sessions = computed(() =>
     </div>
 </template>
 
+<style scoped>
+.medical-record-reader :deep(.fiche-book__title) {
+    margin: 1.75rem 0 0.85rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--surface-border);
+    color: var(--text-color);
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: normal;
+    text-transform: none;
+}
+.medical-record-reader :deep(.fiche-book__title:first-child) {
+    margin-top: 0;
+}
+.medical-record-reader :deep(.fiche-book__line),
+.medical-record-reader :deep(.medical-form-row) {
+    display: grid;
+    grid-template-columns: minmax(9rem, 30%) minmax(0, 1fr);
+    gap: 1rem;
+    padding: 0.8rem 0;
+    border-bottom: 1px solid var(--surface-border);
+    align-items: baseline;
+}
+.medical-record-reader :deep(.fiche-book__label),
+.medical-record-reader :deep(.medical-form-row__label) {
+    color: var(--text-color-secondary);
+    font-size: 0.9rem;
+    font-weight: 500;
+    line-height: 1.6;
+}
+.medical-record-reader :deep(.fiche-book__value),
+.medical-record-reader :deep(.medical-form-row__value) {
+    color: var(--text-color);
+    font-size: 1rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    min-width: 0;
+}
+.medical-record-reader :deep(.fiche-book__block) {
+    overflow-x: auto;
+    margin-bottom: 1rem;
+}
+.medical-record-reader :deep(table) {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+.medical-record-reader :deep(th),
+.medical-record-reader :deep(td) {
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--surface-border);
+    text-align: left;
+    vertical-align: top;
+    min-width: 7rem;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+.medical-record-reader :deep(th) {
+    background: var(--surface-ground);
+    font-weight: 600;
+}
+.medical-record-reader :deep(tbody tr:nth-child(even)) {
+    background: var(--surface-ground);
+}
+.medical-record-reader :deep(.fiche-book__empty) {
+    padding: 1.25rem;
+    border: 1px dashed var(--surface-border);
+    border-radius: 0.5rem;
+    color: var(--text-color-secondary);
+    background: var(--surface-ground);
+}
+.medical-record-reader :deep(.fiche-book__thumb) {
+    width: 7rem;
+    height: 6rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--surface-border);
+    background: var(--surface-ground);
+    border-radius: 0.5rem;
+    overflow: hidden;
+    cursor: pointer;
+}
+.medical-record-reader :deep(.fiche-book__thumb img) {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+.medical-record-reader :deep(.fiche-book__thumb:focus-visible) {
+    outline: 2px solid var(--primary-color);
+}
+@media (max-width: 639px) {
+    .medical-record-reader :deep(.fiche-book__line),
+    .medical-record-reader :deep(.medical-form-row) {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.25rem;
+    }
+}
+</style>

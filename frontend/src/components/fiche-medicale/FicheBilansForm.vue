@@ -63,16 +63,11 @@ watch(
                 <h3 class="medical-form-block__title">Bilans</h3>
                 <p v-if="!isBook" class="medical-form-block__subtitle">Formule dentaire et examens</p>
             </div>
-            <Button
-                label="Sauvegarder"
-                icon="pi pi-save"
-                :loading="saving"
-                @click="emit('save')"
-            />
+            <Button label="Sauvegarder" icon="pi pi-save" :loading="saving" @click="emit('save')" />
         </div>
 
         <div class="medical-form-block__body space-y-4">
-            <div class="dossier-section-block" style="padding-top:0;margin-top:0;border-top:0">
+            <div class="dossier-section-block" style="padding-top: 0; margin-top: 0; border-top: 0">
                 <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
                     <h4 class="dossier-section-label mb-0">Formule dentaire</h4>
                     <SelectButton v-model="dentitionType" :options="DENTITION_OPTIONS" optionLabel="label" optionValue="value" :allowEmpty="false" class="text-sm" />
@@ -123,6 +118,8 @@ watch(
             <div class="space-y-2 border-2 border-dashed border-emerald-500 dark:border-emerald-700 rounded-xl p-4">
                 <Textarea :modelValue="form.diagnosticPositif" rows="4" class="w-full" @update:modelValue="(v) => updateField('diagnosticPositif', v)" />
             </div>
+            <h5>Avis médicaux</h5>
+            <Textarea :modelValue="form.avisMedicales" rows="4" aria-label="Avis médicaux" placeholder="Avis, recommandations, orientation..." class="w-full" @update:modelValue="(v) => updateField('avisMedicales', v)" />
         </div>
     </div>
 </template>

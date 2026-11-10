@@ -37,7 +37,7 @@ const props = defineProps({
     }
 });
 
-const emit = defineEmits(['request-create', 'request-validate', 'request-cancel', 'request-report']);
+const emit = defineEmits(['request-create', 'request-validate', 'request-cancel', 'request-report', 'stats-change']);
 
 const auth = useAuthStore();
 const selectedDate = ref(new Date());
@@ -143,6 +143,8 @@ const reloadOnAction = () => {
     refreshStats();
 };
 
+watch([stats, loadingStats], ([stats, loading]) => emit('stats-change', { stats, loading }), { immediate: true });
+
 defineExpose({ reloadOnAction });
 </script>
 
@@ -160,7 +162,7 @@ defineExpose({ reloadOnAction });
                     </div>
                 </div>
 
-                <section class="shrink-0" aria-label="Statistiques des rendez-vous">
+                <section v-if="embedded" class="shrink-0" aria-label="Statistiques des rendez-vous">
                     <h3 class="mb-2 text-sm font-semibold text-surface-700 dark:text-surface-200">Légendes et statistiques</h3>
                     <p class="mb-2 text-xs text-surface-500">Journée affichée · tous statuts.</p>
                     <StatusLegend :stats="stats" :loading="loadingStats" :vertical="embedded" />

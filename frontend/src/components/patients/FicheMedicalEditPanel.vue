@@ -1,4 +1,5 @@
 <script setup>
+import MedicalRecordLayout from '@/components/fiche-medicale/MedicalRecordLayout.vue';
 import PastSessions from '@/components/consultations/PastSessions.vue';
 import EntretienVerbalForm from '@/components/fiche-medicale/EntretienVerbalForm.vue';
 import ExamensFicheForm from '@/components/fiche-medicale/ExamensFicheForm.vue';
@@ -21,14 +22,56 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['saved', 'dirty-change']);
+const recordSections = [
+    {
+        id: 'entretien',
+        label: 'Entretien médical',
+        icon: 'pi-comments',
+        description: 'Motif de consultation, antécédents, médicaments et habitudes.'
+    },
+    {
+        id: 'examens',
+        label: 'Examens cliniques',
+        icon: 'pi-clipboard',
+        description: 'Exobuccal, endobuccal, tissus et examens complémentaires.'
+    },
+    {
+        id: 'documents',
+        label: 'Images et documents',
+        icon: 'pi-images',
+        description: 'Pièces jointes, aperçu des images et téléchargement.'
+    },
+    {
+        id: 'plans',
+        label: 'Plan de traitement',
+        icon: 'pi-list-check',
+        description: 'Traitements prévus, descriptions et dates envisagées.'
+    },
+    {
+        id: 'bilans',
+        label: 'Bilans et diagnostic',
+        icon: 'pi-chart-bar',
+        description: 'Formule dentaire, bilans radiographique et sanguin, diagnostic positif.'
+    },
+    {
+        id: 'seances',
+        label: 'Séances passées',
+        icon: 'pi-history',
+        description: 'Historique des consultations, actes réalisés et notes de séance.'
+    }
+];
 
 const token = localStorage.getItem('token');
 const ficheIdRef = ref(props.ficheId);
 const consultIdRef = ref(null);
 const mode = computed(() => 'continue');
 
-const { loading, data, saving, dirtySectionsList, documentsUploadProgress, loadData, watchSection, saveEntretienSection, saveExamensSection, saveBilansSection, savePlanTraitementSection, saveDocumentsSection } =
-    useConsultationsForm({ ficheId: ficheIdRef, consultId: consultIdRef, token, mode });
+const { loading, data, saving, dirtySectionsList, documentsUploadProgress, loadData, watchSection, saveEntretienSection, saveExamensSection, saveBilansSection, savePlanTraitementSection, saveDocumentsSection } = useConsultationsForm({
+    ficheId: ficheIdRef,
+    consultId: consultIdRef,
+    token,
+    mode
+});
 
 const ageNumber = computed(() => {
     const age = Number(data.patient?.age);
@@ -93,16 +136,26 @@ defineExpose({
         </div>
 
         <template v-else>
-            <div class="fiche-book" :class="{ 'fiche-book--tall': tall }">
-                <div class="fiche-book__pages">
-                    <EntretienVerbalForm v-model="data.entretien" layout="book" :saving="saving.entretien" :patient-sex="data.patient?.sexe" @save="() => saveAndNotify(saveEntretienSection)" />
-                    <ExamensFicheForm v-model="data.examens" layout="book" :saving="saving.examens" @save="() => saveAndNotify(saveExamensSection)" />
-                    <FicheDocumentsForm v-model="data.documents" layout="book" :saving="saving.documents" :upload-progress="documentsUploadProgress" @save="() => saveAndNotify(saveDocumentsSection)" />
-                    <FichePlanTraitementForm v-model="data.planTraitement" layout="book" :saving="saving.planTraitement" @save="() => saveAndNotify(savePlanTraitementSection)" />
-                    <FicheBilansForm v-model="data.bilans" layout="book" :saving="saving.bilans" :patient-age="ageNumber" @save="() => saveAndNotify(saveBilansSection)" />
-                    <PastSessions :sessions="data.sessions" layout="book" />
-                </div>
-            </div>
+            <MedicalRecordLayout :sections="recordSections" :tall="tall">
+                <template #entretien>
+                    <EntretienVerbalForm v-model="data.entretien" :saving="saving.entretien" :patient-sex="data.patient?.sexe" @save="() => saveAndNotify(saveEntretienSection)" />
+                </template>
+                <template #examens>
+                    <ExamensFicheForm v-model="data.examens" :saving="saving.examens" @save="() => saveAndNotify(saveExamensSection)" />
+                </template>
+                <template #documents>
+                    <FicheDocumentsForm v-model="data.documents" :saving="saving.documents" :upload-progress="documentsUploadProgress" @save="() => saveAndNotify(saveDocumentsSection)" />
+                </template>
+                <template #plans>
+                    <FichePlanTraitementForm v-model="data.planTraitement" :saving="saving.planTraitement" @save="() => saveAndNotify(savePlanTraitementSection)" />
+                </template>
+                <template #bilans>
+                    <FicheBilansForm v-model="data.bilans" :saving="saving.bilans" :patient-age="ageNumber" @save="() => saveAndNotify(saveBilansSection)" />
+                </template>
+                <template #seances>
+                    <PastSessions :sessions="data.sessions" />
+                </template>
+            </MedicalRecordLayout>
         </template>
     </div>
 </template>

@@ -9,6 +9,7 @@ import Tabs from 'primevue/tabs';
 import { useToast } from 'primevue/usetoast';
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import DailyView from '@/components/agenda/day/DailyView.vue';
+import StatusLegend from '@/components/agenda/shared/StatusLegend.vue';
 import CancelRdvDialog from '@/components/agenda/shared/CancelRdvDialog.vue';
 import ReportRdvDialog from '@/components/agenda/shared/ReportRdvDialog.vue';
 import ValidateRdvDialog from '@/components/agenda/shared/ValidateRdvDialog.vue';
@@ -33,6 +34,10 @@ defineProps({
 });
 const focusControlsTarget = ref(null);
 const focusSidebarOpen = ref(false);
+const viewStats = reactive({
+    week: { stats: {}, loading: true },
+    day: { stats: {}, loading: true }
+});
 
 const smsCabinetName = ref(cabinetConfig.smsCabinetName || cabinetConfig.displayName || 'Cabinet dentaire');
 const requireMedecinOnConsultationCreation = ref(true);
@@ -346,6 +351,9 @@ onBeforeUnmount(() => {
                 :breadcrumb-home="breadcrumbHome"
                 :show-breadcrumb="!embedded"
             >
+                <template #actions>
+                    <StatusLegend data-tour="agenda-rdv.legend" :stats="viewStats[activeIndex].stats" :loading="viewStats[activeIndex].loading" />
+                </template>
             </PageHeader>
         </template>
 
@@ -396,6 +404,7 @@ onBeforeUnmount(() => {
                                     :embedded="embedded"
                                     :controls-target="focusControlsTarget"
                                     :controls-active="activeIndex === 'week'"
+                                    @stats-change="viewStats.week = $event"
                                     @request-create="openCreate"
                                     @request-validate="openValidate"
                                     @request-cancel="openCancel"
@@ -416,6 +425,7 @@ onBeforeUnmount(() => {
                                     :embedded="embedded"
                                     :controls-target="focusControlsTarget"
                                     :controls-active="activeIndex === 'day'"
+                                    @stats-change="viewStats.day = $event"
                                     @request-create="openCreate"
                                     @request-validate="openValidate"
                                     @request-cancel="openCancel"

@@ -234,19 +234,18 @@ const deleteAntecedent = (row) => {
                 <h3 class="medical-form-block__title">Questionnaire médical</h3>
                 <p v-if="!isBook" class="medical-form-block__subtitle">Anamnèse, antécédents et habitudes déclarées</p>
             </div>
-            <Button
-                label="Sauvegarder"
-                icon="pi pi-save"
-                :loading="saving"
-                @click="emit('save')"
-            />
+            <Button label="Sauvegarder" icon="pi pi-save" :loading="saving" @click="emit('save')" />
         </div>
 
         <div class="medical-form-block__body space-y-4">
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
-                <div class="dossier-section-block lg:col-span-12" style="padding-top:0;margin-top:0;border-top:0">
-                    <h5 class="dossier-section-label">Anamnèse</h5>
-                    <Textarea v-model="form.motifConsultation" rows="6" placeholder="Evolution de la maladie..." class="w-full" @update:modelValue="(v) => updateField('motifConsultation', v)" />
+                <div class="dossier-section-block lg:col-span-12" style="padding-top: 0; margin-top: 0; border-top: 0">
+                    <h5 class="dossier-section-label">Motif de consultation</h5>
+                    <Textarea v-model="form.motifConsultation" rows="4" aria-label="Motif de consultation" placeholder="Motif de la visite, symptômes rapportés..." class="w-full" @update:modelValue="(v) => updateField('motifConsultation', v)" />
+                </div>
+                <div class="dossier-section-block lg:col-span-12">
+                    <h5 class="dossier-section-label">Anamnèse détaillée</h5>
+                    <Textarea :modelValue="form.anamnese" rows="4" aria-label="Anamnèse détaillée" placeholder="Évolution de la maladie, contexte et historique..." class="w-full" @update:modelValue="(v) => updateField('anamnese', v)" />
                 </div>
 
                 <div v-if="isFemalePatient" class="dossier-section-block lg:col-span-4">

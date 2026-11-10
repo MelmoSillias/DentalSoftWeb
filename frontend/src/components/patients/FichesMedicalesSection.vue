@@ -1,11 +1,10 @@
 <script setup>
 import Button from 'primevue/button';
-import Carousel from 'primevue/carousel';
 import ConfirmDialog from 'primevue/confirmdialog';
 import Select from 'primevue/select';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, useId, watch } from 'vue';
 import AppDialog from '@/components/layout/AppDialog.vue';
 import FicheMedicalEditPanel from '@/components/patients/FicheMedicalEditPanel.vue';
 import FicheMedicalV2 from '@/components/patients/FicheMedicalV2.vue';
@@ -44,6 +43,7 @@ const auth = useAuthStore();
 const token = localStorage.getItem('token');
 
 const currentFicheIndex = ref(0);
+const ficheSelectId = useId();
 const isExpanded = ref(false);
 const isEditMode = ref(false);
 const editPanelRef = ref(null);
@@ -73,15 +73,30 @@ const expandedDialogSubtitle = computed(() => {
 
 const expandedDialogTitle = computed(() => `Fiche médicale ${formatPosition(currentFicheIndex.value)}`);
 
-
-function prevFiche() {
-    if (!orderedFiches.value.length) return;
-    currentFicheIndex.value = (currentFicheIndex.value - 1 + orderedFiches.value.length) % orderedFiches.value.length;
+function selectFiche(index) {
+    if (index < 0 || index >= orderedFiches.value.length || index === currentFicheIndex.value) return;
+    const change = () => {
+        isEditMode.value = false;
+        editHasDirty.value = false;
+        currentFicheIndex.value = index;
+    };
+    if (isEditMode.value && editHasDirty.value) {
+        confirm.require({
+            message: 'Des modifications non enregistrées seront perdues. Changer de fiche ?',
+            header: 'Modifications en cours',
+            icon: 'pi pi-exclamation-triangle',
+            rejectLabel: 'Annuler',
+            acceptLabel: 'Changer de fiche',
+            accept: change
+        });
+    } else change();
 }
 
+function prevFiche() {
+    selectFiche(currentFicheIndex.value - 1);
+}
 function nextFiche() {
-    if (!orderedFiches.value.length) return;
-    currentFicheIndex.value = (currentFicheIndex.value + 1) % orderedFiches.value.length;
+    selectFiche(currentFicheIndex.value + 1);
 }
 
 function formatDateShort(date) {
@@ -151,7 +166,7 @@ function handlePrint() {
 }
 
 function handleFicheSaved() {
-    editHasDirty.value = false;
+    editHasDirty.value = editPanelRef.value?.hasDirtyChanges() ?? false;
     emit('fiche-updated');
 }
 
@@ -206,7 +221,17 @@ watch(
     (length, previousLength) => {
         if (Number(length) > Number(previousLength || 0)) {
             currentFicheIndex.value = 0;
+        } else {
+            currentFicheIndex.value = Math.max(0, Math.min(currentFicheIndex.value, Number(length || 0) - 1));
         }
+    }
+);
+
+watch(
+    () => props.patientId,
+    () => {
+        currentFicheIndex.value = 0;
+        isExpanded.value = false;
     }
 );
 </script>
@@ -220,10 +245,6 @@ watch(
                     <p class="page-section__subtitle">{{ orderedFiches.length }} fiche(s)</p>
                 </div>
                 <div class="page-section__header-actions">
-                    <div class="flex items-center gap-1 sm:hidden">
-                        <Button icon="pi pi-chevron-left" severity="secondary" text size="small" :disabled="!orderedFiches.length" @click="prevFiche" />
-                        <Button icon="pi pi-chevron-right" severity="secondary" text size="small" :disabled="!orderedFiches.length" @click="nextFiche" />
-                    </div>
                     <Button
                         icon="pi pi-external-link"
                         label="Agrandir"
@@ -260,37 +281,27 @@ watch(
                 </div>
             </div>
             <div class="p-3 md:p-4">
-                <div class="relative" data-tour="patients-dossier.fiches-preview">
-                    <Carousel :value="orderedFiches" :numVisible="1" :numScroll="1" v-model:page="currentFicheIndex" :showIndicators="false" :showNavigators="false" circular class="medical-fiches-carousel">
-                        <template #item="slotProps">
-                            <div class="medical-fiches-item">
-                                <div class="medical-fiche-paper">
-                                    <FicheMedicalV2 :fiche="slotProps.data" :position-label="formatPosition(slotProps.index)" :patient-age="patientAge" compact @print="emit('print-fiche', slotProps.data)" />
-                                </div>
-                            </div>
-                        </template>
-                    </Carousel>
-
-                    <div class="flex items-center justify-center gap-1.5 mt-3">
-                        <button
-                            v-for="(fiche, index) in orderedFiches"
-                            :key="fiche.id || index"
-                            type="button"
-                            @click="currentFicheIndex = index"
-                            :class="['dossier-folder__tab-badge transition-all', currentFicheIndex === index ? 'dossier-tag--accent' : '']"
-                            :style="currentFicheIndex === index ? { minWidth: '1.75rem' } : { minWidth: '0.5rem', padding: '0.2rem' }"
-                            :aria-label="`Fiche ${index + 1}`"
-                        >
-                            <span v-if="currentFicheIndex === index">{{ index + 1 }}</span>
-                        </button>
-                    </div>
-
-                    <div class="dossier-section-block" data-tour="patients-dossier.fiches-jump">
-                        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                            <div style="font-size: var(--page-section-subtitle-size); color: var(--text-color-secondary)">Fiche {{ currentFicheIndex + 1 }} sur {{ orderedFiches.length }}</div>
-                            <Select v-model="currentFicheIndex" :options="ficheOptions" optionLabel="label" optionValue="value" placeholder="Aller à une fiche..." class="w-full sm:w-48" />
+                <template v-if="selectedFiche">
+                    <div class="medical-fiches-navigation" data-tour="patients-dossier.fiches-jump">
+                        <div class="medical-fiches-navigation__selection">
+                            <label :for="ficheSelectId" class="font-semibold">Fiche à consulter</label>
+                            <Select :inputId="ficheSelectId" aria-label="Fiche à consulter" :modelValue="currentFicheIndex" :options="ficheOptions" optionLabel="label" optionValue="value" @update:modelValue="selectFiche" />
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <Button icon="pi pi-chevron-left" severity="secondary" outlined aria-label="Fiche précédente" :disabled="currentFicheIndex === 0" @click="prevFiche" />
+                            <span class="text-sm" aria-live="polite">{{ currentFicheIndex + 1 }} / {{ orderedFiches.length }}</span>
+                            <Button icon="pi pi-chevron-right" severity="secondary" outlined aria-label="Fiche suivante" :disabled="currentFicheIndex >= orderedFiches.length - 1" @click="nextFiche" />
                         </div>
                     </div>
+                    <div data-tour="patients-dossier.fiches-preview">
+                        <FicheMedicalV2 :key="selectedFiche.id || currentFicheIndex" :fiche="selectedFiche" :position-label="formatPosition(currentFicheIndex)" :patient-age="patientAge" compact @print="handlePrint" />
+                    </div>
+                </template>
+                <div v-else class="medical-fiches-empty" role="status">
+                    <i class="pi pi-folder-open text-3xl" aria-hidden="true"></i>
+                    <h4 class="font-semibold text-lg">Aucune fiche médicale</h4>
+                    <p>Les fiches médicales de ce patient apparaîtront ici.</p>
+                    <Button v-if="canEdit" label="Créer la première fiche" icon="pi pi-plus" :loading="creatingFiche" :disabled="!patientId" @click="askCreateNewFiche" />
                 </div>
             </div>
         </div>
@@ -309,15 +320,10 @@ watch(
         >
             <template #headerExtra>
                 <div class="flex items-center gap-2">
-                    <span
-                        v-if="isEditMode"
-                        class="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
-                    >
-                        Édition
-                    </span>
-                    <Button icon="pi pi-chevron-left" severity="secondary" text rounded :disabled="orderedFiches.length <= 1" @click="prevFiche" />
+                    <span v-if="isEditMode" class="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200"> Édition </span>
+                    <Button icon="pi pi-chevron-left" severity="secondary" text rounded aria-label="Fiche précédente" :disabled="currentFicheIndex === 0" @click="prevFiche" />
                     <span class="text-sm text-surface-500">{{ currentFicheIndex + 1 }} / {{ orderedFiches.length }}</span>
-                    <Button icon="pi pi-chevron-right" severity="secondary" text rounded :disabled="orderedFiches.length <= 1" @click="nextFiche" />
+                    <Button icon="pi pi-chevron-right" severity="secondary" text rounded aria-label="Fiche suivante" :disabled="currentFicheIndex >= orderedFiches.length - 1" @click="nextFiche" />
                 </div>
             </template>
 
@@ -350,24 +356,38 @@ watch(
 </template>
 
 <style scoped>
-.medical-fiches-carousel :deep(.p-carousel-content),
-.medical-fiches-carousel :deep(.p-carousel-items-content) {
-    overflow: hidden;
+.medical-fiches-navigation {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: var(--surface-ground);
+    border-radius: 0.75rem;
 }
-
-.medical-fiches-carousel :deep(.p-carousel-item) {
-    padding: 0;
-    width: 100%;
+.medical-fiches-navigation__selection {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
 }
-
-.medical-fiches-item {
-    width: 100%;
+.medical-fiches-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 3rem 1rem;
+    text-align: center;
+    color: var(--text-color-secondary);
 }
-
 @media (max-width: 639px) {
-    .medical-fiches-carousel :deep(.p-carousel-prev-button),
-    .medical-fiches-carousel :deep(.p-carousel-next-button) {
-        display: none;
+    .medical-fiches-navigation__selection {
+        width: 100%;
+    }
+    .medical-fiches-navigation__selection :deep(.p-select) {
+        width: 100%;
     }
 }
 </style>

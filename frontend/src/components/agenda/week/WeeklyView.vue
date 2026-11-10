@@ -32,7 +32,7 @@ const props = defineProps({
     controlsActive: { type: Boolean, default: true }
 });
 
-const emit = defineEmits(['request-create', 'request-validate', 'request-cancel', 'request-report', 'request-sms-reminder', 'request-sms-schedule']);
+const emit = defineEmits(['request-create', 'request-validate', 'request-cancel', 'request-report', 'request-sms-reminder', 'request-sms-schedule', 'stats-change']);
 
 const auth = useAuthStore();
 const { isInternetFeaturesEnabled } = useInternetFeatures();
@@ -363,6 +363,8 @@ watch(
 
 const reloadOnAction = () => loadEvents(true);
 
+watch([periodStats, loading], ([stats, loading]) => emit('stats-change', { stats, loading }), { immediate: true });
+
 defineExpose({ reloadOnAction });
 </script>
 
@@ -404,7 +406,7 @@ defineExpose({ reloadOnAction });
                     </span>
                     <MultiSelect v-model="filters.statuses" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="Statuts" display="chip" class="w-full xs:w-80 min-w-[180px]" />
                 </div>
-                <section class="shrink-0" aria-label="Statistiques des rendez-vous">
+                <section v-if="embedded" class="shrink-0" aria-label="Statistiques des rendez-vous">
                     <h3 class="mb-2 text-sm font-semibold text-surface-700 dark:text-surface-200">Légendes et statistiques</h3>
                     <p class="mb-2 text-xs text-surface-500">Période affichée · médecin et patient sélectionnés, tous statuts.</p>
                     <StatusLegend :stats="periodStats" :loading="loading" :vertical="embedded" />
