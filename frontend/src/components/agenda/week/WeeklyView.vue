@@ -5,6 +5,7 @@ import FullCalendar from '@fullcalendar/vue3';
 import interactionPlugin from '@fullcalendar/interaction';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import Select from 'primevue/select';
+import Button from 'primevue/button';
 import MultiSelect from 'primevue/multiselect';
 import InputText from 'primevue/inputtext';
 import ContextMenu from 'primevue/contextmenu';
@@ -12,6 +13,7 @@ import ProgressSpinner from 'primevue/progressspinner';
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import Popover from 'primevue/popover';
 import DetailsRdv from './DetailsRdv.vue';
+import StatusLegend from '../shared/StatusLegend.vue';
 import { addMinutes } from '@/utils/dateUtils';
 import { useRdvStatus } from '@/composables/useRdvStatus';
 import { getFullCalendarResponsiveOptions, useFullCalendarResponsive } from '@/composables/useFullCalendarResponsive';
@@ -25,7 +27,9 @@ const props = defineProps({
     refreshKey: { type: Number, default: 0 },
     lockedMedecinId: { type: Number, default: null },
     medecinReadonly: { type: Boolean, default: false },
-    embedded: { type: Boolean, default: false }
+    embedded: { type: Boolean, default: false },
+    controlsTarget: { type: Object, default: null },
+    controlsActive: { type: Boolean, default: true }
 });
 
 const emit = defineEmits(['request-create', 'request-validate', 'request-cancel', 'request-report', 'request-sms-reminder', 'request-sms-schedule']);
@@ -45,6 +49,7 @@ const popoverEvent = ref(null);
 const popoverVisible = ref(false); // ← NOUVEAU
 
 const events = ref([]);
+const periodStats = ref({ pending: 0, validated: 0, postponed: 0, cancelled: 0 });
 const loading = ref(false);
 const statusOptions = [
     { label: 'En attente', value: 'pending' },
@@ -65,6 +70,8 @@ const selectedEvent = ref(null);
 const drawerVisible = ref(false);
 const selectedRdvDetails = ref(null);
 const currentRange = ref(null);
+const calendarTitle = ref('');
+const currentCalendarView = ref('');
 const lastFetchKey = ref('');
 const isFetching = ref(false);
 const { getCssClass } = useRdvStatus();
@@ -196,6 +203,9 @@ const loadEvents = async (force = false) => {
             patientQuery: filters.patient
         });
 
+        const counts = { pending: 0, validated: 0, postponed: 0, cancelled: 0 };
+        for (const rdv of Array.isArray(payload) ? payload : []) counts[getStatusKey(rdv)] += 1;
+        periodStats.value = counts;
         const nextEvents = mapRdvsToEvents(payload);
         events.value = nextEvents;
         syncCalendarEvents(nextEvents);
@@ -254,6 +264,8 @@ const handleEventMount = (info) => {
 };
 
 const handleDatesSet = (info) => {
+    calendarTitle.value = info.view.title;
+    currentCalendarView.value = info.view.type;
     currentRange.value = { start: info.start, end: info.end };
     loadEvents();
 };
@@ -282,11 +294,13 @@ const calendarOptions = reactive({
     dateClick: handleDateClick,
     datesSet: handleDatesSet,
     height: props.embedded ? '100%' : 'auto',
-    ...initialResponsive
+    ...initialResponsive,
+    ...(props.embedded ? { headerToolbar: false } : {})
 });
 
 const { isNarrow } = useFullCalendarResponsive(calendarRef, 'week', (opts) => {
     Object.assign(calendarOptions, opts);
+    if (props.embedded) calendarOptions.headerToolbar = false;
 });
 
 const applyOpeningHours = async () => {
@@ -354,24 +368,49 @@ defineExpose({ reloadOnAction });
 
 <template>
     <section class="weekly-view-page flex flex-col gap-3 xs:gap-4 p-0.5 xs:p-1" :class="embedded ? 'is-embedded h-full min-h-0 min-w-0 flex-1' : undefined">
-        <!-- Filtres – plus moderne et espacé -->
-        <div data-tour="agenda-rdv.scope" class="weekly-view-filters flex flex-row items-center gap-3 xs:gap-4 rounded-xl xs:rounded-2xl bg-white p-3 xs:p-4 shadow-sm ring-1 ring-gray-200/70 dark:bg-gray-800 dark:ring-gray-700/60 dark:shadow-gray-900/20" :class="embedded ? 'min-w-0 shrink-0 overflow-x-auto' : undefined">
-            <Select
-                v-model="filters.medecinId"
-                :options="medecinsOptions"
-                optionLabel="name"
-                optionValue="id"
-                :placeholder="medecinReadonly ? 'Médecin connecté' : 'Tous les médecins'"
-                :showClear="!medecinReadonly"
-                class="w-full xs:w-72 min-w-[160px] xs:min-w-[180px]"
-                :filter="!medecinReadonly"
-                :disabled="medecinReadonly"
-            />
-            <span class="p-input-icon-left w-full xs:w-72 min-w-[160px] xs:min-w-[180px]">
-                <InputText icon="pi pi-search" v-model.trim="filters.patient" placeholder="Rechercher patient..." class="w-full" />
-            </span>
-            <MultiSelect v-model="filters.statuses" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="Statuts" display="chip" class="w-full xs:w-80 min-w-[180px]" />
-        </div>
+        <Teleport :to="controlsTarget || 'body'" :disabled="!embedded || !controlsTarget">
+            <div v-show="!embedded || controlsActive" class="flex shrink-0 flex-col gap-3">
+                <section v-if="embedded" class="flex flex-col gap-2" aria-label="Période du calendrier">
+                    <h3 class="text-sm font-semibold text-surface-700 dark:text-surface-200">{{ calendarTitle }}</h3>
+                    <div class="flex items-center gap-1">
+                        <Button icon="pi pi-chevron-left" text size="small" aria-label="Période précédente" @click="calendarRef?.getApi()?.prev()" />
+                        <Button label="Aujourd'hui" text size="small" @click="calendarRef?.getApi()?.today()" />
+                        <Button icon="pi pi-chevron-right" text size="small" aria-label="Période suivante" @click="calendarRef?.getApi()?.next()" />
+                    </div>
+                    <div class="flex gap-2" role="group" aria-label="Vue du calendrier">
+                        <Button label="Semaine" size="small" :outlined="currentCalendarView !== 'timeGridWeek'" :aria-pressed="currentCalendarView === 'timeGridWeek'" @click="calendarRef?.getApi()?.changeView('timeGridWeek')" />
+                        <Button label="Jour" size="small" :outlined="currentCalendarView !== 'timeGridDay'" :aria-pressed="currentCalendarView === 'timeGridDay'" @click="calendarRef?.getApi()?.changeView('timeGridDay')" />
+                    </div>
+                </section>
+                <!-- Filtres – plus moderne et espacé -->
+                <div
+                    data-tour="agenda-rdv.scope"
+                    class="weekly-view-filters flex flex-row items-center gap-3 xs:gap-4 rounded-xl xs:rounded-2xl bg-white p-3 xs:p-4 shadow-sm ring-1 ring-gray-200/70 dark:bg-gray-800 dark:ring-gray-700/60 dark:shadow-gray-900/20"
+                    :class="embedded ? 'min-w-0 shrink-0 overflow-x-auto' : undefined"
+                >
+                    <Select
+                        v-model="filters.medecinId"
+                        :options="medecinsOptions"
+                        optionLabel="name"
+                        optionValue="id"
+                        :placeholder="medecinReadonly ? 'Médecin connecté' : 'Tous les médecins'"
+                        :showClear="!medecinReadonly"
+                        class="w-full xs:w-72 min-w-[160px] xs:min-w-[180px]"
+                        :filter="!medecinReadonly"
+                        :disabled="medecinReadonly"
+                    />
+                    <span class="p-input-icon-left w-full xs:w-72 min-w-[160px] xs:min-w-[180px]">
+                        <InputText icon="pi pi-search" v-model.trim="filters.patient" placeholder="Rechercher patient..." class="w-full" />
+                    </span>
+                    <MultiSelect v-model="filters.statuses" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="Statuts" display="chip" class="w-full xs:w-80 min-w-[180px]" />
+                </div>
+                <section class="shrink-0" aria-label="Statistiques des rendez-vous">
+                    <h3 class="mb-2 text-sm font-semibold text-surface-700 dark:text-surface-200">Légendes et statistiques</h3>
+                    <p class="mb-2 text-xs text-surface-500">Période affichée · médecin et patient sélectionnés, tous statuts.</p>
+                    <StatusLegend :stats="periodStats" :loading="loading" :vertical="embedded" />
+                </section>
+            </div>
+        </Teleport>
 
         <!-- Conteneur calendrier -->
         <div
@@ -403,12 +442,7 @@ defineExpose({ reloadOnAction });
                                 <div class="event-header">
                                     <strong>{{ arg.event.extendedProps.patientName || 'Patient' }}</strong>
                                 </div>
-                                <div
-                                    v-if="!isNarrow && arg.event.extendedProps.smsReminder?.label"
-                                    class="mt-1 truncate text-[10px] font-medium text-slate-500 dark:text-slate-300"
-                                >
-                                    SMS: {{ arg.event.extendedProps.smsReminder.label }}
-                                </div>
+                                <div v-if="!isNarrow && arg.event.extendedProps.smsReminder?.label" class="mt-1 truncate text-[10px] font-medium text-slate-500 dark:text-slate-300">SMS: {{ arg.event.extendedProps.smsReminder.label }}</div>
                             </div>
                         </div>
                     </template>

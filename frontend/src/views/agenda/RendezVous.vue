@@ -9,7 +9,6 @@ import Tabs from 'primevue/tabs';
 import { useToast } from 'primevue/usetoast';
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import DailyView from '@/components/agenda/day/DailyView.vue';
-import StatusLegend from '@/components/agenda/shared/StatusLegend.vue';
 import CancelRdvDialog from '@/components/agenda/shared/CancelRdvDialog.vue';
 import ReportRdvDialog from '@/components/agenda/shared/ReportRdvDialog.vue';
 import ValidateRdvDialog from '@/components/agenda/shared/ValidateRdvDialog.vue';
@@ -32,6 +31,8 @@ import cabinetConfig from '@/cabinetConfig';
 defineProps({
     embedded: { type: Boolean, default: false }
 });
+const focusControlsTarget = ref(null);
+const focusSidebarOpen = ref(false);
 
 const smsCabinetName = ref(cabinetConfig.smsCabinetName || cabinetConfig.displayName || 'Cabinet dentaire');
 const requireMedecinOnConsultationCreation = ref(true);
@@ -333,10 +334,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <PageShell
-        class="rendez-vous-page"
-        :class="embedded ? 'is-embedded overflow-hidden' : undefined"
-    >
+    <PageShell class="rendez-vous-page" :class="embedded ? 'is-embedded overflow-hidden' : undefined">
         <template #header>
             <PageHeader
                 v-if="!embedded"
@@ -348,16 +346,7 @@ onBeforeUnmount(() => {
                 :breadcrumb-home="breadcrumbHome"
                 :show-breadcrumb="!embedded"
             >
-                <template #actions>
-                    <div data-tour="agenda-rdv.legend">
-                        <StatusLegend />
-                    </div>
-                </template>
             </PageHeader>
-            <div v-else class="rendez-vous-compact-header flex shrink-0 flex-wrap items-center justify-between gap-2 px-3 py-1.5">
-                <h2 class="text-sm font-semibold text-surface-900 dark:text-surface-50">Rendez-vous</h2>
-                <StatusLegend />
-            </div>
         </template>
 
         <div v-if="rdvLoadErrorMessage" class="flex min-h-[280px] flex-col items-center justify-center gap-4 rounded-xl border border-amber-200/70 bg-amber-50/70 p-6 dark:border-amber-800/70 dark:bg-amber-950/20">
@@ -372,9 +361,25 @@ onBeforeUnmount(() => {
         </div>
 
         <template v-else>
+            <Button
+                v-if="embedded"
+                class="focus-controls-toggle"
+                :icon="focusSidebarOpen ? 'pi pi-times' : 'pi pi-sliders-h'"
+                :aria-expanded="focusSidebarOpen"
+                aria-label="Afficher ou masquer les commandes du planning"
+                @click="focusSidebarOpen = !focusSidebarOpen"
+            />
+            <aside v-if="embedded" class="focus-agenda-sidebar rounded-xl border border-surface-200 bg-surface-0 p-3 dark:border-surface-700 dark:bg-surface-900" :class="{ 'is-open': focusSidebarOpen }" aria-label="Commandes des rendez-vous">
+                <h2 class="text-sm font-semibold text-surface-900 dark:text-surface-50">Rendez-vous</h2>
+                <div class="grid gap-2" role="group" aria-label="Vue des rendez-vous">
+                    <Button label="Vue hebdomadaire" icon="pi pi-calendar" size="small" :outlined="activeIndex !== 'week'" :aria-pressed="activeIndex === 'week'" @click="activeIndex = 'week'" />
+                    <Button label="Tableau par médecin" icon="pi pi-table" size="small" :outlined="activeIndex !== 'day'" :aria-pressed="activeIndex === 'day'" @click="activeIndex = 'day'" />
+                </div>
+                <div ref="focusControlsTarget" class="focus-agenda-controls flex flex-col gap-4"></div>
+            </aside>
             <PageSection tour-id="agenda-rdv.calendar" class="rendez-vous-section min-h-0 flex-1">
                 <Tabs v-model:value="activeIndex" class="rendez-vous-tabs flex min-h-0 min-w-0 flex-1 flex-col" :class="embedded ? 'overflow-hidden' : undefined">
-                    <TabList data-tour="agenda-rdv.tabs" class="flex-shrink-0 px-2 pt-2 sm:px-3">
+                    <TabList v-if="!embedded" data-tour="agenda-rdv.tabs" class="flex-shrink-0 px-2 pt-2 sm:px-3">
                         <Tab value="week">Vue hebdomadaire</Tab>
                         <Tab value="day">Vue journalière</Tab>
                     </TabList>
@@ -389,6 +394,8 @@ onBeforeUnmount(() => {
                                     :lockedMedecinId="scopeListsToConnectedMedecin ? connectedMedecinId : null"
                                     :medecinReadonly="scopeListsToConnectedMedecin"
                                     :embedded="embedded"
+                                    :controls-target="focusControlsTarget"
+                                    :controls-active="activeIndex === 'week'"
                                     @request-create="openCreate"
                                     @request-validate="openValidate"
                                     @request-cancel="openCancel"
@@ -407,6 +414,8 @@ onBeforeUnmount(() => {
                                     :refreshKey="refreshKey"
                                     :lockedMedecinId="scopeListsToConnectedMedecin ? connectedMedecinId : null"
                                     :embedded="embedded"
+                                    :controls-target="focusControlsTarget"
+                                    :controls-active="activeIndex === 'day'"
                                     @request-create="openCreate"
                                     @request-validate="openValidate"
                                     @request-cancel="openCancel"
@@ -419,16 +428,7 @@ onBeforeUnmount(() => {
             </PageSection>
 
             <div data-tour="agenda-rdv.dialogs">
-                <AppDialog
-                    v-model:visible="dialogState.create"
-                    title="Nouveau rendez-vous"
-                    subtitle="Planifiez un rendez-vous depuis l'agenda"
-                    icon="fas fa-calendar-plus"
-                    icon-tone="primary"
-                    size="lg"
-                    :show-footer="false"
-                    :content-padding="false"
-                >
+                <AppDialog v-model:visible="dialogState.create" title="Nouveau rendez-vous" subtitle="Planifiez un rendez-vous depuis l'agenda" icon="fas fa-calendar-plus" icon-tone="primary" size="lg" :show-footer="false" :content-padding="false">
                     <FormRendezVous
                         :initial-date="createDefaults.start"
                         :initial-medecin-id="createDefaults.medecinId"
@@ -513,7 +513,39 @@ onBeforeUnmount(() => {
 .rendez-vous-page.is-embedded {
     min-height: 0;
     height: 100%;
-    gap: 0.5rem;
+    gap: 0;
+    padding: 0;
+}
+
+.focus-controls-toggle {
+    display: none;
+}
+
+.focus-agenda-sidebar {
+    order: 2;
+    display: flex;
+    flex: 0 0 clamp(15rem, 22vw, 19rem);
+    flex-direction: column;
+    gap: 1rem;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.focus-agenda-controls :deep(.weekly-view-filters),
+.focus-agenda-controls :deep(.daily-view-toolbar) {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0;
+    gap: 0.75rem;
+    background: transparent;
+    box-shadow: none;
+    border-radius: 0;
+    --tw-ring-shadow: 0 0 #0000;
+}
+
+.focus-agenda-controls :deep(.weekly-view-filters > *) {
+    width: 100%;
+    min-width: 0;
 }
 
 .rendez-vous-compact-header :deep(.rounded-full) {
@@ -533,12 +565,16 @@ onBeforeUnmount(() => {
 }
 
 .rendez-vous-page.is-embedded :deep(.p-tabpanels) {
-    padding: 0.5rem;
+    padding: 0;
 }
 
 .rendez-vous-page.is-embedded :deep(.page-shell__body) {
+    position: relative;
+    flex-direction: row;
+    gap: 0.5rem;
     flex: 1 1 auto;
     min-height: 0;
+    overflow: hidden;
 }
 
 .rendez-vous-section :deep(.page-section__body) {
@@ -552,6 +588,31 @@ onBeforeUnmount(() => {
     flex: 1 1 auto;
     min-height: 0;
     height: 100%;
+    min-width: 0;
+}
+
+@media (max-width: 767px) {
+    .focus-controls-toggle {
+        display: inline-flex;
+        position: absolute;
+        right: 0.75rem;
+        bottom: 0.75rem;
+        z-index: 30;
+    }
+
+    .focus-agenda-sidebar {
+        display: none;
+        position: absolute;
+        inset: 0 0 0 auto;
+        width: min(19rem, 90%);
+        padding-bottom: 4rem;
+        z-index: 20;
+        box-shadow: -8px 0 24px rgb(0 0 0 / 12%);
+    }
+
+    .focus-agenda-sidebar.is-open {
+        display: flex;
+    }
 }
 
 .rendez-vous-page.is-embedded :deep(.p-tabpanels),

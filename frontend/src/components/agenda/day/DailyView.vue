@@ -8,7 +8,7 @@ import ScrollPanel from 'primevue/scrollpanel';
 import { computed, onMounted, ref, watch } from 'vue';
 import DateChooser from './DateChooser.vue';
 import ScheduleTable from './ScheduleTable.vue';
-import StatsCards from './StatsCards.vue';
+import StatusLegend from '../shared/StatusLegend.vue';
 import { fetchPublicGeneralSettings } from '@/services/globalSettingsService';
 import { useAuthStore } from '@/stores/auth';
 
@@ -29,6 +29,8 @@ const props = defineProps({
         type: Number,
         default: null
     },
+    controlsTarget: { type: Object, default: null },
+    controlsActive: { type: Boolean, default: true },
     embedded: {
         type: Boolean,
         default: false
@@ -146,21 +148,27 @@ defineExpose({ reloadOnAction });
 
 <template>
     <section class="daily-view flex min-h-0 flex-1 flex-col gap-3 xs:gap-4" :class="embedded ? 'is-embedded h-full min-w-0' : undefined">
-        <div class="daily-view-toolbar flex flex-shrink-0 flex-wrap items-center justify-between gap-3 xs:gap-4 rounded-xl bg-surface-0 p-2 xs:p-3 shadow-sm dark:bg-surface-900 dark:shadow-none dark:ring-1 dark:ring-surface-700">
-            <DateChooser :modelValue="selectedDate" @update:modelValue="onDateChange" />
-            <div class="flex items-center gap-1 xs:gap-2 text-xs xs:text-sm font-medium text-surface-700">
-                <span>Zoom</span>
-                <Button icon="pi pi-search-minus" size="small" text @click="zoomOut" />
-                <Button icon="pi pi-search-plus" size="small" text @click="zoomIn" />
-                <span class="font-semibold">{{ zoom }}%</span>
+        <Teleport :to="controlsTarget || 'body'" :disabled="!embedded || !controlsTarget">
+            <div v-show="!embedded || controlsActive" class="flex shrink-0 flex-col gap-3">
+                <div class="daily-view-toolbar flex flex-shrink-0 flex-wrap items-center justify-between gap-3 xs:gap-4 rounded-xl bg-surface-0 p-2 xs:p-3 shadow-sm dark:bg-surface-900 dark:shadow-none dark:ring-1 dark:ring-surface-700">
+                    <DateChooser :modelValue="selectedDate" @update:modelValue="onDateChange" />
+                    <div class="flex items-center gap-1 xs:gap-2 text-xs xs:text-sm font-medium text-surface-700">
+                        <span>Zoom</span>
+                        <Button icon="pi pi-search-minus" size="small" text @click="zoomOut" />
+                        <Button icon="pi pi-search-plus" size="small" text @click="zoomIn" />
+                        <span class="font-semibold">{{ zoom }}%</span>
+                    </div>
+                </div>
+
+                <section class="shrink-0" aria-label="Statistiques des rendez-vous">
+                    <h3 class="mb-2 text-sm font-semibold text-surface-700 dark:text-surface-200">Légendes et statistiques</h3>
+                    <p class="mb-2 text-xs text-surface-500">Journée affichée · tous statuts.</p>
+                    <StatusLegend :stats="stats" :loading="loadingStats" :vertical="embedded" />
+                </section>
             </div>
-        </div>
+        </Teleport>
 
-        <div class="flex-shrink-0 rounded-xl bg-surface-0 p-2 xs:p-3 shadow-sm dark:bg-surface-900 dark:shadow-none">
-            <StatsCards :stats="stats" :loading="loadingStats" />
-        </div>
-
-        <Divider class="my-1 flex-shrink-0 xs:my-2" />
+        <Divider v-if="!embedded" class="my-1 flex-shrink-0 xs:my-2" />
 
         <div class="daily-schedule-frame relative min-h-0 flex-1 overflow-hidden rounded-xl border border-surface-200 bg-surface-0 shadow-sm dark:border-surface-700 dark:bg-surface-900" :class="{ 'is-embedded': embedded }">
             <div v-if="loadingDay" class="absolute inset-0 z-10 flex items-center justify-center bg-surface-0/60 dark:bg-surface-900/60">
