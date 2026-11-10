@@ -699,12 +699,12 @@ const sessions = computed(() =>
 
 <style scoped>
 .medical-record-reader :deep(.fiche-book__title) {
-    margin: 1.75rem 0 0.85rem;
+    margin: var(--page-content-gap) 0 0.5rem;
     padding-bottom: 0.6rem;
     border-bottom: 1px solid var(--surface-border);
     color: var(--text-color);
-    font-size: 1rem;
-    font-weight: 700;
+    font-size: var(--page-section-title-size);
+    font-weight: 600;
     letter-spacing: normal;
     text-transform: none;
 }
@@ -716,21 +716,21 @@ const sessions = computed(() =>
     display: grid;
     grid-template-columns: minmax(9rem, 30%) minmax(0, 1fr);
     gap: 1rem;
-    padding: 0.8rem 0;
+    padding: 0.625rem 0;
     border-bottom: 1px solid var(--surface-border);
     align-items: baseline;
 }
 .medical-record-reader :deep(.fiche-book__label),
 .medical-record-reader :deep(.medical-form-row__label) {
     color: var(--text-color-secondary);
-    font-size: 0.9rem;
+    font-size: var(--page-section-subtitle-size);
     font-weight: 500;
     line-height: 1.6;
 }
 .medical-record-reader :deep(.fiche-book__value),
 .medical-record-reader :deep(.medical-form-row__value) {
     color: var(--text-color);
-    font-size: 1rem;
+    font-size: var(--page-section-title-size);
     line-height: 1.6;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
@@ -743,12 +743,12 @@ const sessions = computed(() =>
 .medical-record-reader :deep(table) {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.95rem;
+    font-size: var(--page-section-title-size);
     line-height: 1.5;
 }
 .medical-record-reader :deep(th),
 .medical-record-reader :deep(td) {
-    padding: 0.85rem 1rem;
+    padding: 0.625rem 0.75rem;
     border: 1px solid var(--surface-border);
     text-align: left;
     vertical-align: top;
@@ -764,11 +764,10 @@ const sessions = computed(() =>
     background: var(--surface-ground);
 }
 .medical-record-reader :deep(.fiche-book__empty) {
-    padding: 1.25rem;
-    border: 1px dashed var(--surface-border);
-    border-radius: 0.5rem;
+    margin: 0;
+    padding: 0.75rem 0;
+    font-size: var(--page-section-subtitle-size);
     color: var(--text-color-secondary);
-    background: var(--surface-ground);
 }
 .medical-record-reader :deep(.fiche-book__thumb) {
     width: 7rem;
@@ -778,7 +777,7 @@ const sessions = computed(() =>
     justify-content: center;
     border: 1px solid var(--surface-border);
     background: var(--surface-ground);
-    border-radius: 0.5rem;
+    border-radius: var(--p-border-radius-sm);
     overflow: hidden;
     cursor: pointer;
 }
@@ -790,7 +789,7 @@ const sessions = computed(() =>
 .medical-record-reader :deep(.fiche-book__thumb:focus-visible) {
     outline: 2px solid var(--primary-color);
 }
-@media (max-width: 639px) {
+@container medical-record (max-width: 38rem) {
     .medical-record-reader :deep(.fiche-book__line),
     .medical-record-reader :deep(.medical-form-row) {
         grid-template-columns: minmax(0, 1fr);

@@ -1,4 +1,6 @@
 <script setup>
+import Button from 'primevue/button';
+import Select from 'primevue/select';
 import { computed, ref, useId, watch } from 'vue';
 
 const props = defineProps({
@@ -28,16 +30,16 @@ watch(
 <template>
     <div class="medical-record" :class="{ 'medical-record--tall': tall }">
         <nav class="medical-record__nav" aria-label="Rubriques de la fiche médicale">
-            <span class="medical-record__nav-title">Dans cette fiche</span>
-            <button v-for="(section, index) in sections" :key="section.id" type="button" :aria-pressed="activeSection === section.id" :aria-controls="`${instanceId}-content`" @click="navigate(section.id)">
-                <i :class="['pi', section.icon]" aria-hidden="true"></i>
+            <button v-for="section in sections" :key="section.id" type="button" :aria-pressed="activeSection === section.id" :aria-controls="`${instanceId}-content`" @click="navigate(section.id)">
                 <span>{{ section.label }}</span>
-                <span class="medical-record__number">{{ String(index + 1).padStart(2, '0') }}</span>
             </button>
         </nav>
+        <div class="medical-record__select">
+            <label :for="instanceId + '-section'">Rubrique</label>
+            <Select :inputId="instanceId + '-section'" :modelValue="activeSection" :options="sections" optionLabel="label" optionValue="id" aria-label="Rubrique de la fiche médicale" @update:modelValue="navigate" />
+        </div>
         <div :id="`${instanceId}-content`" ref="content" class="medical-record__content" tabindex="-1" :aria-labelledby="`${instanceId}-title`">
             <header class="medical-record__heading">
-                <span class="medical-record__eyebrow">Rubrique {{ currentIndex + 1 }} / {{ sections.length }}</span>
                 <h3 :id="`${instanceId}-title`">{{ current?.label }}</h3>
                 <p>{{ current?.description }}</p>
             </header>
@@ -45,8 +47,8 @@ watch(
                 <slot :name="section.id" />
             </div>
             <footer class="medical-record__pager">
-                <button type="button" :disabled="currentIndex <= 0" @click="navigate(sections[currentIndex - 1].id, true)"><i class="pi pi-arrow-left" aria-hidden="true"></i> Précédent</button>
-                <button type="button" :disabled="currentIndex >= sections.length - 1" @click="navigate(sections[currentIndex + 1].id, true)">Suivant <i class="pi pi-arrow-right" aria-hidden="true"></i></button>
+                <Button label="Précédent" icon="pi pi-arrow-left" severity="secondary" text size="small" :disabled="currentIndex <= 0" @click="navigate(sections[currentIndex - 1].id, true)" />
+                <Button label="Suivant" icon="pi pi-arrow-right" iconPos="right" severity="secondary" text size="small" :disabled="currentIndex >= sections.length - 1" @click="navigate(sections[currentIndex + 1].id, true)" />
             </footer>
         </div>
     </div>
@@ -54,136 +56,94 @@ watch(
 
 <style scoped>
 .medical-record {
-    display: grid;
-    grid-template-columns: 13.5rem minmax(0, 1fr);
-    border: 1px solid var(--surface-border);
-    border-radius: 0.75rem;
-    overflow: hidden;
-    background: var(--surface-card);
+    container: medical-record / inline-size;
+    min-width: 0;
+    font-family: var(--app-font-family);
     color: var(--text-color);
+    background: var(--surface-card);
 }
 .medical-record__nav {
-    padding: 1rem 0.65rem;
-    background: var(--surface-ground);
-    border-right: 1px solid var(--surface-border);
-}
-.medical-record__nav-title,
-.medical-record__eyebrow {
-    display: block;
-    color: var(--text-color-secondary);
-    font-size: 0.8rem;
-    font-weight: 600;
-    margin-bottom: 0.65rem;
-}
-.medical-record__nav-title {
-    padding: 0 0.65rem;
-}
-.medical-record button {
-    font: inherit;
-    cursor: pointer;
-    color: inherit;
-    border-radius: 0.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 1.25rem;
+    border-bottom: 1px solid var(--surface-border);
 }
 .medical-record__nav button {
-    display: flex;
-    align-items: center;
-    gap: 0.65rem;
-    width: 100%;
-    text-align: left;
-    padding: 0.8rem 0.65rem;
-    margin-bottom: 0.25rem;
+    padding: 0.625rem 0;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
     background: transparent;
-    border: 1px solid transparent;
-    font-size: 0.9rem;
+    color: var(--text-color-secondary);
+    font-family: inherit;
+    font-size: var(--page-section-subtitle-size);
+    font-weight: 500;
     line-height: 1.4;
+    cursor: pointer;
 }
 .medical-record__nav button:hover {
-    background: var(--surface-hover);
+    color: var(--text-color);
 }
 .medical-record__nav button[aria-pressed='true'] {
-    background: var(--surface-card);
-    color: var(--primary-color);
-    border-color: var(--surface-border);
-    font-weight: 700;
-    box-shadow: inset 3px 0 var(--primary-color);
+    color: var(--text-color);
+    border-bottom-color: var(--text-color);
+    font-weight: 600;
 }
-.medical-record button:focus-visible {
-    outline: 2px solid var(--primary-color);
-    outline-offset: -2px;
+.medical-record__nav button:focus-visible {
+    outline: var(--p-focus-ring-width) var(--p-focus-ring-style) var(--p-focus-ring-color);
+    outline-offset: var(--p-focus-ring-offset);
 }
-.medical-record__number {
-    margin-left: auto;
-    font-size: 0.75rem;
-    opacity: 0.7;
+.medical-record__select {
+    display: none;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 0;
+    border-bottom: 1px solid var(--surface-border);
+    font-size: var(--page-section-subtitle-size);
+}
+.medical-record__select :deep(.p-select) {
+    flex: 1;
+    min-width: 0;
 }
 .medical-record__content {
     min-width: 0;
-    padding: 1.5rem;
-    max-height: 42rem;
-    overflow-y: auto;
+    padding: var(--page-content-gap) 0;
 }
 .medical-record--tall .medical-record__content {
     max-height: 65vh;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+    padding-right: 0.5rem;
 }
 .medical-record__heading {
-    padding-bottom: 1.25rem;
-    margin-bottom: 1.25rem;
-    border-bottom: 1px solid var(--surface-border);
+    margin-bottom: var(--page-content-gap);
 }
 .medical-record__heading h3 {
     margin: 0;
-    font-size: 1.3rem;
-    font-weight: 700;
+    font-size: var(--page-section-title-size);
+    font-weight: 600;
+    line-height: 1.3;
 }
 .medical-record__heading p {
-    margin: 0.4rem 0 0;
+    margin: 0.25rem 0 0;
+    font-size: var(--page-section-subtitle-size);
     color: var(--text-color-secondary);
-    line-height: 1.5;
+    line-height: 1.4;
 }
 .medical-record__pager {
     display: flex;
     justify-content: space-between;
-    gap: 1rem;
-    padding-top: 1.5rem;
-    margin-top: 1.5rem;
+    gap: var(--page-content-gap);
+    padding-top: 0.625rem;
+    margin-top: var(--page-content-gap);
     border-top: 1px solid var(--surface-border);
 }
-.medical-record__pager button {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.6rem 0.8rem;
-    border: 1px solid var(--surface-border);
-    background: var(--surface-card);
-}
-.medical-record__pager button:disabled {
-    opacity: 0.4;
-    cursor: default;
-}
-@media (max-width: 900px) {
-    .medical-record {
-        grid-template-columns: minmax(0, 1fr);
-    }
+@container medical-record (max-width: 38rem) {
     .medical-record__nav {
-        display: flex;
-        gap: 0.4rem;
-        overflow-x: auto;
-        padding: 0.65rem;
-        border-right: 0;
-        border-bottom: 1px solid var(--surface-border);
-    }
-    .medical-record__nav-title,
-    .medical-record__number {
         display: none;
     }
-    .medical-record__nav button {
-        width: auto;
-        flex-shrink: 0;
-        margin: 0;
-        white-space: nowrap;
-    }
-    .medical-record__content {
-        padding: 1rem;
+    .medical-record__select {
+        display: flex;
     }
 }
 </style>

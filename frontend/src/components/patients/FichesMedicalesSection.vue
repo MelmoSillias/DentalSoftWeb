@@ -361,11 +361,11 @@ watch(
     flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
-    gap: 1rem;
-    margin-bottom: 1rem;
-    padding: 1rem;
-    background: var(--surface-ground);
-    border-radius: 0.75rem;
+    gap: var(--page-content-gap);
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.625rem;
+    border-bottom: 1px solid var(--surface-border);
+    font-size: var(--page-section-subtitle-size);
 }
 .medical-fiches-navigation__selection {
     display: flex;
