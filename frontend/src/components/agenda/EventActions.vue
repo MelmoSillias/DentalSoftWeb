@@ -1,13 +1,22 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import AppDialog from '@/components/layout/AppDialog.vue';
 import Button from 'primevue/button';
 
-const props = defineProps({ visible: Boolean, eventId: [String, Number] });
+const props = defineProps({ visible: Boolean, eventId: [String, Number], loading: Boolean });
 const emit = defineEmits(['delete', 'validate', 'hide', 'update:visible']);
 
 const showDeleteConfirm = ref(false);
 const showValidateConfirm = ref(false);
+watch(
+    () => props.visible,
+    (visible) => {
+        if (!visible) {
+            showDeleteConfirm.value = false;
+            showValidateConfirm.value = false;
+        }
+    }
+);
 
 function onDelete() {
     showDeleteConfirm.value = true;
@@ -17,12 +26,12 @@ function onValidate() {
 }
 
 function confirmDelete() {
-    showDeleteConfirm.value = false;
+    if (props.loading) return;
     emit('delete', props.eventId);
 }
 
 function confirmValidate() {
-    showValidateConfirm.value = false;
+    if (props.loading) return;
     emit('validate', props.eventId);
 }
 
@@ -34,20 +43,10 @@ const onHide = () => {
 
 <template>
     <div>
-        <AppDialog
-            :visible="visible"
-            title="Actions"
-            icon="pi pi-cog"
-            icon-tone="neutral"
-            size="sm"
-            :show-footer="false"
-            :dismissable-mask="false"
-            @update:visible="(val) => !val && onHide()"
-            @hide="onHide"
-        >
+        <AppDialog :visible="visible" title="Actions" icon="pi pi-cog" icon-tone="neutral" size="sm" :show-footer="false" :dismissable-mask="false" @update:visible="(val) => !val && onHide()" @hide="onHide">
             <div class="flex flex-col gap-2">
-                <Button label="Valider" icon="pi pi-check" severity="success" class="w-full" @click="onValidate" />
-                <Button label="Supprimer" icon="pi pi-trash" severity="danger" class="w-full" @click="onDelete" />
+                <Button label="Valider" icon="pi pi-check" severity="success" class="w-full" :disabled="loading" @click="onValidate" />
+                <Button label="Supprimer" icon="pi pi-trash" severity="danger" class="w-full" :disabled="loading" @click="onDelete" />
             </div>
         </AppDialog>
 
@@ -60,6 +59,7 @@ const onHide = () => {
             cancel-label="Annuler"
             confirm-label="Valider"
             confirm-severity="success"
+            :loading="loading"
             @cancel="showValidateConfirm = false"
             @confirm="confirmValidate"
         >
@@ -75,6 +75,7 @@ const onHide = () => {
             cancel-label="Annuler"
             confirm-label="Supprimer"
             confirm-severity="danger"
+            :loading="loading"
             @cancel="showDeleteConfirm = false"
             @confirm="confirmDelete"
         >

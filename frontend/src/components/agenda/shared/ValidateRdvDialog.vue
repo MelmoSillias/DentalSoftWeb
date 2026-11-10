@@ -98,7 +98,7 @@ const canSubmit = computed(() => !createConsultation.value || !props.requireMede
 const close = () => (localVisible.value = false);
 
 const confirm = () => {
-    if (!canSubmit.value) {
+    if (props.loading || !canSubmit.value) {
         return;
     }
 
@@ -107,7 +107,6 @@ const confirm = () => {
         createConsultation: createConsultation.value,
         medecinId: createConsultation.value ? (props.medecinReadonly ? (props.lockedMedecinId ?? medecinId.value) : medecinId.value) : null
     });
-    close();
 };
 </script>
 

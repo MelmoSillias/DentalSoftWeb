@@ -157,11 +157,13 @@ const openValidate = (rdv) => {
 };
 
 const confirmValidate = async ({ id, medecinId, createConsultation }) => {
+    if (actionLoading.value) return;
     actionLoading.value = true;
     try {
         const wantsConsultation = Boolean(createConsultation);
         const effectiveMedecinId = wantsConsultation ? (isMedecinUser.value ? connectedMedecinId.value : medecinId) : null;
         await api.validateRdv(id, effectiveMedecinId, { createConsultation: wantsConsultation });
+        dialogState.validate = false;
         notify('Rendez-vous validé');
         refreshAgenda();
     } catch (err) {
@@ -179,9 +181,11 @@ const openCancel = (rdv) => {
 };
 
 const confirmCancel = async ({ id }) => {
+    if (actionLoading.value) return;
     actionLoading.value = true;
     try {
         await api.cancelRdv(id);
+        dialogState.cancel = false;
         notify('Rendez-vous annulé');
         refreshAgenda();
     } catch (err) {
@@ -251,10 +255,12 @@ const scheduleSmsReminder = async () => {
 };
 
 const submitReport = async (payload) => {
+    if (actionLoading.value) return;
     actionLoading.value = true;
     try {
         const patchedPayload = isMedecinUser.value ? { ...payload, medecinId: connectedMedecinId.value } : payload;
         await api.reportRdv(payload.id, patchedPayload);
+        dialogState.report = false;
         notify('Rendez-vous reporté');
         refreshAgenda();
     } catch (err) {

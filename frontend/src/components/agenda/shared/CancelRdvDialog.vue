@@ -26,8 +26,8 @@ watch(localVisible, (v) => emit('update:visible', v));
 
 const close = () => (localVisible.value = false);
 const confirm = () => {
+    if (props.loading) return;
     emit('confirm', { id: props.rdv?.id });
-    close();
 };
 </script>
 

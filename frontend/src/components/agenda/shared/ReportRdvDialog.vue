@@ -67,7 +67,7 @@ watch(
 
 const close = () => (localVisible.value = false);
 const submit = () => {
-    if (!props.rdv) return;
+    if (!props.rdv || props.loading) return;
     const end = new Date(form.dateTime.getTime() + form.duration * 60000);
     emit('submit', {
         id: props.rdv.id,
@@ -75,7 +75,6 @@ const submit = () => {
         start: form.dateTime.toISOString(),
         end: end.toISOString()
     });
-    close();
 };
 </script>
 

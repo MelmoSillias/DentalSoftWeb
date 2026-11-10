@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import Button from 'primevue/button';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
@@ -59,6 +59,13 @@ const lotStatutTag = (statut) => {
 };
 
 const canAct = (id) => props.actionLoadingId === null || props.actionLoadingId !== Number(id);
+const activeLotAction = ref(null);
+const isLotActionLoading = (action, id) => !canAct(id) && activeLotAction.value?.action === action && activeLotAction.value?.id === Number(id);
+const runLotAction = (action, lot) => {
+    if (!canAct(lot.id) || activeLotAction.value?.id === Number(lot.id)) return;
+    activeLotAction.value = { action, id: Number(lot.id) };
+    emit(action, lot);
+};
 
 const viewMode = ref('board');
 const viewModeOptions = [
@@ -69,6 +76,15 @@ const viewModeOptions = [
 const createDialogVisible = ref(false);
 const editDialogVisible = ref(false);
 const assignDialogVisible = ref(false);
+const pendingDialog = ref(null);
+watch(() => props.actionLoadingId, (id, previousId) => {
+    if (id === null) activeLotAction.value = null;
+    if (id !== null || previousId === null || !pendingDialog.value) return;
+    if (pendingDialog.value === 'create') createDialogVisible.value = false;
+    if (pendingDialog.value === 'edit') editDialogVisible.value = false;
+    if (pendingDialog.value === 'assign') assignDialogVisible.value = false;
+    pendingDialog.value = null;
+});
 const lotForm = ref({ description: '', dateDebut: null, dateFin: null });
 const editingLot = ref(null);
 const assignClaim = ref(null);
@@ -90,12 +106,13 @@ const openCreateDialog = () => {
 };
 
 const submitCreate = () => {
+    if (props.actionLoadingId !== null) return;
+    pendingDialog.value = 'create';
     emit('create-lot', {
         description: lotForm.value.description,
         dateDebut: formatDate(lotForm.value.dateDebut),
         dateFin: formatDate(lotForm.value.dateFin)
     });
-    createDialogVisible.value = false;
 };
 
 const openEditDialog = (lot) => {
@@ -109,7 +126,8 @@ const openEditDialog = (lot) => {
 };
 
 const submitEdit = () => {
-    if (!editingLot.value) return;
+    if (!editingLot.value || props.actionLoadingId !== null) return;
+    pendingDialog.value = 'edit';
     emit('update-lot', {
         lot: editingLot.value,
         payload: {
@@ -118,7 +136,6 @@ const submitEdit = () => {
             dateFin: formatDate(lotForm.value.dateFin)
         }
     });
-    editDialogVisible.value = false;
 };
 
 const formatDate = (value) => {
@@ -182,13 +199,13 @@ const openAssignDialog = (claim, isChange) => {
 };
 
 const submitAssign = () => {
-    if (!assignClaim.value || !selectedAssignLotId.value) return;
+    if (!assignClaim.value || !selectedAssignLotId.value || props.actionLoadingId !== null) return;
+    pendingDialog.value = 'assign';
     if (assignClaim.value.isChange) {
         emit('change-claim-lot', { claim: assignClaim.value, lotId: selectedAssignLotId.value });
     } else {
         emit('assign-claim', { claim: assignClaim.value, lotId: selectedAssignLotId.value });
     }
-    assignDialogVisible.value = false;
 };
 
 const onClaimDragStart = (claim, event) => {
@@ -336,11 +353,11 @@ const onLotDrop = (lot, event) => {
                                 <Button icon="pi pi-eye" label="Voir" size="small" text @click="emit('view-lot', data)" />
                                 <Button icon="pi pi-print" size="small" text rounded v-tooltip.top="'Imprimer'" :disabled="!canAct(data.id)" @click="emit('print-lot', data)" />
                                 <Button v-if="data.availableActions?.canEdit" icon="pi pi-pencil" size="small" text rounded :disabled="!canAct(data.id)" @click="openEditDialog(data)" />
-                                <Button v-if="data.availableActions?.canSend" icon="pi pi-send" label="Envoyer" size="small" :disabled="!canAct(data.id)" @click="emit('send-lot', data)" />
-                                <Button v-if="data.availableActions?.canReopen" icon="pi pi-replay" label="Rouvrir" size="small" outlined :disabled="!canAct(data.id)" @click="emit('reopen-lot', data)" />
-                                <Button v-if="data.availableActions?.canConfirm" icon="pi pi-check" label="Confirmer" size="small" :disabled="!canAct(data.id)" @click="emit('confirm-lot', data)" />
-                                <Button v-if="data.availableActions?.canUnconfirm" icon="pi pi-undo" label="Retour" size="small" outlined :disabled="!canAct(data.id)" @click="emit('unconfirm-lot', data)" />
-                                <Button v-if="data.availableActions?.canRefund" icon="pi pi-wallet" label="Rembourser" size="small" severity="success" :disabled="!canAct(data.id)" @click="emit('refund-lot', data)" />
+                                <Button v-if="data.availableActions?.canSend" icon="pi pi-send" label="Envoyer" size="small" :disabled="!canAct(data.id)" :loading="isLotActionLoading('send-lot', data.id)" @click="runLotAction('send-lot', data)" />
+                                <Button v-if="data.availableActions?.canReopen" icon="pi pi-replay" label="Rouvrir" size="small" outlined :disabled="!canAct(data.id)" :loading="isLotActionLoading('reopen-lot', data.id)" @click="runLotAction('reopen-lot', data)" />
+                                <Button v-if="data.availableActions?.canConfirm" icon="pi pi-check" label="Confirmer" size="small" :disabled="!canAct(data.id)" :loading="isLotActionLoading('confirm-lot', data.id)" @click="runLotAction('confirm-lot', data)" />
+                                <Button v-if="data.availableActions?.canUnconfirm" icon="pi pi-undo" label="Retour" size="small" outlined :disabled="!canAct(data.id)" :loading="isLotActionLoading('unconfirm-lot', data.id)" @click="runLotAction('unconfirm-lot', data)" />
+                                <Button v-if="data.availableActions?.canRefund" icon="pi pi-wallet" label="Rembourser" size="small" severity="success" :disabled="!canAct(data.id)" :loading="isLotActionLoading('refund-lot', data.id)" @click="runLotAction('refund-lot', data)" />
                             </div>
                         </template>
                     </Column>
@@ -452,11 +469,11 @@ const onLotDrop = (lot, event) => {
                                     <Button icon="pi pi-eye" label="Voir" size="small" text @click="emit('view-lot', lot)" />
                                     <Button icon="pi pi-print" size="small" text rounded v-tooltip.top="'Imprimer'" :disabled="!canAct(lot.id)" @click="emit('print-lot', lot)" />
                                     <Button v-if="lot.availableActions?.canEdit" icon="pi pi-pencil" size="small" text rounded :disabled="!canAct(lot.id)" @click="openEditDialog(lot)" />
-                                    <Button v-if="lot.availableActions?.canSend" icon="pi pi-send" size="small" text :disabled="!canAct(lot.id)" v-tooltip.top="'Envoyer'" @click="emit('send-lot', lot)" />
-                                    <Button v-if="lot.availableActions?.canReopen" icon="pi pi-replay" size="small" text :disabled="!canAct(lot.id)" v-tooltip.top="'Rouvrir'" @click="emit('reopen-lot', lot)" />
-                                    <Button v-if="lot.availableActions?.canConfirm" icon="pi pi-check" size="small" text :disabled="!canAct(lot.id)" v-tooltip.top="'Confirmer'" @click="emit('confirm-lot', lot)" />
-                                    <Button v-if="lot.availableActions?.canUnconfirm" icon="pi pi-undo" size="small" text :disabled="!canAct(lot.id)" v-tooltip.top="'Retour'" @click="emit('unconfirm-lot', lot)" />
-                                    <Button v-if="lot.availableActions?.canRefund" icon="pi pi-wallet" size="small" text severity="success" :disabled="!canAct(lot.id)" v-tooltip.top="'Rembourser'" @click="emit('refund-lot', lot)" />
+                                    <Button v-if="lot.availableActions?.canSend" icon="pi pi-send" size="small" text :disabled="!canAct(lot.id)" :loading="isLotActionLoading('send-lot', lot.id)" v-tooltip.top="'Envoyer'" @click="runLotAction('send-lot', lot)" />
+                                    <Button v-if="lot.availableActions?.canReopen" icon="pi pi-replay" size="small" text :disabled="!canAct(lot.id)" :loading="isLotActionLoading('reopen-lot', lot.id)" v-tooltip.top="'Rouvrir'" @click="runLotAction('reopen-lot', lot)" />
+                                    <Button v-if="lot.availableActions?.canConfirm" icon="pi pi-check" size="small" text :disabled="!canAct(lot.id)" :loading="isLotActionLoading('confirm-lot', lot.id)" v-tooltip.top="'Confirmer'" @click="runLotAction('confirm-lot', lot)" />
+                                    <Button v-if="lot.availableActions?.canUnconfirm" icon="pi pi-undo" size="small" text :disabled="!canAct(lot.id)" :loading="isLotActionLoading('unconfirm-lot', lot.id)" v-tooltip.top="'Retour'" @click="runLotAction('unconfirm-lot', lot)" />
+                                    <Button v-if="lot.availableActions?.canRefund" icon="pi pi-wallet" size="small" text severity="success" :disabled="!canAct(lot.id)" :loading="isLotActionLoading('refund-lot', lot.id)" v-tooltip.top="'Rembourser'" @click="runLotAction('refund-lot', lot)" />
                                 </div>
                             </div>
                         </div>
@@ -522,6 +539,7 @@ const onLotDrop = (lot, event) => {
             size="md"
             cancel-label="Annuler"
             confirm-label="Créer"
+            :loading="pendingDialog === 'create' && actionLoadingId !== null"
             @cancel="createDialogVisible = false"
             @confirm="submitCreate"
         >
@@ -551,6 +569,7 @@ const onLotDrop = (lot, event) => {
             size="md"
             cancel-label="Annuler"
             confirm-label="Enregistrer"
+            :loading="pendingDialog === 'edit' && actionLoadingId !== null"
             @cancel="editDialogVisible = false"
             @confirm="submitEdit"
         >
@@ -580,6 +599,7 @@ const onLotDrop = (lot, event) => {
             size="sm"
             cancel-label="Annuler"
             confirm-label="Affecter"
+            :loading="pendingDialog === 'assign' && actionLoadingId !== null"
             :confirm-disabled="!selectedAssignLotId"
             @cancel="assignDialogVisible = false"
             @confirm="submitAssign"

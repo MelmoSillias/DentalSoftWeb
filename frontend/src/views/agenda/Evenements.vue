@@ -23,6 +23,8 @@ const calendarRef = ref(null);
 const showForm = ref(false);
 const actionsVisible = ref(false);
 const selectedEventId = ref(null);
+const creating = ref(false);
+const actionLoading = ref(false);
 const toast = useToast();
 
 const breadcrumbHome = { icon: 'pi pi-home', to: '/dashboard' };
@@ -109,6 +111,8 @@ useGuidedTour({
 });
 
 async function handleCreate(payload) {
+    if (creating.value) return;
+    creating.value = true;
     try {
         const res = await createEvent(payload);
         if (res && res.success) {
@@ -120,10 +124,14 @@ async function handleCreate(payload) {
         }
     } catch (err) {
         toast.add({ severity: 'error', summary: 'Erreur', detail: err?.message || 'Erreur lors de l’ajout de l’événement.' });
+    } finally {
+        creating.value = false;
     }
 }
 
 async function handleDelete(id) {
+    if (actionLoading.value) return;
+    actionLoading.value = true;
     try {
         const res = await deleteEvent(id);
         actionsVisible.value = false;
@@ -136,10 +144,14 @@ async function handleDelete(id) {
     } catch (err) {
         actionsVisible.value = false;
         toast.add({ severity: 'error', summary: 'Erreur', detail: err?.message || 'Erreur lors de la suppression.' });
+    } finally {
+        actionLoading.value = false;
     }
 }
 
 async function handleValidate(id) {
+    if (actionLoading.value) return;
+    actionLoading.value = true;
     try {
         const res = await validateEvent(id);
         actionsVisible.value = false;
@@ -152,6 +164,8 @@ async function handleValidate(id) {
     } catch (err) {
         actionsVisible.value = false;
         toast.add({ severity: 'error', summary: 'Erreur', detail: err?.message || 'Erreur lors de la validation.' });
+    } finally {
+        actionLoading.value = false;
     }
 }
 </script>
@@ -181,10 +195,10 @@ async function handleValidate(id) {
             </div>
         </PageSection>
 
-        <EventForm :visible="showForm" @create="handleCreate" @hide="showForm = false" />
+        <EventForm :visible="showForm" :loading="creating" @create="handleCreate" @hide="showForm = false" />
 
         <div data-tour="agenda-events.actions">
-            <EventActions :visible="actionsVisible" :eventId="selectedEventId" @delete="handleDelete" @validate="handleValidate" @hide="actionsVisible = false" />
+            <EventActions :visible="actionsVisible" :eventId="selectedEventId" :loading="actionLoading" @delete="handleDelete" @validate="handleValidate" @hide="actionsVisible = false" />
         </div>
     </PageShell>
 </template>

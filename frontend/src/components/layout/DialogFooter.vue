@@ -54,7 +54,7 @@ defineEmits(['cancel', 'confirm']);
                     text
                     class="rounded-xl px-5"
                     :disabled="loading"
-                    @click="$emit('cancel')"
+                    @click="!loading && $emit('cancel')"
                 />
                 <Button
                     v-if="showConfirm && confirmLabel"
@@ -65,7 +65,7 @@ defineEmits(['cancel', 'confirm']);
                     :loading="loading"
                     :disabled="confirmDisabled || loading"
                     class="rounded-xl px-5"
-                    @click="$emit('confirm')"
+                    @click="!loading && !confirmDisabled && $emit('confirm')"
                 />
             </slot>
         </div>

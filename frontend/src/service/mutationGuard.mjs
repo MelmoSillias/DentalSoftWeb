@@ -21,7 +21,7 @@ export function createMutationGuard({ storage, crypto = globalThis.crypto, onPen
         if (existing?.promise) return existing.promise;
         const record = existing && existing.expires > now() ? existing : { key: uuid(), expires: now() + RETENTION_MS };
         operations.set(identity, record);
-        // Synchronous notification blocks the very next click, including before hashing.
+        // Report request activity without imposing any global UI lock.
         notify(1);
         record.promise = (async () => {
             await Promise.resolve();

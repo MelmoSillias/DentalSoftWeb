@@ -4,7 +4,8 @@ import AppDialog from '@/components/layout/AppDialog.vue';
 import DatePicker from 'primevue/datepicker';
 
 const props = defineProps({
-    visible: { type: Boolean, default: false }
+    visible: { type: Boolean, default: false },
+    loading: { type: Boolean, default: false }
 });
 
 const emit = defineEmits(['create', 'hide', 'update:visible']);
@@ -45,7 +46,7 @@ const isValid = computed(() => {
 });
 
 function onSubmit() {
-    if (!isValid.value) return;
+    if (props.loading || !isValid.value) return;
 
     emit(
         'create',
@@ -72,6 +73,7 @@ const onHide = () => {
         size="lg"
         cancel-label="Fermer"
         confirm-label="Enregistrer"
+        :loading="loading"
         @update:visible="(val) => !val && onHide()"
         @cancel="onHide"
         @confirm="onSubmit"

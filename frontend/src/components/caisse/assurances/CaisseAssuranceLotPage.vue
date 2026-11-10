@@ -32,6 +32,9 @@ const lotStatutTag = (statut) => {
 };
 
 const refundDialogVisible = ref(false);
+watch(() => props.actionLoading, (loading, wasLoading) => {
+    if (wasLoading && !loading) refundDialogVisible.value = false;
+});
 const refundForm = ref({ modeId: null, amount: 0 });
 const claimMenu = ref();
 const claimMenuItems = ref([]);
@@ -60,12 +63,12 @@ const openRefundDialog = () => {
 };
 
 const submitRefund = () => {
+    if (props.actionLoading) return;
     emit('refund-lot', {
         lot: props.lot,
         modeId: refundForm.value.modeId,
         amount: refundForm.value.amount
     });
-    refundDialogVisible.value = false;
 };
 
 const openClaimMenu = (event, claim) => {
@@ -206,6 +209,7 @@ const openClaimMenu = (event, claim) => {
             size="sm"
             cancel-label="Annuler"
             confirm-label="Valider"
+            :loading="actionLoading"
             :confirm-disabled="!refundForm.modeId || montantSaisi <= 0 || montantSaisi > resteARembourser"
             @cancel="refundDialogVisible = false"
             @confirm="submitRefund"

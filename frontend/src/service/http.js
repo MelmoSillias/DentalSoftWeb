@@ -4,7 +4,7 @@ import axios from 'axios';
 import { apiPrefix } from '@/config';
 import { noteHttpFailure, noteTransportSuccess } from '@/composables/useNetworkStatus';
 import { getDeviceMetadata } from '@/utils/deviceFingerprint';
-import { beginMutationPreparation, reportMutationIssue, runMutation } from '@/composables/useMutationStatus';
+import { reportMutationIssue, runMutation } from '@/composables/useMutationStatus';
 import { isMutation, stableValue } from './mutationGuard.mjs';
 
 /** Timeout par défaut pour la plupart des requêtes API (20 s). */
@@ -49,17 +49,12 @@ async function mutationBody(data) {
 
 async function guardedTransport(config) {
     if (!isMutation(config.method)) return transport(config);
-    const finish = beginMutationPreparation();
-    try {
-        const body = await mutationBody(config.data);
-        const identity = JSON.stringify([config.headers.Authorization || '', config.method, config.baseURL, config.url, stableValue(config.params), body]);
-        return await runMutation(identity, (key) => {
-            config.headers.set('Idempotency-Key', key);
-            return transport(config);
-        });
-    } finally {
-        finish();
-    }
+    const body = await mutationBody(config.data);
+    const identity = JSON.stringify([config.headers.Authorization || '', config.method, config.baseURL, config.url, stableValue(config.params), body]);
+    return runMutation(identity, (key) => {
+        config.headers.set('Idempotency-Key', key);
+        return transport(config);
+    });
 }
 
 const isUploadRequest = (config) => {

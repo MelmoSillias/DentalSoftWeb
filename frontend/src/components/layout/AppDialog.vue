@@ -145,11 +145,13 @@ const onHide = () => {
 };
 
 const onCancel = () => {
+    if (props.loading) return;
     emit('cancel');
     emit('update:visible', false);
 };
 
 const onConfirm = () => {
+    if (props.loading || props.confirmDisabled) return;
     emit('confirm');
 };
 </script>
@@ -159,8 +161,9 @@ const onConfirm = () => {
         :visible="visible"
         modal
         :maximizable="maximizable"
-        :closable="closable"
-        :dismissable-mask="dismissableMask"
+        :closable="closable && !loading"
+        :dismissable-mask="dismissableMask && !loading"
+        :close-on-escape="!loading"
         :draggable="draggable"
         :style="dialogStyle"
         :pt="dialogPt"

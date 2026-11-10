@@ -8,7 +8,7 @@ import { useToast } from 'primevue/usetoast';
 import { Form } from '@primevue/forms';
 import { useConfirm } from 'primevue/useconfirm';
 import { useConsumables } from '@/composables/useConsumables';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { zodResolver } from '@primevue/forms/resolvers/zod';
 import { z } from 'zod';
 
@@ -29,6 +29,7 @@ const emit = defineEmits([
 ]);
 
 const isEditMode = computed(() => !!props.consumable?.id);
+const saving = ref(false);
 
 const initialValues = computed(() => ({
     nom: props.consumable?.nom ?? '',
@@ -55,15 +56,19 @@ async function saveConsumable(values) {
 }
 
 async function onFormSubmit({ valid, values }) {
-    if (!valid) return;
+    if (!valid || saving.value) return;
+    saving.value = true;
+    try {
+        const result = await saveConsumable(values);
 
-    const result = await saveConsumable(values);
-
-    if (result?.ok) {
-        emit('saved'); // informer le parent
-        toast.add({ severity: 'success', summary: 'Succès', detail: `Consommable ${isEditMode.value ? 'mis à jour' : 'ajouté'} avec succès.` });
-    } else {
-        toast.add({ severity: 'error', summary: 'Erreur', detail: `Échec lors de ${isEditMode.value ? 'la mise à jour' : "l'ajout"} du consommable. <br> ${consommablesStore.error.value || ''}` });
+        if (result?.ok) {
+            emit('saved'); // informer le parent
+            toast.add({ severity: 'success', summary: 'Succès', detail: `Consommable ${isEditMode.value ? 'mis à jour' : 'ajouté'} avec succès.` });
+        } else {
+            toast.add({ severity: 'error', summary: 'Erreur', detail: `Échec lors de ${isEditMode.value ? 'la mise à jour' : "l'ajout"} du consommable. <br> ${consommablesStore.error.value || ''}` });
+        }
+    } finally {
+        saving.value = false;
     }
 }
 </script>
@@ -108,7 +113,7 @@ async function onFormSubmit({ valid, values }) {
             </div>
         </div>
 
-        <Button type="submit" :label="isEditMode ? 'Mettre à jour' : 'Enregistrer'" :severity="isEditMode ? 'success' : 'primary'" />
+        <Button type="submit" :label="isEditMode ? 'Mettre à jour' : 'Enregistrer'" :severity="isEditMode ? 'success' : 'primary'" :loading="saving" :disabled="saving" />
     </Form>
 
     <ConfirmPopup />

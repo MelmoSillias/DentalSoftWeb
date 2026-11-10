@@ -222,7 +222,7 @@ const payDialogHeader = computed(() => {
                             <i class="pi pi-wallet text-[11px]"></i>
                             Reliquat total : {{ formatFcfa(priorReliquatTotal) }}
                         </span>
-                        <Button v-if="canResetInvoicePayments && !isValidateMode && !isSettledMode" label="Réinitialiser" severity="danger" outlined icon="pi pi-refresh" @click="emit('confirm-reset')" class="text-sm" />
+                        <Button v-if="canResetInvoicePayments && !isValidateMode && !isSettledMode" label="Réinitialiser" severity="danger" outlined icon="pi pi-refresh" :loading="resetPaymentsLoading" :disabled="payLoading || validateLoading" @click="emit('confirm-reset')" class="text-sm" />
                     </div>
                     <div class="flex items-center gap-2 ml-auto">
                         <Button label="Annuler" text icon="pi pi-times" @click="emit('update:payDialogVisible', false)" class="text-sm" />
@@ -494,7 +494,7 @@ const payDialogHeader = computed(() => {
             </div>
             <template #footer>
                 <div class="flex w-full flex-wrap items-center justify-end gap-2">
-                    <Button v-if="canResetInvoicePayments" label="Réinitialiser la facture" severity="danger" outlined icon="pi pi-refresh" @click="emit('confirm-reset')" />
+                    <Button v-if="canResetInvoicePayments" label="Réinitialiser la facture" severity="danger" outlined icon="pi pi-refresh" :loading="resetPaymentsLoading" @click="emit('confirm-reset')" />
                     <Button label="Fermer" text @click="emit('update:previewDialogVisible', false)" />
                     <Button v-if="showPrintInPreview" label="Imprimer" icon="pi pi-print" severity="info" @click="emit('print-invoice')" />
                 </div>

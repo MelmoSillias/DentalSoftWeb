@@ -1,9 +1,9 @@
 # Protection des validations
 
 Les écritures du client HTTP cabinet (POST, PUT, PATCH, DELETE) partagent une
-requête en cas d'appels simultanés identiques. Un écran d'attente bloque les
-validations à la souris et au clavier, y compris dans les fenêtres de dialogue.
-Un message spécifique apparaît après huit secondes. Les écritures disposent de
+requête en cas d'appels simultanés identiques. Les boutons de validation affichent
+leur spinner pendant l'action et empêchent une seconde validation. Aucun dialogue
+d'attente ni blocage global de la navigation n'est ajouté. Les écritures disposent de
 60 secondes par défaut (les uploads gardent leur délai étendu). Les lectures restent libres.
 
 Chaque écriture envoie `Idempotency-Key`. Après une erreur réseau, un timeout ou

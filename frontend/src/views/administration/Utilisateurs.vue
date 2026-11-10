@@ -434,6 +434,7 @@ onBeforeUnmount(() => {
             cancel-label="Annuler"
             confirm-label="Réinitialiser"
             confirm-icon="pi pi-check"
+            :loading="loading"
             @confirm="confirmResetPassword"
         >
             <div class="flex flex-col gap-3" data-tour="admin-users.dialog.reset">
