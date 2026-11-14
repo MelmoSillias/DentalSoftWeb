@@ -49,18 +49,20 @@ export default defineConfig(({ command }) => ({
         vue(),
         // PWA plugin: génère le service worker et le manifest
         VitePWA({
-            // prompt : le nouveau SW attend ; l'utilisateur confirme via le bandeau (updateSW(true)).
+            // Activation explicite depuis usePwaUpdate, y compris pour les mises à jour obligatoires.
             registerType: 'prompt',
+            injectRegister: false,
             includeAssets: pwaIncludeAssets,
             workbox: {
                 cleanupOutdatedCaches: true,
+                globIgnores: ['**/release.json', '**/pwa-release-worker.js'],
                 clientsClaim: true,
                 // skipWaiting volontairement absent : activation seulement après confirmation.
                 navigateFallback: 'index.html',
                 navigateFallbackDenylist: process.env.VITE_DOKPLOY === 'true'
-                    ? [/^\/(api|uploads|upload_files|assurances|health)(\/|$)/, /^\/\.well-known\//]
-                    : [/^\/api/],
-                importScripts: ['notification-handler.js']
+                    ? [/^\/(api|uploads|upload_files|assurances|health)(\/|$)/, /^\/\.well-known\//, /^\/release\.json$/]
+                    : [/^\/api/, /^\/release\.json$/],
+                importScripts: ['notification-handler.js', 'pwa-release-worker.js']
             },
             manifest: {
                 name: cabinetPwa.name || 'DENTALSOFT',

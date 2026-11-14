@@ -12,7 +12,10 @@
         "build:xampp-lan-http": "node ./scripts/select-cabinet.mjs --cabinet=default --env=xampp-lan-http && vite build",
         "build:cabinet": "node ./scripts/build-cabinet.mjs",
         "preview": "vite preview",
-        "lint": "node ./scripts/lint.mjs"
+        "lint": "node ./scripts/lint.mjs",
+        "test:pwa": "node --test tests/pwa*.test.mjs",
+        "test:pwa:browser": "node --test tests/pwa-browser.mjs",
+        "release:pwa": "node ./scripts/pwa-release.mjs --base64"
     },
     "dependencies": {
         "@fullcalendar/core": "^6.1.11",

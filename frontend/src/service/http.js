@@ -6,6 +6,7 @@ import { noteHttpFailure, noteTransportSuccess } from '@/composables/useNetworkS
 import { getDeviceMetadata } from '@/utils/deviceFingerprint';
 import { reportMutationIssue, runMutation } from '@/composables/useMutationStatus';
 import { isMutation, stableValue } from './mutationGuard.mjs';
+import { assertPwaRequestsAllowed } from '@/utils/pwaUpdateLock.mjs';
 
 /** Timeout par défaut pour la plupart des requêtes API (20 s). */
 export const REQUEST_TIMEOUT_MS = 20000;
@@ -48,10 +49,12 @@ async function mutationBody(data) {
 }
 
 async function guardedTransport(config) {
+    assertPwaRequestsAllowed();
     if (!isMutation(config.method)) return transport(config);
     const body = await mutationBody(config.data);
     const identity = JSON.stringify([config.headers.Authorization || '', config.method, config.baseURL, config.url, stableValue(config.params), body]);
     return runMutation(identity, (key) => {
+        assertPwaRequestsAllowed();
         config.headers.set('Idempotency-Key', key);
         return transport(config);
     });
@@ -204,6 +207,7 @@ http.interceptors.response.use(
         return response;
     },
     (error) => {
+        if (error.code === 'PWA_UPDATE_REQUIRED') return Promise.reject(error);
         normalizeHttpError(error);
         if (isMutation(error?.config?.method) && !isLoginRequest(error.config) && (!error.response || error.response.status >= 500)) {
             reportMutationIssue(error);

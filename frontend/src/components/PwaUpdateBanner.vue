@@ -2,16 +2,28 @@
 import Button from 'primevue/button';
 import { usePwaUpdate } from '@/composables/usePwaUpdate';
 
-const { needRefresh, applyUpdate, dismissUpdate } = usePwaUpdate();
+const { mandatory, needRefresh, installing, checking, errorMessage, applyUpdate, dismissUpdate, checkForUpdates } = usePwaUpdate();
 </script>
 
 <template>
-    <div v-if="needRefresh" class="pwa-update-banner" role="status" aria-live="polite">
+    <main v-if="mandatory" class="pwa-required-update" aria-labelledby="pwa-required-title" aria-live="polite">
+        <section class="pwa-required-update__card">
+            <i class="pi pi-refresh" aria-hidden="true" />
+            <h1 id="pwa-required-title">Mise à jour nécessaire</h1>
+            <p>Cette version de DentalSoft ne peut plus être utilisée. Installez la mise à jour pour continuer.</p>
+            <p v-if="!needRefresh">Téléchargement de la nouvelle version… La connexion Internet est nécessaire.</p>
+            <p v-if="errorMessage" role="alert">{{ errorMessage }}</p>
+            <Button v-if="needRefresh" label="Installer la mise à jour" icon="pi pi-download" :loading="installing" @click="applyUpdate" />
+            <Button label="Réessayer" text :loading="checking" :disabled="installing" @click="checkForUpdates" />
+            <p class="pwa-required-update__note">Aucune donnée enregistrée sur cet appareil ne sera effacée. Les autres onglets seront actualisés après installation.</p>
+        </section>
+    </main>
+    <div v-else-if="needRefresh" class="pwa-update-banner" role="status" aria-live="polite">
         <div class="pwa-update-banner__content">
             <i class="pi pi-refresh pwa-update-banner__icon" aria-hidden="true" />
-            <p class="pwa-update-banner__text">Nouvelle version disponible</p>
+            <p class="pwa-update-banner__text">{{ errorMessage || 'Nouvelle version disponible' }}</p>
             <div class="pwa-update-banner__actions">
-                <Button label="Actualiser" size="small" severity="primary" @click="applyUpdate" />
+                <Button label="Actualiser" size="small" severity="primary" :loading="installing" @click="applyUpdate" />
                 <Button icon="pi pi-times" size="small" text rounded severity="secondary" aria-label="Plus tard" @click="dismissUpdate" />
             </div>
         </div>
@@ -19,6 +31,38 @@ const { needRefresh, applyUpdate, dismissUpdate } = usePwaUpdate();
 </template>
 
 <style scoped>
+.pwa-required-update {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483647;
+    display: grid;
+    place-items: center;
+    overflow: auto;
+    padding: 1.5rem;
+    color: var(--p-text-color, #1e293b);
+    background: var(--p-content-background, #ffffff);
+}
+.pwa-required-update__card {
+    max-width: 34rem;
+    text-align: center;
+    padding: 2rem;
+    border: 1px solid var(--p-content-border-color, #e2e8f0);
+    border-radius: 1rem;
+}
+.pwa-required-update__card > i {
+    font-size: 2rem;
+    color: var(--p-primary-color);
+}
+.pwa-required-update__card h1 {
+    font-size: 1.5rem;
+}
+.pwa-required-update__card p {
+    margin: 1rem 0;
+}
+.pwa-required-update__note {
+    font-size: 0.85rem;
+    color: var(--p-text-muted-color);
+}
 .pwa-update-banner {
     position: fixed;
     bottom: 0.75rem;

@@ -4,6 +4,9 @@ import PwaUpdateBanner from '@/components/PwaUpdateBanner.vue';
 import { watch } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import { useMutationStatus } from '@/composables/useMutationStatus';
+import { usePwaUpdate } from '@/composables/usePwaUpdate';
+
+const { mandatory } = usePwaUpdate();
 
 const { issue } = useMutationStatus();
 const toast = useToast();
@@ -13,9 +16,9 @@ watch(issue, (value) => {
 </script>
 
 <template>
-    <OfflineConnectionBanner />
+    <OfflineConnectionBanner v-if="!mandatory" />
     <PwaUpdateBanner />
-    <router-view />
+    <router-view v-if="!mandatory" />
 </template>
 
 <style scoped></style>

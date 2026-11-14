@@ -1,42 +1,31 @@
 import { readFileSync } from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { captureRelease } from '../scripts/pwa-release.mjs';
+import { validateRelease } from '../src/utils/pwaRelease.mjs';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-function readPackageVersion() {
-    try {
-        const pkg = JSON.parse(readFileSync(path.resolve(__dirname, '../package.json'), 'utf8'));
-        return pkg.version || '0.0.0';
-    } catch {
-        return '0.0.0';
-    }
-}
-
-/**
- * Injecte un identifiant de build dans index.html et import.meta.env à chaque `vite build`.
- * Permet le cache long sur les assets hashés tout en forçant le rechargement de l'entrée HTML.
- */
 export function injectBuildVersion() {
-    let buildId = 'dev';
-
+    let release = null;
     return {
         name: 'inject-build-version',
         config(_config, { command }) {
             if (command === 'build') {
-                buildId = `${readPackageVersion()}-${Date.now().toString(36)}`;
-            } else {
-                buildId = 'dev';
+                release = process.env.PWA_RELEASE_FILE ? validateRelease(JSON.parse(readFileSync(process.env.PWA_RELEASE_FILE, 'utf8'))) : captureRelease();
             }
-
             return {
                 define: {
-                    'import.meta.env.VITE_APP_BUILD_ID': JSON.stringify(buildId)
+                    'import.meta.env.VITE_APP_BUILD_ID': JSON.stringify(release?.buildId || 'dev'),
+                    'import.meta.env.VITE_APP_RELEASE': JSON.stringify(release)
                 }
             };
         },
         transformIndexHtml(html) {
-            return html.replaceAll('%APP_BUILD_VERSION%', buildId);
+            return html.replaceAll('%APP_BUILD_VERSION%', release?.buildId || 'dev');
+        },
+        generateBundle() {
+            if (!release) return;
+            this.emitFile({ type: 'asset', fileName: 'release.json', source: JSON.stringify(release) + '\n' });
+            const { revision, generation, lineage, buildId } = release;
+            const identity = JSON.stringify({ revision, generation, lineage, buildId });
+            this.emitFile({ type: 'asset', fileName: 'pwa-release-worker.js', source: `self.addEventListener('message', event => { if (event.data?.type === 'GET_PWA_RELEASE') event.ports[0]?.postMessage(${identity}); });\n` });
         }
     };
 }

@@ -4,6 +4,10 @@ WORKDIR /app
 
 ARG CABINET=default
 ARG BUILD_ENV=prod
+# Sans .git dans cette image, capture préalable depuis le checkout complet.
+ARG PWA_RELEASE_METADATA
+ARG PWA_RELEASE_REVISION
+ARG PWA_BUILD_ID
 
 COPY frontend/package*.json ./
 RUN npm ci

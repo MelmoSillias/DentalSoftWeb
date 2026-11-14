@@ -9,6 +9,9 @@
 **/node_modules
 **/dist
 **/.git
+# Historique accessible seulement dans l'étape intermédiaire release-metadata.
+!.git/
+!.git/**
 **/.env
 **/.env.*
 **/*.log
