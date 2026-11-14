@@ -1,0 +1,144 @@
+# This file is the entry point to configure your own services.
+# Files in the packages/ subdirectory configure your dependencies.
+
+# Put parameters here that don't need to change on each machine where the app is deployed
+# https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
+imports:
+    - { resource: repositories.yaml }
+
+parameters: 
+    env(VITRINE_IMAP_ALLOWED_HOSTS): ''
+    upload_files_directory: '%kernel.project_dir%/public/upload_files'
+    # Defaults if env vars are absent
+    env(MERCURE_PUBLISH_TIMEOUT): '0.8'
+    env(MERCURE_PUBLISH_MAX_DURATION): '1.2'
+    env(MERCURE_CIRCUIT_COOLDOWN_SECONDS): '60'
+    env(VAPID_SUBJECT): ''
+    env(VAPID_PUBLIC_KEY): ''
+    env(VAPID_PRIVATE_KEY): ''
+
+
+services:
+    App\Focus\Application\Port\DashboardQueriesInterface:
+        alias: App\Focus\Infrastructure\Persistence\Doctrine\DoctrineDashboardQueries
+    App\Focus\Application\Port\DashboardReportingInterface:
+        alias: App\Focus\Infrastructure\Reporting\ReportingDashboardProvider
+    App\Focus\Application\Port\DashboardCacheInterface:
+        alias: App\Focus\Infrastructure\Cache\SymfonyDashboardCache
+    App\Focus\Application\Port\DashboardClockInterface:
+        alias: App\Focus\Infrastructure\Clock\SystemDashboardClock
+    app.login_rate_limiter:
+        class: Symfony\Component\Security\Http\RateLimiter\DefaultLoginRateLimiter
+        arguments:
+            $globalFactory: '@limiter.auth_login_ip'
+            $localFactory: '@limiter.auth_login_identity'
+            $secret: '%kernel.secret%'
+    App\IdentityAccess\Domain\Repository\RefreshTokenRepositoryInterface:
+        alias: App\IdentityAccess\Infrastructure\Persistence\Doctrine\DoctrineRefreshTokenRepository
+    App\IdentityAccess\Application\Port\AccessTokenIssuerInterface:
+        alias: App\IdentityAccess\Infrastructure\Security\LexikAccessTokenIssuer
+    App\IdentityAccess\Application\Port\RefreshAccessGuardInterface:
+        alias: App\IdentityAccess\Infrastructure\Security\DeviceRefreshAccessGuard
+    # default configuration for services in *this* file
+    _defaults:
+        autowire: true      # Automatically injects dependencies in your services.
+        autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+
+    # makes classes in src/ available to be used as services
+    # this creates a service per class whose id is the fully-qualified class name
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/DependencyInjection/'
+            - '../src/DataFixtures/'
+            - '../src/**/Domain/Entity/'
+            - '../src/**/Domain/Enum/'
+            - '../src/**/Domain/Event/'
+            - '../src/**/Domain/Exception/'
+            - '../src/**/Application/Dto/'
+            - '../src/**/Application/Query/'
+            - '../src/**/Application/Command/'
+            - '../src/**/Application/Exception/'
+            - '../src/**/Application/Message/'
+            - '../src/Kernel.php'
+    App\Communication\Infrastructure\Mercure\NotificationTopicGenerator:
+        arguments:
+            $publicHubUrl: '%env(MERCURE_PUBLIC_URL)%'
+            $topicNamespace: '%env(MERCURE_TOPIC_NAMESPACE)%'
+    App\Communication\Infrastructure\Mercure\MercureCircuitBreaker:
+        arguments:
+            $cache: '@cache.app'
+            $cooldownSeconds: '%env(int:MERCURE_CIRCUIT_COOLDOWN_SECONDS)%'
+    # Timeout court sur le hub Mercure (évite les freezes TCP longs).
+    # Branché sur mercure.hub.default via MercureHubHttpClientPass.
+    mercure.http_client:
+        class: Symfony\Component\HttpClient\CurlHttpClient
+        factory: ['Symfony\Component\HttpClient\HttpClient', 'create']
+        arguments:
+            -
+                timeout: '%env(float:MERCURE_PUBLISH_TIMEOUT)%'
+                max_duration: '%env(float:MERCURE_PUBLISH_MAX_DURATION)%'
+    # Hub résilient : circuit breaker autour du hub Mercure (F+B).
+    # Priorité > TraceableHub (debug) pour court-circuiter avant l'appel HTTP.
+    App\Communication\Infrastructure\Mercure\ResilientMercureHub:
+        decorates: mercure.hub.default
+        decoration_priority: 16
+        arguments:
+            $inner: '@.inner'
+    App\Communication\Application\Service\MercureAuthorizationService:
+        arguments:
+            $mercurePublicUrl: '%env(MERCURE_PUBLIC_URL)%'
+            $tokenFactory: '@mercure.hub.default.jwt.factory'
+    App\Communication\Application\Service\MercureHealthService:
+        arguments:
+            $mercureUrl: '%env(MERCURE_URL)%'
+            $mercurePublicUrl: '%env(MERCURE_PUBLIC_URL)%'
+            $mercureJwtSecret: '%env(MERCURE_JWT_SECRET)%'
+    App\Communication\Infrastructure\Console\TestMercurePublishCommand:
+        arguments:
+            $mercureUrl: '%env(MERCURE_URL)%'
+            $mercurePublicUrl: '%env(MERCURE_PUBLIC_URL)%'
+            $topicNamespace: '%env(MERCURE_TOPIC_NAMESPACE)%'
+    Symfony\Component\Mercure\Jwt\TokenFactoryInterface: '@defaultTokenFactory'
+    web_push.http_client:
+        class: Symfony\Component\HttpClient\CurlHttpClient
+        factory: ['Symfony\Component\HttpClient\HttpClient', 'create']
+        arguments:
+            -
+                timeout: 10
+                max_duration: 20
+    web_push.psr18_client:
+        class: Symfony\Component\HttpClient\Psr18Client
+        arguments:
+            $client: '@web_push.http_client'
+    App\Communication\Infrastructure\Integration\WebPushSender:
+        arguments:
+            $httpClient: '@web_push.psr18_client'
+            $vapidSubject: '%env(VAPID_SUBJECT)%'
+            $vapidPublicKey: '%env(VAPID_PUBLIC_KEY)%'
+            $vapidPrivateKey: '%env(VAPID_PRIVATE_KEY)%'
+    App\Communication\Presentation\Api\Controller\PushSubscriptionController:
+        arguments:
+            $vapidSubject: '%env(VAPID_SUBJECT)%'
+            $vapidPublicKey: '%env(VAPID_PUBLIC_KEY)%'
+            $vapidPrivateKey: '%env(VAPID_PRIVATE_KEY)%'
+    # add more service definitions when explicit configuration is needed
+    # please note that last definitions always *replace* previous ones
+
+when@dev:
+    services:
+        _defaults:
+            autowire: true
+            autoconfigure: true
+
+        App\DataFixtures\:
+            resource: '../src/DataFixtures/'
+
+when@test:
+    services:
+        _defaults:
+            autowire: true
+            autoconfigure: true
+
+        App\DataFixtures\:
+            resource: '../src/DataFixtures/'

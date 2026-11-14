@@ -1,10 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { captureRelease, releaseFromHistory } from '../scripts/pwa-release.mjs';
-import { createReleaseGate, fetchRelease, requiresUpdate, validateRelease } from '../src/utils/pwaRelease.mjs';
+import { createReleaseGate, fetchRelease, requiresUpdate, validateRelease } from '../src/shared/lib/pwaRelease.mjs';
 import { injectBuildVersion } from '../plugins/injectBuildVersion.mjs';
 import vm from 'node:vm';
-import { assertPwaRequestsAllowed, lockForPwaUpdate } from '../src/utils/pwaUpdateLock.mjs';
+import { assertPwaRequestsAllowed, lockForPwaUpdate } from '../src/shared/lib/pwaUpdateLock.mjs';
 
 const revision = (n) => n.toString(16).padStart(40, '0');
 const history = (...trailers) => trailers.map((value, index) => ({ revision: revision(index + 1), trailers: value }));

@@ -11,8 +11,8 @@ Les Dockerfiles ne sont utilisés qu'en production sur le serveur — le dévelo
 |-------------|----------------|---------|-------------|
 | Admin CDOS | `frontend/` | `admin.cabinetdentaireousmanesow.cloud` | Build arg `CABINET=cdos` |
 | Admin Mondentiste | `frontend/` | `admin.mondentiste-mali.com` | Build arg `CABINET=mondentiste` |
-| API CDOS | `backend-reform/` | `api.cabinetdentaireousmanesow.cloud` | Env cdos — worker SMS/Messenger **embarqué** par défaut |
-| API Mondentiste | `backend-reform/` | `api.mondentiste-mali.com` | Env mondentiste — worker SMS/Messenger **embarqué** par défaut |
+| API CDOS | `api/` | `api.cabinetdentaireousmanesow.cloud` | Env cdos — worker SMS/Messenger **embarqué** par défaut |
+| API Mondentiste | `api/` | `api.mondentiste-mali.com` | Env mondentiste — worker SMS/Messenger **embarqué** par défaut |
 | **Mercure Hub** | `mercure-prod/` | `mercure.cabinetdentaireousmanesow.cloud` | Hub temps réel partagé (SSE) |
 
 > Les services `worker-*` séparés sont **optionnels** (scaling). Par défaut, FrankenPHP + poll SMS + `messenger:consume` tournent dans le **même** conteneur API (`ENABLE_EMBEDDED_WORKER=1`).
@@ -314,7 +314,7 @@ MESSENGER_TRANSPORT_DSN=doctrine://default?queue_name=default
 - **DATABASE_URL :** utiliser le **Internal Host** du service MariaDB Dokploy (même projet), port `3306`. Ne jamais utiliser `localhost`.
 - **MERCURE_TOPIC_NAMESPACE :** doit être unique par instance si les deux APIs partagent le même hub Mercure.
 - **JWT :** les clés sont dans `config/jwt/` du dépôt. À terme, les injecter via secrets Dokploy plutôt que de les garder dans l'image.
-- **Migrations :** le dossier `migrations/` est versionné dans Git. Au démarrage, `doctrine:migrations:migrate` s'exécute (`RUN_MIGRATIONS=1` par défaut). Voir [migrations/README.md](../backend-reform/migrations/README.md).
+- **Migrations :** le dossier `migrations/` est versionné dans Git. Au démarrage, `doctrine:migrations:migrate` s'exécute (`RUN_MIGRATIONS=1` par défaut). Voir [migrations/README.md](../api/migrations/README.md).
 
 ### Backend — volumes Dokploy
 
@@ -329,13 +329,13 @@ MESSENGER_TRANSPORT_DSN=doctrine://default?queue_name=default
 
 | Champ | Valeur |
 |-------|--------|
-| **Build Path** | `backend-reform` |
+| **Build Path** | `api` |
 | **Dockerfile Path** | `Dockerfile` |
 | **Docker Context Path** | `.` |
 | Port exposé | `80` |
 | Health check | Utiliser le **HEALTHCHECK Docker intégré** (script `/healthcheck.sh`) |
 
-> Contrairement au frontend (build depuis la racine), l'API se build **depuis le dossier `backend-reform/`**.
+> Contrairement au frontend (build depuis la racine), l'API se build **depuis le dossier `api/`**.
 
 ### Backend — healthcheck recommandé
 
@@ -567,7 +567,7 @@ Tester via fichier `hosts` local ou sous-domaine de test Dokploy avant de pointe
 
 ```bash
 # Backend
-cd backend-reform
+cd api
 symfony serve --port=8010
 
 # Frontend CDOS

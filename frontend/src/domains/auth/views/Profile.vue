@@ -1,0 +1,171 @@
+<script setup>
+import PageShell from '@/app/components/layout/PageShell.vue';
+import PageHeader from '@/app/components/layout/PageHeader.vue';
+import { useToast } from 'primevue/usetoast';
+import { computed, onMounted, ref } from 'vue';
+import { useProfile } from '@/domains/auth/composables/useProfile.js';
+import { useBrowserNotifications } from '@/shared/realtime/useBrowserNotifications.js';
+import ProfileStatsSection from '@/domains/auth/components/ProfileStatsSection.vue';
+import ProfileInfoSection from '@/domains/auth/components/ProfileInfoSection.vue';
+import ProfileActivitySection from '@/domains/auth/components/ProfileActivitySection.vue';
+import ProfileNotificationsSection from '@/domains/auth/components/ProfileNotificationsSection.vue';
+import ProfileQuickLinksSection from '@/domains/auth/components/ProfileQuickLinksSection.vue';
+
+const toast = useToast();
+const notificationsFilter = ref('all');
+
+const { user, employee, notifications, activity, stats, unreadCount, loading, fetchProfile, updateProfile, changePassword, fetchNotifications, markNotificationsRead, markAllNotificationsRead, setNotificationsEnabled } = useProfile();
+
+const { isSupported: desktopNotificationsSupported, enabled: desktopNotificationsEnabled, permission: desktopPermission, setEnabled: setDesktopNotificationsEnabled } = useBrowserNotifications();
+
+const breadcrumbHome = { icon: 'pi pi-home', to: '/' };
+const breadcrumbItems = [{ label: 'Profil' }];
+
+const quickLinks = computed(() => {
+    const roles = user.value?.roles || [];
+    if (roles.includes('ROLE_ADMIN')) {
+        return [
+            { label: 'Dashboard', icon: 'pi pi-chart-bar', to: '/dashboard' },
+            { label: 'Patients', icon: 'pi pi-users', to: '/patients/liste' },
+            { label: 'Agenda', icon: 'pi pi-calendar', to: '/agenda/rendez-vous' },
+            { label: 'Finances', icon: 'pi pi-wallet', to: '/administration/finances' }
+        ];
+    }
+    if (roles.includes('ROLE_MEDECIN')) {
+        return [
+            { label: 'Agenda', icon: 'pi pi-calendar', to: '/agenda/rendez-vous' },
+            { label: 'Consultations', icon: 'pi pi-briefcase', to: '/consultations/cards' },
+            { label: 'Patients', icon: 'pi pi-users', to: '/patients/liste' }
+        ];
+    }
+    if (roles.includes('ROLE_RECEPTION')) {
+        return [
+            { label: 'Agenda', icon: 'pi pi-calendar', to: '/agenda/rendez-vous' },
+            { label: 'Patients', icon: 'pi pi-users', to: '/patients/liste' },
+            { label: 'Caisse', icon: 'pi pi-inbox', to: '/caisse' }
+        ];
+    }
+    return [];
+});
+
+const handleSaveInfo = async (payload) => {
+    try {
+        await updateProfile(payload);
+        toast.add({ severity: 'success', summary: 'Profil mis à jour', life: 2500 });
+    } catch (_err) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de mettre à jour le profil.' });
+    }
+};
+
+const handleChangePassword = async (payload) => {
+    try {
+        await changePassword({ oldPassword: payload.oldPassword, newPassword: payload.newPassword });
+        toast.add({ severity: 'success', summary: 'Mot de passe mis à jour', life: 2500 });
+    } catch (__err) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Mot de passe incorrect ou invalide.' });
+    }
+};
+
+const handleFilterChange = async (filter) => {
+    notificationsFilter.value = filter;
+    try {
+        await fetchNotifications(filter);
+    } catch (___err) {
+        toast.add({ severity: 'warn', summary: 'Notifications', detail: 'Impossible de charger les notifications.' });
+    }
+};
+
+const handleMarkRead = async (ids) => {
+    try {
+        await markNotificationsRead(ids);
+        toast.add({ severity: 'success', summary: 'Notification mise à jour', life: 2000 });
+    } catch (____err) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Marquage impossible.' });
+    }
+};
+
+const handleMarkAll = async () => {
+    try {
+        await markAllNotificationsRead();
+        toast.add({ severity: 'success', summary: 'Toutes marquées', life: 2000 });
+    } catch (_____err) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Marquage impossible.' });
+    }
+};
+
+const notificationsEnabled = computed(() => user.value?.notificationsEnabled !== false);
+
+const handleNotificationsEnabledChange = async (enabled) => {
+    try {
+        await setNotificationsEnabled(Boolean(enabled));
+        if (!enabled) {
+            await setDesktopNotificationsEnabled(false);
+        }
+        toast.add({ severity: 'success', summary: 'Notifications', detail: enabled ? 'Notifications activées.' : 'Notifications désactivées.', life: 2200 });
+    } catch (______err) {
+        toast.add({ severity: 'error', summary: 'Notifications', detail: 'Impossible de mettre à jour ce paramètre.' });
+    }
+};
+
+const handleDesktopNotificationsChange = async (enabled) => {
+    const success = await setDesktopNotificationsEnabled(Boolean(enabled));
+
+    if (success) {
+        toast.add({
+            severity: 'success',
+            summary: 'Notifications système',
+            detail: enabled ? 'Notifications système activées.' : 'Notifications système désactivées.',
+            life: 2200
+        });
+        return;
+    }
+
+    if (enabled) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Notifications système',
+            detail: desktopPermission.value === 'denied' ? 'Autorisez les notifications dans les paramètres de votre navigateur.' : 'Autorisation refusée ou navigateur non compatible.',
+            life: 3500
+        });
+    }
+};
+
+onMounted(async () => {
+    await fetchProfile();
+});
+</script>
+
+<template>
+    <PageShell>
+        <template #header>
+            <PageHeader title="Profil" subtitle="Votre espace personnel et vos notifications." icon="pi pi-user" :breadcrumb-home="breadcrumbHome" :breadcrumb-items="breadcrumbItems" />
+        </template>
+
+        <ProfileStatsSection :stats="stats" :unread-count="unreadCount" />
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-1 space-y-6">
+                <ProfileInfoSection :user="user" :employee="employee" :loading="loading" @save-info="handleSaveInfo" @change-password="handleChangePassword" />
+                <ProfileQuickLinksSection :links="quickLinks" />
+            </div>
+            <div class="lg:col-span-2 space-y-6">
+                <ProfileActivitySection :activity="activity" />
+                <ProfileNotificationsSection
+                    :notifications="notifications"
+                    :unread-count="unreadCount"
+                    :loading="loading"
+                    :filter="notificationsFilter"
+                    :notifications-enabled="notificationsEnabled"
+                    :desktop-notifications-enabled="desktopNotificationsEnabled"
+                    :desktop-notifications-supported="desktopNotificationsSupported"
+                    :desktop-permission="desktopPermission"
+                    @filter-change="handleFilterChange"
+                    @mark-read="handleMarkRead"
+                    @mark-all="handleMarkAll"
+                    @notifications-enabled-change="handleNotificationsEnabledChange"
+                    @desktop-notifications-change="handleDesktopNotificationsChange"
+                />
+            </div>
+        </div>
+    </PageShell>
+</template>

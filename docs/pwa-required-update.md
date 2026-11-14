@@ -1,6 +1,6 @@
-# Mise à jour PWA obligatoire — frontend historique
+# Mise à jour PWA obligatoire
 
-Cette implémentation fonctionne avec l'ancien backend : aucun endpoint API, changement de schéma ou changement du compose racine. Le périmètre livré est `frontend/` et `docker/frontend/`. Les deux autres applications doivent intégrer le même protocole séparément.
+Le protocole ne dépend pas du backend : aucun endpoint API ni changement de schéma. La version d’adoption publiée sur `master` équipe l’interface cabinet historique. La branche de refonte reprend ce protocole dans `frontend/` et l’ajoute au portail `patient-frontend/`, avec une PWA active par défaut dans les deux builds. Le portail patient historique ne possédait pas de PWA : sa première adoption intervient donc avec la refonte.
 
 ## Activer une publication obligatoire
 
@@ -67,7 +67,7 @@ Pour automatiser sans substitutions propres au shell, ce script Node utilise le 
 node frontend/scripts/build-pwa-docker.mjs --build-arg CABINET=default -t dentalsoft-frontend .
 ```
 
-Il sélectionne `docker/frontend/Dockerfile`, capture avant le lancement de Docker et ajoute `PWA_RELEASE_METADATA` et `PWA_RELEASE_REVISION`. Dans Dokploy : utiliser ce script dans la préparation/build personnalisé avec accès Git, ou capturer dans la CI puis renseigner les arguments de build. Une variable d'environnement Dokploy n'est pas automatiquement un `ARG` Docker : vérifier la configuration effective du builder. Aucun changement du compose racine n'est fourni ici.
+Il sélectionne `docker/frontend/Dockerfile`, capture avant le lancement de Docker et ajoute `PWA_RELEASE_METADATA` et `PWA_RELEASE_REVISION`. Dans Dokploy : utiliser ce script dans la préparation/build personnalisé avec accès Git, ou capturer dans la CI puis renseigner les arguments de build. Une variable d'environnement Dokploy n'est pas automatiquement un `ARG` Docker : vérifier la configuration effective du builder. Le Compose transmet `PWA_RELEASE_METADATA` et `PWA_RELEASE_REVISION` aux deux builds. Ces valeurs doivent être régénérées pour chaque checkout déployé ; ne pas laisser une ancienne capture dans les variables Dokploy.
 
 `frontend/Dockerfile` (autre chemin historique, contexte racine lui aussi) accepte les mêmes arguments ; comme il ne copie pas `.git`, la capture externe est nécessaire. Ne pas fournir uniquement le hash courant ou le trailer courant : cela ne suffit pas à reconstruire les obligations précédentes.
 
@@ -89,7 +89,7 @@ Un rollback sous un seuil déjà annoncé peut laisser les clients bloqués : pu
 - Les instructions validées circulent via BroadcastChannel et l'événement storage (secours). Avant toute écriture, le seuil en mémoire est fusionné avec celui du stockage ; un événement storage obsolète est réparé pour ne pas abaisser une obligation connue. Le dernier seuil est conservé sous une clé dédiée `dentalsoft-pwa-release-v1:<base-url>` pour résister à un redémarrage hors ligne. Si le stockage est interdit, le verrou reste en mémoire et les contrôles réseau fonctionnent, mais la persistance entre documents n'est pas garantie.
 - Aucun `localStorage.clear`, suppression IndexedDB, déconnexion ou effacement des données utilisateur. Les caches Workbox continuent leur cycle normal. **Un formulaire non enregistré en mémoire peut être perdu** lors du blocage/démontage ou de l'actualisation multi-onglets : annoncer les mises à jour obligatoires aux équipes.
 
-Le verrou HTTP couvre `src/service/http.js`, pas des transports autonomes/fetch métier contournant ce client, ni une opération serveur déjà envoyée. Ce mécanisme frontend est une barrière UX/compatibilité, pas une règle d'autorisation backend opposable à un client modifié.
+Le verrou HTTP couvre `src/shared/api/http.js` côté cabinet et le transport partagé côté patient (sur la version historique d’adoption : `src/service/http.js`), pas des transports autonomes/fetch métier contournant ces clients, ni une opération serveur déjà envoyée. Ce mécanisme frontend est une barrière UX/compatibilité, pas une règle d'autorisation backend opposable à un client modifié.
 
 ## Première adoption et hors ligne
 

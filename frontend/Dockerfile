@@ -4,7 +4,7 @@ WORKDIR /app
 
 ARG CABINET=default
 ARG BUILD_ENV=prod
-# Sans .git dans cette image, capture préalable depuis le checkout complet.
+# Métadonnées capturées depuis le checkout complet avant le build Docker.
 ARG PWA_RELEASE_METADATA
 ARG PWA_RELEASE_REVISION
 ARG PWA_BUILD_ID

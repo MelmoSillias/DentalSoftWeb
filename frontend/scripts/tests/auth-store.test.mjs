@@ -5,15 +5,24 @@ import test from 'node:test';
 function setup(http) {
     const data = new Map();
     globalThis.localStorage = { getItem: (key) => data.get(key), setItem: (key, value) => data.set(key, value), removeItem: (key) => data.delete(key) };
-    const source = readFileSync(new URL('../../src/stores/auth.js', import.meta.url), 'utf8')
-        .replace(/^import .*;\r?$/gm, '').replace('export const useAuthStore', 'const useAuthStore');
+    const source = readFileSync(new URL('../../src/domains/auth/stores/auth.js', import.meta.url), 'utf8')
+        .replace(/^import .*;\r?$/gm, '')
+        .replace('export const useAuthStore', 'const useAuthStore');
     const options = new Function('defineStore', 'http', 'isDeviceNotAllowedError', `${source}\nreturn useAuthStore;`)(
-        (_, options) => options, http, () => false
+        (_, options) => options,
+        http,
+        () => false
     );
     const store = options.state();
     for (const [name, action] of Object.entries(options.actions)) store[name] = action.bind(store);
     // Keep unrelated realtime and push teardown out of these authentication tests.
-    store.logout = () => { store.sessionVersion++; store.loading = false; store.token = null; store.user = null; data.delete('token'); };
+    store.logout = () => {
+        store.sessionVersion++;
+        store.loading = false;
+        store.token = null;
+        store.user = null;
+        data.delete('token');
+    };
     return { store, data };
 }
 
@@ -27,7 +36,9 @@ test('admin login rejects a response without a JWT', async () => {
 
 test('logout during an admin login prevents late JWT persistence', async () => {
     let resolve;
-    const response = new Promise((done) => { resolve = done; });
+    const response = new Promise((done) => {
+        resolve = done;
+    });
     const { store, data } = setup({ post: () => response });
     const login = store.login('admin', 'password');
     store.logout();
@@ -39,7 +50,9 @@ test('logout during an admin login prevents late JWT persistence', async () => {
 
 test('a stale profile error cannot log out a newer admin session', async () => {
     let reject;
-    const response = new Promise((_, fail) => { reject = fail; });
+    const response = new Promise((_, fail) => {
+        reject = fail;
+    });
     const { store } = setup({ get: () => response });
     store.token = 'old';
     const profile = store.fetchUser();
@@ -51,7 +64,9 @@ test('a stale profile error cannot log out a newer admin session', async () => {
 
 test('a stale profile success cannot restore a logged-out admin identity', async () => {
     let resolve;
-    const response = new Promise((done) => { resolve = done; });
+    const response = new Promise((done) => {
+        resolve = done;
+    });
     const { store } = setup({ get: () => response });
     store.token = 'old';
     const profile = store.fetchUser();
@@ -68,7 +83,9 @@ test('token validation checks the response status and ignores obsolete responses
     assert.equal(store.token, null);
 
     let resolve;
-    const response = new Promise((done) => { resolve = done; });
+    const response = new Promise((done) => {
+        resolve = done;
+    });
     const { store: current } = setup({ get: () => response });
     current.token = 'old';
     const validation = current.validateToken();

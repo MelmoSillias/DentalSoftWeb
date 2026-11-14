@@ -4,7 +4,7 @@ import test from 'node:test';
 import * as vue from 'vue';
 import { compileScript, compileTemplate, parse } from '@vue/compiler-sfc';
 
-const { descriptor } = parse(readFileSync(new URL('../../src/components/caisse/CaisseOverview.vue', import.meta.url), 'utf8'));
+const { descriptor } = parse(readFileSync(new URL('../../src/domains/billing/components/CaisseOverview.vue', import.meta.url), 'utf8'));
 
 function setup(overrides = {}) {
     const props = vue.reactive({ factures: [], payments: [], paymentRange: [new Date(2026, 10, 1), new Date(2026, 10, 5)], ...overrides });

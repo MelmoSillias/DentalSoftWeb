@@ -128,8 +128,8 @@ Une base vide reçoit le schéma, pas les données métier ni un administrateur 
 défaut. Importer les données du cabinet ou utiliser le processus existant de
 création de compte. Pour reprendre une production, copier aussi les uploads et
 les clés JWT, conserver `APP_SECRET` et la passphrase. Les scripts
-[d'import](../backend-reform/scripts/db-import-data.sh) et
-[d'export](../backend-reform/scripts/db-export-data-only.sh) retrouvent leur
+[d'import](../api/scripts/db-import-data.sh) et
+[d'export](../api/scripts/db-export-data-only.sh) retrouvent leur
 utilitaire de préparation dans le même dossier.
 
 ## Versions
@@ -184,7 +184,7 @@ précédent. Vérifier leurs cibles serveur avant chaque exécution.
 
 | Mode | Point d'entrée |
 |---|---|
-| API Docker individuelle | `backend-reform/Dockerfile`, contexte `backend-reform` |
+| API Docker individuelle | `api/Dockerfile`, contexte `api` |
 | Frontend admin individuel | `frontend/Dockerfile`, contexte racine |
 | Portail patient manuel | `npm run build:cabinet -- --cabinet=...`, dans `patient-frontend` |
 | Mercure individuel | `mercure-prod/Dockerfile`, contexte `mercure-prod` |
@@ -192,7 +192,7 @@ précédent. Vérifier leurs cibles serveur avant chaque exécution.
 
 Le Dockerfile, l'entrypoint, le Caddyfile, les règles d'exclusion et la configuration
 Symfony de l'API individuelle sont conservés. La stack utilise
-`backend-reform/Dockerfile.dokploy` et ses fichiers spécifiques. Les nouveaux YAML
+`api/Dockerfile.dokploy` et ses fichiers spécifiques. Les nouveaux YAML
 de configuration sont copiés dans `config/packages` uniquement lors de ce build.
 Le contexte frontend Dokploy est filtré par `docker/frontend/Dockerfile.dockerignore` ;
 aucun filtre racine ne modifie les builds individuels.

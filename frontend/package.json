@@ -1,5 +1,5 @@
 {
-    "name": "+-!vue",
+    "name": "dentalsoft-frontend",
     "version": "4.3.0",
     "scripts": {
         "select:cabinet": "node ./scripts/select-cabinet.mjs",
@@ -12,10 +12,14 @@
         "build:xampp-lan-http": "node ./scripts/select-cabinet.mjs --cabinet=default --env=xampp-lan-http && vite build",
         "build:cabinet": "node ./scripts/build-cabinet.mjs",
         "preview": "vite preview",
-        "lint": "node ./scripts/lint.mjs",
         "test:pwa": "node --test tests/pwa*.test.mjs",
         "test:pwa:browser": "node --test tests/pwa-browser.mjs",
-        "release:pwa": "node ./scripts/pwa-release.mjs --base64"
+        "release:pwa": "node ./scripts/pwa-release.mjs --base64",
+        "lint": "node ./scripts/lint.mjs",
+        "test": "node --test tests/*.test.mjs scripts/tests/*.test.mjs",
+        "check:architecture": "node scripts/check-architecture.mjs",
+        "check:isolation": "node scripts/check-isolation.mjs",
+        "validate": "npm run check:architecture && npm run check:isolation && npm test && npm run lint && npm run build"
     },
     "dependencies": {
         "@fullcalendar/core": "^6.1.11",

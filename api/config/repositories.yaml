@@ -1,0 +1,136 @@
+{
+    "services": {
+        "App\\IdentityAccess\\Domain\\Repository\\UserDeviceAccessLogRepositoryInterface": {
+            "alias": "App\\IdentityAccess\\Infrastructure\\Persistence\\Doctrine\\UserDeviceAccessLogRepository"
+        },
+        "App\\Communication\\Domain\\Repository\\WebPushSubscriptionRepositoryInterface": {
+            "alias": "App\\Communication\\Infrastructure\\Persistence\\Doctrine\\WebPushSubscriptionRepository"
+        },
+        "App\\Communication\\Domain\\Repository\\SmsProviderConfigRepositoryInterface": {
+            "alias": "App\\Communication\\Infrastructure\\Persistence\\Doctrine\\SmsProviderConfigRepository"
+        },
+        "App\\Patient\\Domain\\Repository\\PatientAssuranceProfileRepositoryInterface": {
+            "alias": "App\\Patient\\Infrastructure\\Persistence\\Doctrine\\PatientAssuranceProfileRepository"
+        },
+        "App\\ClinicalRecord\\Domain\\Repository\\DocumentMedicalRepositoryInterface": {
+            "alias": "App\\ClinicalRecord\\Infrastructure\\Persistence\\Doctrine\\DocumentMedicalRepository"
+        },
+        "App\\ClinicalRecord\\Domain\\Repository\\ExamenDentaireRepositoryInterface": {
+            "alias": "App\\ClinicalRecord\\Infrastructure\\Persistence\\Doctrine\\ExamenDentaireRepository"
+        },
+        "App\\CareDelivery\\Domain\\Repository\\OrdonnanceLigneRepositoryInterface": {
+            "alias": "App\\CareDelivery\\Infrastructure\\Persistence\\Doctrine\\OrdonnanceLigneRepository"
+        },
+        "App\\ClinicalRecord\\Domain\\Repository\\FicheMedicaleRepositoryInterface": {
+            "alias": "App\\ClinicalRecord\\Infrastructure\\Persistence\\Doctrine\\FicheMedicaleRepository"
+        },
+        "App\\IdentityAccess\\Domain\\Repository\\SalaryPaymentRepositoryInterface": {
+            "alias": "App\\IdentityAccess\\Infrastructure\\Persistence\\Doctrine\\SalaryPaymentRepository"
+        },
+        "App\\Billing\\Domain\\Repository\\LotFactureAssuranceRepositoryInterface": {
+            "alias": "App\\Billing\\Infrastructure\\Persistence\\Doctrine\\LotFactureAssuranceRepository"
+        },
+        "App\\Communication\\Domain\\Repository\\NotificationRepositoryInterface": {
+            "alias": "App\\Communication\\Infrastructure\\Persistence\\Doctrine\\NotificationRepository"
+        },
+        "App\\CareDelivery\\Domain\\Repository\\ConsultationRepositoryInterface": {
+            "alias": "App\\CareDelivery\\Infrastructure\\Persistence\\Doctrine\\ConsultationRepository"
+        },
+        "App\\Communication\\Domain\\Repository\\SmsTemplateRepositoryInterface": {
+            "alias": "App\\Communication\\Infrastructure\\Persistence\\Doctrine\\SmsTemplateRepository"
+        },
+        "App\\IdentityAccess\\Domain\\Repository\\UserDeviceRepositoryInterface": {
+            "alias": "App\\IdentityAccess\\Infrastructure\\Persistence\\Doctrine\\UserDeviceRepository"
+        },
+        "App\\Billing\\Domain\\Repository\\FactureAssuranceRepositoryInterface": {
+            "alias": "App\\Billing\\Infrastructure\\Persistence\\Doctrine\\FactureAssuranceRepository"
+        },
+        "App\\CareDelivery\\Domain\\Repository\\ActeMedicalRepositoryInterface": {
+            "alias": "App\\CareDelivery\\Infrastructure\\Persistence\\Doctrine\\ActeMedicalRepository"
+        },
+        "App\\CareDelivery\\Domain\\Repository\\OrdonnanceRepositoryInterface": {
+            "alias": "App\\CareDelivery\\Infrastructure\\Persistence\\Doctrine\\OrdonnanceRepository"
+        },
+        "App\\CareDelivery\\Domain\\Repository\\TraitementRepositoryInterface": {
+            "alias": "App\\CareDelivery\\Infrastructure\\Persistence\\Doctrine\\TraitementRepository"
+        },
+        "App\\Billing\\Domain\\Repository\\FactureCabinetRepositoryInterface": {
+            "alias": "App\\Billing\\Infrastructure\\Persistence\\Doctrine\\FactureCabinetRepository"
+        },
+        "App\\Billing\\Domain\\Repository\\ModeDePaiementRepositoryInterface": {
+            "alias": "App\\Billing\\Infrastructure\\Persistence\\Doctrine\\ModeDePaiementRepository"
+        },
+        "App\\Billing\\Domain\\Repository\\ServiceCabinetRepositoryInterface": {
+            "alias": "App\\Billing\\Infrastructure\\Persistence\\Doctrine\\ServiceCabinetRepository"
+        },
+        "App\\Communication\\Domain\\Repository\\SmsQueueRepositoryInterface": {
+            "alias": "App\\Communication\\Infrastructure\\Persistence\\Doctrine\\SmsQueueRepository"
+        },
+        "App\\IdentityAccess\\Domain\\Repository\\EmployeRepositoryInterface": {
+            "alias": "App\\IdentityAccess\\Infrastructure\\Persistence\\Doctrine\\EmployeRepository"
+        },
+        "App\\Patient\\Domain\\Repository\\ContactUrgenceRepositoryInterface": {
+            "alias": "App\\Patient\\Infrastructure\\Persistence\\Doctrine\\ContactUrgenceRepository"
+        },
+        "App\\Inventory\\Domain\\Repository\\ConsommableRepositoryInterface": {
+            "alias": "App\\Inventory\\Infrastructure\\Persistence\\Doctrine\\ConsommableRepository"
+        },
+        "App\\Billing\\Domain\\Repository\\ContenuDevisRepositoryInterface": {
+            "alias": "App\\Billing\\Infrastructure\\Persistence\\Doctrine\\ContenuDevisRepository"
+        },
+        "App\\Communication\\Domain\\Repository\\SmsLogRepositoryInterface": {
+            "alias": "App\\Communication\\Infrastructure\\Persistence\\Doctrine\\SmsLogRepository"
+        },
+        "App\\Patient\\Domain\\Repository\\AppreciationRepositoryInterface": {
+            "alias": "App\\Patient\\Infrastructure\\Persistence\\Doctrine\\AppreciationRepository"
+        },
+        "App\\Billing\\Domain\\Repository\\TransactionRepositoryInterface": {
+            "alias": "App\\Billing\\Infrastructure\\Persistence\\Doctrine\\TransactionRepository"
+        },
+        "App\\IdentityAccess\\Domain\\Repository\\UserRepositoryInterface": {
+            "alias": "App\\IdentityAccess\\Infrastructure\\Persistence\\Doctrine\\UserRepository"
+        },
+        "App\\Settings\\Domain\\Repository\\AppSettingRepositoryInterface": {
+            "alias": "App\\Settings\\Infrastructure\\Persistence\\Doctrine\\AppSettingRepository"
+        },
+        "App\\Billing\\Domain\\Repository\\ChargeFixeRepositoryInterface": {
+            "alias": "App\\Billing\\Infrastructure\\Persistence\\Doctrine\\ChargeFixeRepository"
+        },
+        "App\\Patient\\Domain\\Repository\\AntecedentRepositoryInterface": {
+            "alias": "App\\Patient\\Infrastructure\\Persistence\\Doctrine\\AntecedentRepository"
+        },
+        "App\\Scheduling\\Domain\\Repository\\BookingRepositoryInterface": {
+            "alias": "App\\Scheduling\\Infrastructure\\Persistence\\Doctrine\\BookingRepository"
+        },
+        "App\\Billing\\Domain\\Repository\\AssuranceRepositoryInterface": {
+            "alias": "App\\Billing\\Infrastructure\\Persistence\\Doctrine\\AssuranceRepository"
+        },
+        "App\\Billing\\Domain\\Repository\\PaiementRepositoryInterface": {
+            "alias": "App\\Billing\\Infrastructure\\Persistence\\Doctrine\\PaiementRepository"
+        },
+        "App\\Scheduling\\Domain\\Repository\\CongeRepositoryInterface": {
+            "alias": "App\\Scheduling\\Infrastructure\\Persistence\\Doctrine\\CongeRepository"
+        },
+        "App\\Scheduling\\Domain\\Repository\\SalleRepositoryInterface": {
+            "alias": "App\\Scheduling\\Infrastructure\\Persistence\\Doctrine\\SalleRepository"
+        },
+        "App\\Billing\\Domain\\Repository\\FactureRepositoryInterface": {
+            "alias": "App\\Billing\\Infrastructure\\Persistence\\Doctrine\\FactureRepository"
+        },
+        "App\\Inventory\\Domain\\Repository\\StockRepositoryInterface": {
+            "alias": "App\\Inventory\\Infrastructure\\Persistence\\Doctrine\\StockRepository"
+        },
+        "App\\Patient\\Domain\\Repository\\AllergyRepositoryInterface": {
+            "alias": "App\\Patient\\Infrastructure\\Persistence\\Doctrine\\AllergyRepository"
+        },
+        "App\\Patient\\Domain\\Repository\\PatientRepositoryInterface": {
+            "alias": "App\\Patient\\Infrastructure\\Persistence\\Doctrine\\PatientRepository"
+        },
+        "App\\Scheduling\\Domain\\Repository\\RdvRepositoryInterface": {
+            "alias": "App\\Scheduling\\Infrastructure\\Persistence\\Doctrine\\RdvRepository"
+        },
+        "App\\Billing\\Domain\\Repository\\DevisRepositoryInterface": {
+            "alias": "App\\Billing\\Infrastructure\\Persistence\\Doctrine\\DevisRepository"
+        }
+    }
+}

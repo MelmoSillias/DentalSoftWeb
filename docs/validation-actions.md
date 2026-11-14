@@ -28,7 +28,7 @@ exécutés avant toute restitution.
 Appliquer la migration avant de déployer les clients :
 
 ```sh
-cd backend-reform
+cd api
 php bin/console doctrine:migrations:migrate --no-interaction
 ```
 

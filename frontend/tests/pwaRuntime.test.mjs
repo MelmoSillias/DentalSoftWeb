@@ -2,18 +2,18 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
-import { createReleaseGate, fetchRelease, requiresUpdate } from '../src/utils/pwaRelease.mjs';
+import { createReleaseGate, fetchRelease, requiresUpdate } from '../src/shared/lib/pwaRelease.mjs';
 import { releaseFromHistory } from '../scripts/pwa-release.mjs';
 
 const history = [1, 2, 3].map((n) => ({ revision: String(n).padStart(40, '0'), trailers: n === 2 ? 'required' : '' }));
 const old = releaseFromHistory(history.slice(0, 1), 'old');
 const latest = releaseFromHistory(history, 'new');
-const source = readFileSync(new URL('../src/composables/usePwaUpdate.js', import.meta.url), 'utf8')
+const source = readFileSync(new URL('../src/shared/composables/usePwaUpdate.js', import.meta.url), 'utf8')
     .replace(/^import .*;\r?\n/gm, '')
     .replaceAll('import.meta.env', 'ENV')
     .replaceAll('export function', 'function');
 
-function harness({ waitingRelease = latest, state = 'installed', saved = null } = {}) {
+function harness({ waitingRelease = latest, state = 'installed', saved = null, enabled = true, production = true } = {}) {
     const events = {};
     const timers = [];
     const messages = [];
@@ -51,7 +51,7 @@ function harness({ waitingRelease = latest, state = 'installed', saved = null } 
         }
     };
     const context = {
-        ENV: { PROD: true, BASE_URL: '/', VITE_APP_RELEASE: old },
+        ENV: { PROD: production, VITE_ENABLE_PWA: enabled, BASE_URL: '/', VITE_APP_RELEASE: old },
         ref: (value) => ({ value }),
         readonly: (value) => value,
         onMounted: () => {},
@@ -124,6 +124,16 @@ function harness({ waitingRelease = latest, state = 'installed', saved = null } 
         }
     };
 }
+
+test('disabled PWA and development do not register, check or restore a persisted gate', () => {
+    for (const options of [{ enabled: false }, { production: false }]) {
+        const app = harness({ ...options, saved: JSON.stringify(latest) });
+        app.start();
+        assert.equal(app.calls, 0);
+        assert.equal(app.view.mandatory.value, false);
+        assert.deepEqual(Object.keys(app.events), []);
+    }
+});
 
 test('mandatory blocks immediately, remains blocked offline, and retries without reloads', async () => {
     const app = harness();

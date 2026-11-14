@@ -1,0 +1,130 @@
+import { ref } from 'vue';
+import { addSalleTourMock, deleteSalleTourMock, editSalleTourMock, fetchSallesTourMock, isAdminTourMockEnabled } from '@/domains/workforce/services/adminTourMock.js';
+import { useAuthStore } from '@/domains/auth/stores/auth.js';
+import { apiPrefix } from '@/config.js';
+import http from '@/shared/api/http.js';
+
+export function useSalles() {
+    const salles = ref([]);
+    const loading = ref(false);
+    const error = ref(null);
+    const selectedSalle = ref(null);
+
+    const auth = useAuthStore();
+
+    function getHeaders(includeJson = false) {
+        const token = auth?.token || localStorage.getItem('token') || localStorage.getItem('authToken');
+        const headers = {};
+        if (includeJson) headers['Content-Type'] = 'application/json';
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        return headers;
+    }
+
+    async function fetchSalles() {
+        loading.value = true;
+        try {
+            if (isAdminTourMockEnabled()) {
+                salles.value = fetchSallesTourMock();
+                return;
+            }
+
+            const res = await http.get(`${apiPrefix}/salles`, {
+                headers: getHeaders(false)
+            });
+            const payload = res.data;
+            const data = Array.isArray(payload) ? payload : [];
+            salles.value = data.map((s) => ({
+                ...s,
+                label: s.nom || s.name || ''
+            }));
+        } catch (e) {
+            error.value = e;
+        } finally {
+            loading.value = false;
+        }
+    }
+
+    async function addSalle(data) {
+        loading.value = true;
+        try {
+            if (isAdminTourMockEnabled()) {
+                const result = addSalleTourMock(data);
+                if (result?.salle) {
+                    salles.value = [result.salle, ...salles.value];
+                }
+                return result?.salle;
+            }
+
+            const res = await http.post(`${apiPrefix}/salles`, data, {
+                headers: getHeaders(true)
+            });
+            const Resdata = res.data;
+            if (Resdata?.salle) {
+                salles.value = [...salles.value, Resdata.salle];
+            }
+            return Resdata.salle;
+        } catch (e) {
+            error.value = e;
+            throw e;
+        } finally {
+            loading.value = false;
+        }
+    }
+
+    async function editSalle(id, data) {
+        loading.value = true;
+        try {
+            if (isAdminTourMockEnabled()) {
+                const result = editSalleTourMock(id, data);
+                const idx = salles.value.findIndex((s) => s.id === id);
+                if (idx !== -1 && result?.salle) salles.value[idx] = result.salle;
+                return result?.salle;
+            }
+
+            const res = await http.put(`${apiPrefix}/salles/${id}`, data, {
+                headers: getHeaders(true)
+            });
+            const Resdata = res.data;
+            const idx = salles.value.findIndex((s) => s.id === id);
+            if (idx !== -1 && Resdata?.salle) salles.value[idx] = Resdata.salle;
+            return Resdata.salle;
+        } catch (e) {
+            error.value = e;
+            throw e;
+        } finally {
+            loading.value = false;
+        }
+    }
+
+    async function deleteSalle(id) {
+        loading.value = true;
+        try {
+            if (isAdminTourMockEnabled()) {
+                deleteSalleTourMock(id);
+                salles.value = salles.value.filter((s) => s.id !== id);
+                return;
+            }
+
+            await http.delete(`${apiPrefix}/salles/${id}`, {
+                headers: getHeaders(false)
+            });
+            salles.value = salles.value.filter((s) => s.id !== id);
+        } catch (e) {
+            error.value = e;
+            throw e;
+        } finally {
+            loading.value = false;
+        }
+    }
+
+    return {
+        salles,
+        loading,
+        error,
+        selectedSalle,
+        fetchSalles,
+        addSalle,
+        editSalle,
+        deleteSalle
+    };
+}

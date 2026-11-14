@@ -7,7 +7,7 @@ ARG FRONTEND_DIR=frontend
 ARG PWA_RELEASE_METADATA
 ARG PWA_RELEASE_REVISION
 ARG PWA_BUILD_ID
-RUN if [ "${FRONTEND_DIR}" = frontend ]; then node frontend/scripts/pwa-release.mjs --output /release.json; else echo null > /release.json; fi
+RUN node "${FRONTEND_DIR}/scripts/pwa-release.mjs" --output /release.json
 
 FROM node:22-alpine AS build
 ARG FRONTEND_DIR=frontend

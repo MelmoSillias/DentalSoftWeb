@@ -28,7 +28,7 @@ Les résultats éventuels nécessitent un contrôle métier avant de remettre l�
 
 ## Migration et déploiement
 
-La migration [Version20261101120000](../backend-reform/migrations/Version20261101120000.php) ajoute les statuts, versions et historiques de paie, les périodes INPS et les remises. Elle identifie les transactions déjà liées à la paie et conserve les données existantes. Elle harmonise les montants de trésorerie à deux décimales, comme ceux de la paie.
+La migration [Version20261101120000](../api/migrations/Version20261101120000.php) ajoute les statuts, versions et historiques de paie, les périodes INPS et les remises. Elle identifie les transactions déjà liées à la paie et conserve les données existantes. Elle harmonise les montants de trésorerie à deux décimales, comme ceux de la paie.
 
 Depuis le répertoire du backend, sur le serveur cible :
 
@@ -40,7 +40,7 @@ php bin/console cache:warmup --env=prod
 php bin/console app:doctrine:ensure-proxies --env=prod
 ```
 
-Sur Dokploy, le [script de démarrage](../backend-reform/docker/entrypoint.sh) exécute déjà migration et préparation du cache lorsque `RUN_MIGRATIONS=1` (valeur par défaut). Vérifier les journaux et le statut de migration. Un échec de migration bloque désormais le démarrage ; ne pas le contourner en désactivant les migrations sur une base incomplète.
+Sur Dokploy, le [script de démarrage](../api/docker/entrypoint.sh) exécute déjà migration et préparation du cache lorsque `RUN_MIGRATIONS=1` (valeur par défaut). Vérifier les journaux et le statut de migration. Un échec de migration bloque désormais le démarrage ; ne pas le contourner en désactivant les migrations sur une base incomplète.
 
 Ne pas utiliser `doctrine:schema:update --force` à la place des migrations. La migration cible MariaDB/MySQL, comme les déploiements existants. Ses modifications DDL ne sont pas transactionnelles : en cas d’échec partiel, inspecter la base avant toute reprise.
 
