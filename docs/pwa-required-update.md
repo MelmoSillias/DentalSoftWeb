@@ -43,7 +43,7 @@ npm --prefix frontend ci
 npm --prefix frontend run build
 ```
 
-`docker/frontend/Dockerfile` capture les métadonnées dans une étape intermédiaire `release-metadata`, **avant** de copier les sources vers l'étape applicative. Son dockerignore autorise le `.git` racine si présent. Il faut un contexte à la racine du dépôt, un historique complet, et Git disponible dans cette étape (installé par l'image). `.git` n'est jamais copié dans nginx. Les métadonnées sont transférées dans `/pwa-release.json` puis lues via `PWA_RELEASE_FILE` au build Vite.
+`docker/frontend/Dockerfile` capture les métadonnées dans une étape intermédiaire `release-metadata`, **avant** de copier les sources vers l'étape applicative. Son dockerignore autorise le `.git` racine si présent. Il faut un contexte à la racine du dépôt et Git disponible dans cette étape (installé par l'image). Si le clone est superficiel (notamment avec Dokploy), l'étape complète automatiquement son historique depuis `origin` avant la capture, sans déplacer `HEAD` ni modifier les sources. `.git` n'est jamais copié dans nginx. Les métadonnées sont transférées dans `/pwa-release.json` puis lues via `PWA_RELEASE_FILE` au build Vite.
 
 ```sh
 docker build -f docker/frontend/Dockerfile --build-arg CABINET=default -t dentalsoft-frontend .
@@ -73,7 +73,9 @@ Il sélectionne `docker/frontend/Dockerfile`, capture avant le lancement de Dock
 
 ### Historique shallow et sécurité du déploiement
 
-Une capture Git shallow **échoue volontairement**, même si le commit courant n'a pas de trailer. Ne jamais convertir cet échec en `minimum: null`, ni ignorer l'erreur avec une valeur optional. Récupérer l'historique complet (`git fetch --unshallow`, depuis la bonne origine) dans la préparation CI/Dokploy, puis relancer la capture. Le code ne fetch pas lui-même. Sans historique complet ni métadonnées fiables fournies en argument, le déploiement échoue plutôt que d'effacer un seuil.
+Une capture Git shallow **échoue volontairement**, même si le commit courant n'a pas de trailer. Ne jamais convertir cet échec en `minimum: null`, ni ignorer l'erreur avec une valeur optional. Le Dockerfile Dokploy exécute `docker/frontend/prepare-pwa-history.sh` avant la capture : en l'absence de `PWA_RELEASE_METADATA`, un clone superficiel est complété avec `git fetch --unshallow --no-tags origin`. Aucun `pull`, checkout ou changement de `HEAD` n'est effectué, même si la branche distante a avancé depuis le clonage. Un checkout complet ou des métadonnées externes ne déclenchent pas de fetch.
+
+Cette préparation nécessite un accès réseau à `origin` depuis le builder. Pour un dépôt privé dont les identifiants Dokploy ne sont pas disponibles dans Docker, compléter l'historique dans la préparation CI/Dokploy et fournir `PWA_RELEASE_METADATA` pour le checkout exact (avec `PWA_RELEASE_REVISION`), sans copier de secrets dans le contexte. Un échec de fetch ou un historique encore incomplet arrête le build. Le script de capture lui-même reste sans accès réseau et refuse toujours l'historique shallow.
 
 Déployer une histoire linéaire first-parent, sans réécriture/rebase des commits déjà publiés. La comparaison par génération n'est pas une preuve d'ascendance sur des branches divergentes partageant la même racine. Un changement de racine avec un seuil non nul est bloquant par prudence. Ne pas alterner plusieurs histoires sur une même origine PWA. Les métadonnées ne sont pas signées : elles font confiance au serveur HTTPS et au pipeline.
 
