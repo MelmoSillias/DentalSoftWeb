@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { captureRelease } from '../scripts/pwa-release.mjs';
-import { validateRelease } from '../src/utils/pwaRelease.mjs';
+import { validateRelease } from '../src/shared/lib/pwaRelease.mjs';
 
 export function injectBuildVersion() {
     let release = null;

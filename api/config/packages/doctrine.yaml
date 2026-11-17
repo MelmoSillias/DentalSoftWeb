@@ -1,0 +1,105 @@
+doctrine:
+    dbal:
+        url: '%env(resolve:DATABASE_URL)%'
+
+        # IMPORTANT: You MUST configure your server version,
+        # either here or in the DATABASE_URL env var (see .env file)
+        #server_version: '16'
+
+        profiling_collect_backtrace: false
+        use_savepoints: true
+    orm:
+        auto_generate_proxy_classes: true
+        enable_lazy_ghost_objects: true
+        report_fields_where_declared: true
+        validate_xml_mapping: true
+        naming_strategy: doctrine.orm.naming_strategy.underscore_number_aware
+        identity_generation_preferences:
+            Doctrine\DBAL\Platforms\PostgreSQLPlatform: identity
+        auto_mapping: true
+        mappings:
+            Billing:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Billing/Domain/Entity'
+                prefix: 'App\Billing\Domain\Entity'
+                alias: Billing
+            CareDelivery:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/CareDelivery/Domain/Entity'
+                prefix: 'App\CareDelivery\Domain\Entity'
+                alias: CareDelivery
+            ClinicalRecord:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/ClinicalRecord/Domain/Entity'
+                prefix: 'App\ClinicalRecord\Domain\Entity'
+                alias: ClinicalRecord
+            Communication:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Communication/Domain/Entity'
+                prefix: 'App\Communication\Domain\Entity'
+                alias: Communication
+            IdentityAccess:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/IdentityAccess/Domain/Entity'
+                prefix: 'App\IdentityAccess\Domain\Entity'
+                alias: IdentityAccess
+            Inventory:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Inventory/Domain/Entity'
+                prefix: 'App\Inventory\Domain\Entity'
+                alias: Inventory
+            Patient:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Patient/Domain/Entity'
+                prefix: 'App\Patient\Domain\Entity'
+                alias: Patient
+            Scheduling:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Scheduling/Domain/Entity'
+                prefix: 'App\Scheduling\Domain\Entity'
+                alias: Scheduling
+            Settings:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Settings/Domain/Entity'
+                prefix: 'App\Settings\Domain\Entity'
+                alias: Settings
+        controller_resolver:
+            auto_mapping: false
+
+when@test:
+    doctrine:
+        dbal:
+            # "TEST_TOKEN" is typically set by ParaTest
+            dbname_suffix: '_test%env(default::TEST_TOKEN)%'
+
+when@prod:
+    doctrine:
+        orm:
+            # FILE_NOT_EXISTS : un proxy absent est réécrit dans la requête (fichier temporaire + rename).
+            # NEVER (false) fait un require sec et répond 500 si le fichier manque.
+            # Le warmup Symfony ne pré-génère les proxies qu'en mode NEVER, d'où app:doctrine:ensure-proxies au boot.
+            auto_generate_proxy_classes: FILE_NOT_EXISTS
+            proxy_dir: '%kernel.build_dir%/doctrine/orm/Proxies'
+            query_cache_driver:
+                type: pool
+                pool: doctrine.system_cache_pool
+            result_cache_driver:
+                type: pool
+                pool: doctrine.result_cache_pool
+
+    framework:
+        cache:
+            pools:
+                doctrine.result_cache_pool:
+                    adapter: cache.app
+                doctrine.system_cache_pool:
+                    adapter: cache.system

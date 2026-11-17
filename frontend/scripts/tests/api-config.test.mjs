@@ -8,16 +8,11 @@ function loadConfig(env, cabinetConfig = {}) {
         .replace(/^import cabinetConfig from .*;$/m, '')
         .replaceAll('import.meta.env', 'env')
         .replaceAll('export const ', 'const ');
-    return new Function('env', 'cabinetConfig', 'window', `${source}\nreturn { apiPrefix, filePrefix };`)(
-        env, cabinetConfig, { location: { origin: 'https://dentalsoft-demo.example.com' } }
-    );
+    return new Function('env', 'cabinetConfig', 'window', `${source}\nreturn { apiPrefix, filePrefix };`)(env, cabinetConfig, { location: { origin: 'https://dentalsoft-demo.example.com' } });
 }
 
 test('Dokploy resolves login and prefixed API calls to the same origin with one /api', () => {
-    const { apiPrefix } = loadConfig(
-        { VITE_DOKPLOY: 'true', VITE_API_PREFIX: 'https://old-api.example.com/api' },
-        { viteApiPrefix: 'https://cabinet-api.example.com/api' }
-    );
+    const { apiPrefix } = loadConfig({ VITE_DOKPLOY: 'true', VITE_API_PREFIX: 'https://old-api.example.com/api' }, { viteApiPrefix: 'https://cabinet-api.example.com/api' });
     const http = axios.create({ baseURL: apiPrefix });
     for (const path of ['login_check', 'me', 'settings/general', 'sms/settings', 'patients', 'patients/overview', 'assurances']) {
         const expected = `https://dentalsoft-demo.example.com/api/${path}`;

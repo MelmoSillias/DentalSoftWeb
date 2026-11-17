@@ -6,7 +6,7 @@ import { compileScript, parse } from '@vue/compiler-sfc';
 
 // Execute the actual compiled setup so tests exercise the dialog's reactive state.
 function componentSetup(filename, props, emit = () => {}) {
-    const { descriptor } = parse(readFileSync(new URL(`../../src/components/administration/${filename}`, import.meta.url), 'utf8'));
+    const { descriptor } = parse(readFileSync(new URL(`../../src/domains/workforce/components/${filename}`, import.meta.url), 'utf8'));
     let source = compileScript(descriptor, { id: filename }).content;
     const names = [];
     const values = [];
@@ -251,13 +251,13 @@ test('monthly dialog follows the global period and discards the previous salary 
 });
 
 test('payment table loads all server pages when pagination is disabled', async () => {
-    let source = readFileSync(new URL('../../src/composables/usePayrolls.js', import.meta.url), 'utf8');
+    let source = readFileSync(new URL('../../src/domains/workforce/composables/usePayrolls.js', import.meta.url), 'utf8');
     const calls = [];
     const fetchPayments = async (filters) => {
         calls.push(filters);
         return { data: Array.from({ length: filters.start === 0 ? 200 : 5 }, (_, index) => ({ id: filters.start + index })), recordsFiltered: 205 };
     };
-    source = source.replace(/^import .*;\r?\n/gm, '').replace('export function', 'function');
+    source = source.replace(/^import\s+[\s\S]*?;\r?\n/gm, '').replace('export function', 'function');
     const model = new Function('ref', 'fetchPayrolls', 'localStorage', `${source}\nreturn usePayrolls();`)(vue.ref, fetchPayments, { getItem: () => 'token' });
     await model.fetchData({ rows: 0, month: 10, year: 2026 });
     assert.equal(model.payrolls.value.length, 205);
@@ -282,10 +282,10 @@ test('preview reacts to the current payment and all salary inputs', () => {
 });
 
 test('context requests ignore late responses and clearing selection invalidates requests', async () => {
-    let source = readFileSync(new URL('../../src/composables/usePayrolls.js', import.meta.url), 'utf8');
+    let source = readFileSync(new URL('../../src/domains/workforce/composables/usePayrolls.js', import.meta.url), 'utf8');
     const pending = [];
     const fetchContext = () => new Promise((resolve) => pending.push(resolve));
-    source = source.replace(/^import .*;\r?\n/gm, '').replace('export function', 'function');
+    source = source.replace(/^import\s+[\s\S]*?;\r?\n/gm, '').replace('export function', 'function');
     const model = new Function('ref', 'fetchPayrollContext', 'localStorage', `${source}\nreturn usePayrolls();`)(vue.ref, fetchContext, { getItem: () => 'token' });
     const older = model.fetchContext(7, { month: 10, year: 2026 });
     const newer = model.fetchContext(8, { month: 10, year: 2026 });

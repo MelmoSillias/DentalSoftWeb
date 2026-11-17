@@ -6,7 +6,9 @@ import { compileScript, parse } from '@vue/compiler-sfc';
 
 function dialog(t, { insured = false, remaining = 10000, paymentFails = false } = {}) {
     let service = {
-        id: 12, montant: 10000, coveredByInsurance: insured,
+        id: 12,
+        montant: 10000,
+        coveredByInsurance: insured,
         facture: { id: 24, reste: remaining, montantPatient: remaining, partPatientPayee: 0, insurance: { hasInsurance: insured } }
     };
     const calls = { created: 0, payments: [], events: [], messages: [] };
@@ -18,7 +20,10 @@ function dialog(t, { insured = false, remaining = 10000, paymentFails = false } 
         getDefaultClassicMethod: (methods) => methods[0],
         getPaymentMethodDefinition: () => ({ label: 'Espèces' }),
         defaultServicesCabinetList: [],
-        createCabinetService: async () => { calls.created++; return { data: service }; },
+        createCabinetService: async () => {
+            calls.created++;
+            return { data: service };
+        },
         updateCabinetService: async () => ({ data: service }),
         fetchCabinetService: async () => service,
         payCabinetServiceInvoice: async (invoice, payload) => {
@@ -28,15 +33,18 @@ function dialog(t, { insured = false, remaining = 10000, paymentFails = false } 
         },
         logAppError: () => {}
     };
-    const { descriptor } = parse(readFileSync(new URL('../../src/components/patients/CabinetServiceDialog.vue', import.meta.url), 'utf8'));
+    const { descriptor } = parse(readFileSync(new URL('../../src/domains/patient/components/CabinetServiceDialog.vue', import.meta.url), 'utf8'));
     let source = compileScript(descriptor, { id: 'cabinet-test' }).content;
     const names = [];
     const values = [];
     source = source.replace(/^import (.+) from ['"](.+)['"];?$/gm, (_, bindings, module) => {
-        for (const binding of bindings.replace(/[{}]/g, '').split(',').map((value) => value.trim())) {
+        for (const binding of bindings
+            .replace(/[{}]/g, '')
+            .split(',')
+            .map((value) => value.trim())) {
             const [original, alias = original] = binding.split(/\s+as\s+/);
             names.push(alias);
-            values.push(module === 'vue' ? (original === 'useModel' ? () => vue.ref(false) : vue[original]) : mocks[original] ?? {});
+            values.push(module === 'vue' ? (original === 'useModel' ? () => vue.ref(false) : vue[original]) : (mocks[original] ?? {}));
         }
         return '';
     });
@@ -45,7 +53,13 @@ function dialog(t, { insured = false, remaining = 10000, paymentFails = false } 
     const state = scope.run(() => component.setup({ patientId: 7, service: null }, { expose: () => {}, emit: (...event) => calls.events.push(event) }));
     t.after(() => scope.stop());
     state.form.value = { designation: 'Radiographie', quantite: 1, prix: 10000, date: new Date(), note: '', coveredByInsurance: insured };
-    return { state, calls, setService: (value) => { service = value; } };
+    return {
+        state,
+        calls,
+        setService: (value) => {
+            service = value;
+        }
+    };
 }
 
 async function enablePayment(state) {

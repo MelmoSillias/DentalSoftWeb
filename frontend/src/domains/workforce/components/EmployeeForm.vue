@@ -1,0 +1,288 @@
+<script setup>
+import { computed, ref, watch } from 'vue';
+import AppDialog from '@/app/components/layout/AppDialog.vue';
+import InputText from 'primevue/inputtext';
+import InputNumber from 'primevue/inputnumber';
+import Select from 'primevue/select';
+import _Calendar from 'primevue/calendar';
+import MultiSelect from 'primevue/multiselect';
+import FileUpload from 'primevue/fileupload';
+import EmployeeSalarySection from '@/domains/workforce/components/EmployeeSalarySection.vue';
+import { employeeTypeInfirmierOption } from '@/domains/workforce/model/employeeTypeUtils.js';
+
+const props = defineProps({
+    visible: { type: Boolean, default: false },
+    mode: { type: String, default: 'create' },
+    employee: { type: Object, default: () => ({}) },
+    loading: { type: Boolean, default: false },
+    tourTarget: { type: String, default: null }
+});
+
+const emit = defineEmits(['update:visible', 'submit', 'cancel']);
+
+const typeOptions = [{ label: 'Médecin', value: 'Medecin' }, employeeTypeInfirmierOption, { label: 'Réceptionniste', value: 'Receptionniste' }, { label: 'Admin', value: 'Admin' }, { label: 'Autre', value: 'Autre' }];
+
+const typeContratOptions = [
+    { label: 'CDI', value: 'CDI' },
+    { label: 'CDD', value: 'CDD' },
+    { label: 'Stage', value: 'Stage' },
+    { label: 'Prestataire', value: 'Prestataire' }
+];
+
+const daysOptions = [
+    { label: 'Lundi', value: 'Lundi' },
+    { label: 'Mardi', value: 'Mardi' },
+    { label: 'Mercredi', value: 'Mercredi' },
+    { label: 'Jeudi', value: 'Jeudi' },
+    { label: 'Vendredi', value: 'Vendredi' },
+    { label: 'Samedi', value: 'Samedi' }
+];
+
+const form = ref({
+    nom: '',
+    prenom: '',
+    telephone: '',
+    adresse: '',
+    titre: '',
+    email: '',
+    fonction: '',
+    type: 'Medecin',
+    dateEmbauche: new Date(),
+    typeContrat: 'CDI',
+    dureeContrat: null,
+    typeSalaire: 'fixe',
+    valeurSalaire: 100000,
+    frequencePaiement: 'mensuel',
+    typePrime: 'aucune',
+    valeurPrime: null,
+    comingDays: []
+});
+
+const files = ref([]);
+
+const dialogTitle = computed(() => (props.mode === 'edit' ? 'Modifier un employé' : 'Ajouter un employé'));
+
+const hydrateForm = (employee) => {
+    form.value = {
+        nom: employee?.nom || '',
+        prenom: employee?.prenom || '',
+        telephone: employee?.telephone || '',
+        adresse: employee?.adresse || '',
+        titre: employee?.titre || ((employee?.type || 'Medecin') === 'Medecin' ? 'Dr Chirurgien Dentiste' : ''),
+        email: employee?.email || employee?.mail || '',
+        fonction: employee?.fonction || employee?.poste || '',
+        type: employee?.type || 'Medecin',
+        dateEmbauche: employee?.dateEmbauche ? new Date(employee.dateEmbauche) : null,
+        typeContrat: (employee?.typeContrat === 'Freelance' ? 'Prestataire' : employee?.typeContrat) || 'CDI',
+        dureeContrat: employee?.dureeContrat ?? null,
+        typeSalaire: employee?.typeSalaire || 'fixe',
+        valeurSalaire: employee?.valeurSalaire ?? null,
+        frequencePaiement: employee?.frequencePaiement || 'mensuel',
+        typePrime: employee?.typePrime || 'aucune',
+        valeurPrime: employee?.valeurPrime ?? null,
+        comingDays: Array.isArray(employee?.comingDays) ? employee.comingDays.filter((day) => day !== 'Dimanche') : []
+    };
+    files.value = [];
+};
+
+watch(
+    () => form.value.type,
+    (value) => {
+        if (value === 'Medecin' && !form.value.titre) form.value.titre = 'Dr Chirurgien Dentiste';
+        if (value !== 'Medecin' && form.value.typeSalaire === 'pourcentage') {
+            form.value.typeSalaire = 'fixe';
+        }
+    }
+);
+
+watch(
+    () => form.value.typeContrat,
+    (value) => {
+        if (value === 'CDI') {
+            form.value.dureeContrat = null;
+            return;
+        }
+
+        if (!form.value.dureeContrat) {
+            form.value.dureeContrat = 3;
+        }
+    }
+);
+
+watch(
+    () => props.employee,
+    (value) => hydrateForm(value),
+    { immediate: true }
+);
+
+watch(
+    () => props.visible,
+    (visible) => {
+        if (visible && props.mode === 'create') {
+            hydrateForm({});
+        }
+    }
+);
+
+const onFilesSelect = (event) => {
+    files.value = event.files || [];
+};
+
+const onFilesClear = () => {
+    files.value = [];
+};
+
+const buildFormData = () => {
+    const formData = new FormData();
+    Object.entries(form.value).forEach(([key, value]) => {
+        if (key === 'comingDays') {
+            const days = value || [];
+            if (days.length === 0) formData.append('comingDays[]', '');
+            else days.forEach((day) => formData.append('comingDays[]', day));
+            return;
+        }
+        if (key === 'fonction') {
+            formData.append(key, value ?? '');
+            return;
+        }
+        if (value instanceof Date) {
+            formData.append(key, value.toISOString().substring(0, 10));
+            return;
+        }
+        // Envoyer aussi les valeurs nulles/vides : en édition, elles doivent
+        // pouvoir effacer une ancienne valeur (ex. salaire ou prime).
+        formData.append(key, value === null || value === undefined ? '' : value);
+    });
+
+    files.value.forEach((fileItem) => {
+        const file = fileItem?.file || fileItem;
+        if (file) formData.append('administrativeFiles[]', file);
+    });
+
+    return formData;
+};
+
+const submitForm = (event) => {
+    emit('submit', { formData: buildFormData(), mode: props.mode, id: props.employee?.id }, event);
+};
+
+const closeDialog = () => {
+    emit('update:visible', false);
+    emit('cancel');
+};
+</script>
+
+<template>
+    <AppDialog
+        :visible="visible"
+        :title="dialogTitle"
+        icon="pi pi-id-card"
+        icon-tone="primary"
+        width="min(75vw, 980px)"
+        :loading="loading"
+        cancel-label="Annuler"
+        confirm-label="Enregistrer"
+        confirm-icon="pi pi-check"
+        @update:visible="emit('update:visible', $event)"
+        @cancel="closeDialog"
+        @confirm="submitForm"
+    >
+        <div class="space-y-5 max-h-[70vh] overflow-y-auto pr-1" :data-tour="props.tourTarget || null">
+            <section class="rounded-xl border border-surface-200 dark:border-surface-700 overflow-hidden">
+                <div class="px-4 py-3 border-b border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-900/40">
+                    <h6 class="font-semibold flex items-center gap-2 mb-0"><i class="pi pi-user text-primary-500"></i> Identité</h6>
+                </div>
+                <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-1">
+                        <label class="text-sm font-medium">Nom <span class="text-red-500">*</span></label>
+                        <InputText v-model="form.nom" placeholder="Nom" class="w-full" />
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-sm font-medium">Prénom <span class="text-red-500">*</span></label>
+                        <InputText v-model="form.prenom" placeholder="Prénom" class="w-full" />
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-sm font-medium">Téléphone <span class="text-red-500">*</span></label>
+                        <InputText v-model="form.telephone" placeholder="Téléphone" class="w-full" />
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-sm font-medium">Email</label>
+                        <InputText v-model="form.email" placeholder="Email" class="w-full" />
+                    </div>
+                </div>
+            </section>
+
+            <section class="rounded-xl border border-surface-200 dark:border-surface-700 overflow-hidden">
+                <div class="px-4 py-3 border-b border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-900/40">
+                    <h6 class="font-semibold flex items-center gap-2 mb-0"><i class="pi pi-briefcase text-primary-500"></i> Rôle & contrat</h6>
+                </div>
+                <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-1">
+                        <label class="text-sm font-medium">Type de poste <span class="text-red-500">*</span></label>
+                        <Select v-model="form.type" :options="typeOptions" optionLabel="label" optionValue="value" class="w-full" />
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-sm font-medium">Adresse</label>
+                        <InputText v-model="form.adresse" placeholder="Adresse de l'employé" class="w-full" />
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-sm font-medium">Description de la fonction <span class="text-red-500">*</span></label>
+                        <InputText v-model="form.fonction" placeholder="Ex. Médecin permanent au CDOS" class="w-full" />
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-sm font-medium">Titre</label>
+                        <InputText v-model="form.titre" placeholder="Ex. Dr Chirurgien Dentiste" class="w-full" />
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-sm font-medium">Date d'embauche <span class="text-red-500">*</span></label>
+                        <DatePicker v-model="form.dateEmbauche" class="w-full" dateFormat="yy-mm-dd" showIcon placeholder="YYYY-MM-DD" />
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-sm font-medium">Type de contrat</label>
+                        <Select v-model="form.typeContrat" :options="typeContratOptions" optionLabel="label" optionValue="value" class="w-full" />
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-sm font-medium">Durée du contrat (mois)</label>
+                        <InputNumber v-model="form.dureeContrat" class="w-full" :min="1" :disabled="form.typeContrat === 'CDI'" />
+                    </div>
+                </div>
+            </section>
+
+            <section class="rounded-xl border border-surface-200 dark:border-surface-700 overflow-hidden">
+                <div class="px-4 py-3 border-b border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-900/40">
+                    <h6 class="font-semibold flex items-center gap-2 mb-0"><i class="pi pi-wallet text-primary-500"></i> Rémunération</h6>
+                </div>
+                <div class="p-4">
+                    <EmployeeSalarySection v-model:form="form" :employee-type="form.type" />
+                </div>
+            </section>
+
+            <section class="rounded-xl border border-surface-200 dark:border-surface-700 overflow-hidden">
+                <div class="px-4 py-3 border-b border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-900/40">
+                    <h6 class="font-semibold flex items-center gap-2 mb-0"><i class="pi pi-calendar text-primary-500"></i> Planning</h6>
+                </div>
+                <div class="p-4 space-y-1">
+                    <label class="text-sm font-medium">Jours travaillés</label>
+                    <MultiSelect v-model="form.comingDays" :options="daysOptions" optionLabel="label" optionValue="value" display="chip" class="w-full" placeholder="Sélectionner les jours" />
+                </div>
+            </section>
+
+            <section class="rounded-xl border border-surface-200 dark:border-surface-700 overflow-hidden">
+                <div class="px-4 py-3 border-b border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-900/40">
+                    <h6 class="font-semibold flex items-center gap-2 mb-0"><i class="pi pi-file text-primary-500"></i> Documents</h6>
+                </div>
+                <div class="p-4">
+                    <FileUpload name="administrativeFiles[]" :multiple="true" :customUpload="true" :auto="false" @select="onFilesSelect" @clear="onFilesClear" chooseLabel="Choisir" uploadLabel="Ajouter" cancelLabel="Vider" />
+                </div>
+            </section>
+        </div>
+    </AppDialog>
+</template>
+
+<style scoped>
+h5 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-color-secondary);
+}
+</style>

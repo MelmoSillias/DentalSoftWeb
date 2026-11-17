@@ -1,0 +1,1837 @@
+{
+  "resource_api_factures_list": {
+    "path": "/api/invoices",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\CaisseController::getFacturesAll",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_factures_list"
+    }
+  },
+  "resource_api_factures_classiques_list": {
+    "path": "/api/invoices/standard",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\CaisseController::getFacturesClassiques",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_factures_classiques_list"
+    }
+  },
+  "resource_api_factures_assurances_list": {
+    "path": "/api/invoices/insurers",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\CaisseController::getFacturesAssurances",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_factures_assurances_list"
+    }
+  },
+  "resource_api_factures_unpaid": {
+    "path": "/api/invoices/unpaid",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\CaisseController::getFacturesImpayees",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_factures_unpaid"
+    }
+  },
+  "resource_api_factures_payments": {
+    "path": "/api/invoices/payments",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\CaisseController::getPaiementsFactures",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_factures_payments"
+    }
+  },
+  "resource_api_assurances_list": {
+    "path": "/api/insurers",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\InsuranceController::listAssurances",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_assurances_list"
+    }
+  },
+  "resource_api_assurances_create": {
+    "path": "/api/insurers",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\InsuranceController::createAssurance",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_assurances_create"
+    }
+  },
+  "resource_api_insurance_claims_list": {
+    "path": "/api/insurance-claims",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\InsuranceController::listClaims",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_insurance_claims_list"
+    }
+  },
+  "resource_api_assurances_dashboard": {
+    "path": "/api/insurers/dashboard",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\LotFactureAssuranceController::dashboard",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_assurances_dashboard"
+    }
+  },
+  "resource_api_transaction_create": {
+    "path": "/api/transactions",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\TransactionController::create",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_transaction_create"
+    }
+  },
+  "resource_api_transactions_intercompte": {
+    "path": "/api/transfers",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\TransactionController::intercompte",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_transactions_intercompte"
+    }
+  },
+  "resource_consultations_pending": {
+    "path": "/api/consultations/pending",
+    "controller": "App\\CareDelivery\\Presentation\\Api\\Controller\\ConsultationController::pendingConsultations",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "consultations_pending"
+    }
+  },
+  "resource_api_me_notifications_mark_read": {
+    "path": "/api/me/notification-read-receipts",
+    "controller": "App\\Communication\\Presentation\\Api\\Controller\\NotificationController::markRead",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_me_notifications_mark_read"
+    }
+  },
+  "resource_api_me_notifications_mark_all": {
+    "path": "/api/me/notification-read-receipts/all",
+    "controller": "App\\Communication\\Presentation\\Api\\Controller\\NotificationController::markAll",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_me_notifications_mark_all"
+    }
+  },
+  "resource_api_admin_notifications_send": {
+    "path": "/api/notifications",
+    "controller": "App\\Communication\\Presentation\\Api\\Controller\\NotificationController::send",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_admin_notifications_send"
+    }
+  },
+  "resource_api_sms_send_manual": {
+    "path": "/api/sms/messages",
+    "controller": "App\\Communication\\Presentation\\Api\\Controller\\SmsController::sendManual",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_sms_send_manual"
+    }
+  },
+  "resource_api_medecins": {
+    "path": "/api/doctors",
+    "controller": "App\\IdentityAccess\\Presentation\\Api\\Controller\\MedecinController::getAllMedecins",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_medecins"
+    }
+  },
+  "resource_api_infirmiers": {
+    "path": "/api/nurses",
+    "controller": "App\\IdentityAccess\\Presentation\\Api\\Controller\\MedecinController::getAllInfirmiers",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_infirmiers"
+    }
+  },
+  "resource_api_me_change_password": {
+    "path": "/api/me/password",
+    "controller": "App\\IdentityAccess\\Presentation\\Api\\Controller\\AuthController::changePassword",
+    "methods": [
+      "PATCH"
+    ],
+    "defaults": {
+      "_legacy_route": "api_me_change_password"
+    }
+  },
+  "resource_api_token_validate": {
+    "path": "/api/auth/session",
+    "controller": "App\\IdentityAccess\\Presentation\\Api\\Controller\\AuthController::validateToken",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_token_validate"
+    }
+  },
+  "resource_api_device_status": {
+    "path": "/api/auth/device",
+    "controller": "App\\IdentityAccess\\Presentation\\Api\\Controller\\AuthController::deviceStatus",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_device_status"
+    }
+  },
+  "resource_api_patients_overview_stats": {
+    "path": "/api/patients/statistics",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\PatientController::getPatientsOverviewStats",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patients_overview_stats"
+    }
+  },
+  "resource_api_patients_medecin_overview_stats": {
+    "path": "/api/patients/doctor/statistics",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\PatientController::getPatientsOverviewStatsByMedecin",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patients_medecin_overview_stats"
+    }
+  },
+  "resource_api_patients_by_medecin": {
+    "path": "/api/patients/doctor",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\PatientController::getPatientsByMedecin",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patients_by_medecin"
+    }
+  },
+  "resource_api_patient_add_with_consultation": {
+    "path": "/api/patient-intakes",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\PatientController::addPatientWithConsultation",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patient_add_with_consultation"
+    }
+  },
+  "resource_api_patient_add": {
+    "path": "/api/patients",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\PatientController::addPatient",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patient_add"
+    }
+  },
+  "resource_api_appreciation_public_list": {
+    "path": "/api/public/reviews",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\Portal\\AppreciationController::listPublicAppreciations",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_appreciation_public_list"
+    }
+  },
+  "resource_api_appreciation_public_export": {
+    "path": "/api/public/reviews/export",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\Portal\\AppreciationController::listPublicAppreciations",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_appreciation_public_export"
+    }
+  },
+  "resource_api_appreciation_anonymous_create": {
+    "path": "/api/public/review-submissions",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\Portal\\AppreciationController::createAnonymous",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_appreciation_anonymous_create"
+    }
+  },
+  "resource_api_appreciation_patient_create": {
+    "path": "/api/patient-portal/me/reviews",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\Portal\\AppreciationController::createPatientAppreciation",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_appreciation_patient_create"
+    }
+  },
+  "resource_api_appreciation_patient_list": {
+    "path": "/api/patient-portal/me/reviews",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\Portal\\AppreciationController::listPatientAppreciations",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_appreciation_patient_list"
+    }
+  },
+  "resource_api_appreciation_admin_list": {
+    "path": "/api/review-moderation",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\Portal\\AppreciationController::listAdminAppreciations",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_appreciation_admin_list"
+    }
+  },
+  "resource_api_patient_me_consultations": {
+    "path": "/api/patient-portal/me/consultations",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\Portal\\PatientPortalController::consultations",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patient_me_consultations"
+    }
+  },
+  "resource_api_patient_me_devis_factures": {
+    "path": "/api/patient-portal/me/billing-documents",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\Portal\\PatientPortalController::devisFactures",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patient_me_devis_factures"
+    }
+  },
+  "resource_api_patient_me_paiements": {
+    "path": "/api/patient-portal/me/payments",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\Portal\\PatientPortalController::paiements",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patient_me_paiements"
+    }
+  },
+  "resource_api_patient_me_rdvs": {
+    "path": "/api/patient-portal/me/appointments",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\Portal\\PatientPortalController::rdvs",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patient_me_rdvs"
+    }
+  },
+  "resource_api_patient_me_notifications": {
+    "path": "/api/patient-portal/me/notifications",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\Portal\\PatientPortalController::notifications",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patient_me_notifications"
+    }
+  },
+  "resource_api_patient_me_notifications_mercure": {
+    "path": "/api/patient-portal/me/notifications/mercure",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\Portal\\PatientPortalController::notificationsMercure",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patient_me_notifications_mercure"
+    }
+  },
+  "resource_api_patient_me_dashboard": {
+    "path": "/api/patient-portal/me/dashboard",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\Portal\\PatientPortalController::dashboard",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patient_me_dashboard"
+    }
+  },
+  "resource_api_patient_me_profil": {
+    "path": "/api/patient-portal/me/profile",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\Portal\\PatientPortalController::profil",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patient_me_profil"
+    }
+  },
+  "resource_api_report_global_stats": {
+    "path": "/api/reports/global-stats",
+    "controller": "App\\Reporting\\Presentation\\Api\\Controller\\Report\\GlobalController::globalStats",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_report_global_stats"
+    }
+  },
+  "resource_api_report_nonperiodic_employees_distribution": {
+    "path": "/api/reports/nonperiodic/employees-distribution",
+    "controller": "App\\Reporting\\Presentation\\Api\\Controller\\Report\\GlobalController::employeesDistribution",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_report_nonperiodic_employees_distribution"
+    }
+  },
+  "resource_api_report_nonperiodic_low_stock": {
+    "path": "/api/reports/nonperiodic/low-stock-consumables",
+    "controller": "App\\Reporting\\Presentation\\Api\\Controller\\Report\\GlobalController::lowStockConsumables",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_report_nonperiodic_low_stock"
+    }
+  },
+  "resource_api_report_api_medecin_dashboard": {
+    "path": "/api/reports/doctor",
+    "controller": "App\\Reporting\\Presentation\\Api\\Controller\\Report\\MedecinController::medecinDashboard",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_report_api_medecin_dashboard"
+    }
+  },
+  "resource_api_report_global_stats_patients": {
+    "path": "/api/reports/global/patients",
+    "controller": "App\\Reporting\\Presentation\\Api\\Controller\\Report\\PatientsController::globalPatients",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_report_global_stats_patients"
+    }
+  },
+  "resource_api_report_global_patient_referrals": {
+    "path": "/api/reports/global/patient-referrals",
+    "controller": "App\\Reporting\\Presentation\\Api\\Controller\\Report\\PatientsController::globalPatientReferrals",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_report_global_patient_referrals"
+    }
+  },
+  "resource_api_report_periodic_patients": {
+    "path": "/api/reports/periodic/patients",
+    "controller": "App\\Reporting\\Presentation\\Api\\Controller\\Report\\PatientsController::periodicPatients",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_report_periodic_patients"
+    }
+  },
+  "resource_api_report_periodic_consultations": {
+    "path": "/api/reports/periodic/consultations",
+    "controller": "App\\Reporting\\Presentation\\Api\\Controller\\Report\\PeriodicController::periodicConsultations",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_report_periodic_consultations"
+    }
+  },
+  "resource_api_report_periodic_appointments": {
+    "path": "/api/reports/periodic/appointments",
+    "controller": "App\\Reporting\\Presentation\\Api\\Controller\\Report\\PeriodicController::periodicAppointments",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_report_periodic_appointments"
+    }
+  },
+  "resource_api_report_periodic_room_usage": {
+    "path": "/api/reports/periodic/room-usage",
+    "controller": "App\\Reporting\\Presentation\\Api\\Controller\\Report\\PeriodicController::periodicRoomUsage",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_report_periodic_room_usage"
+    }
+  },
+  "resource_api_report_periodic_payment_balances": {
+    "path": "/api/reports/periodic/payment-balances",
+    "controller": "App\\Reporting\\Presentation\\Api\\Controller\\Report\\PeriodicController::periodicPaymentBalances",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_report_periodic_payment_balances"
+    }
+  },
+  "resource_api_report_periodic_payment_frequency": {
+    "path": "/api/reports/periodic/payment-frequency",
+    "controller": "App\\Reporting\\Presentation\\Api\\Controller\\Report\\PeriodicController::periodicPaymentFrequency",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_report_periodic_payment_frequency"
+    }
+  },
+  "resource_api_report_periodic_acts_stats": {
+    "path": "/api/reports/periodic/acts-stats",
+    "controller": "App\\Reporting\\Presentation\\Api\\Controller\\Report\\PeriodicController::periodicActsStats",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_report_periodic_acts_stats"
+    }
+  },
+  "resource_api_report_periodic_doctor_reports": {
+    "path": "/api/reports/periodic/doctor-reports",
+    "controller": "App\\Reporting\\Presentation\\Api\\Controller\\Report\\PeriodicController::periodicDoctorReports",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_report_periodic_doctor_reports"
+    }
+  },
+  "resource_api_report_api_report_receptionniste": {
+    "path": "/api/reports/reception-stats",
+    "controller": "App\\Reporting\\Presentation\\Api\\Controller\\Report\\ReceptionController::getReceptionDashboard",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_report_api_report_receptionniste"
+    }
+  },
+  "resource_api_conges_create": {
+    "path": "/api/employee-leaves",
+    "controller": "App\\Scheduling\\Presentation\\Api\\Controller\\CongeController::create",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_conges_create"
+    }
+  },
+  "resource_api_conges_list": {
+    "path": "/api/employee-leaves",
+    "controller": "App\\Scheduling\\Presentation\\Api\\Controller\\CongeController::list",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_conges_list"
+    }
+  },
+  "resource_api_conges_employees": {
+    "path": "/api/employee-leaves/employees",
+    "controller": "App\\Scheduling\\Presentation\\Api\\Controller\\CongeController::employeesWithConges",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_conges_employees"
+    }
+  },
+  "resource_api_rdv_create": {
+    "path": "/api/appointments",
+    "controller": "App\\Scheduling\\Presentation\\Api\\Controller\\RdvController::createRdv",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_rdv_create"
+    }
+  },
+  "resource_api_rdv_stats": {
+    "path": "/api/appointments/statistics",
+    "controller": "App\\Scheduling\\Presentation\\Api\\Controller\\RdvController::rdvStats",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_rdv_stats"
+    }
+  },
+  "resource_api_rdvs_range": {
+    "path": "/api/appointments",
+    "controller": "App\\Scheduling\\Presentation\\Api\\Controller\\RdvController::listRdvsRange",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_rdvs_range"
+    }
+  },
+  "resource_api_pending_rdvs_range": {
+    "path": "/api/appointments/pending",
+    "controller": "App\\Scheduling\\Presentation\\Api\\Controller\\RdvController::listPendingRdvsRange",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_pending_rdvs_range"
+    }
+  },
+  "resource_api_salles": {
+    "path": "/api/rooms",
+    "controller": "App\\Scheduling\\Presentation\\Api\\Controller\\SalleController::getSalles",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_salles"
+    }
+  },
+  "resource_api_salle_add": {
+    "path": "/api/rooms",
+    "controller": "App\\Scheduling\\Presentation\\Api\\Controller\\SalleController::addSalle",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_salle_add"
+    }
+  },
+  "resource_api_factures_cabinet_preview": {
+    "path": "/api/service-invoices/{id}",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\CabinetServiceController::preview",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_factures_cabinet_preview"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_factures_cabinet_pay": {
+    "path": "/api/service-invoices/{id}/payments",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\CabinetServiceController::pay",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_factures_cabinet_pay"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_factures_unpaid_by_patient": {
+    "path": "/api/patients/{patientId}/invoices/unpaid",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\CaisseController::getFacturesImpayeesByPatient",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_factures_unpaid_by_patient"
+    },
+    "requirements": {
+      "patientId": "\\d+"
+    }
+  },
+  "resource_api_factures_preview": {
+    "path": "/api/invoices/{id}",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\CaisseController::previewFacture",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_factures_preview"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_factures_pay": {
+    "path": "/api/invoices/{id}/payments",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\CaisseController::payerFacture",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_factures_pay"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_factures_payments_reset": {
+    "path": "/api/invoices/{id}/payments",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\CaisseController::resetFacturePayments",
+    "methods": [
+      "DELETE"
+    ],
+    "defaults": {
+      "_legacy_route": "api_factures_payments_reset"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_factures_assurance_payments_reset": {
+    "path": "/api/invoices/assurance/{id}/payments/reset",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\CaisseController::resetFactureAssurancePayments",
+    "methods": [
+      "DELETE"
+    ],
+    "defaults": {
+      "_legacy_route": "api_factures_assurance_payments_reset"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_print_assurance_claim_data": {
+    "path": "/api/prints/insurers/claims/{id}",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\CaisseController::getFactureAssurancePrintData",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_print_assurance_claim_data"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_assurances_toggle": {
+    "path": "/api/insurers/{code}/toggle",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\InsuranceController::toggleAssurance",
+    "methods": [
+      "PATCH"
+    ],
+    "defaults": {
+      "_legacy_route": "api_assurances_toggle"
+    }
+  },
+  "resource_api_assurances_update": {
+    "path": "/api/insurers/{code}",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\InsuranceController::updateAssurance",
+    "methods": [
+      "PATCH"
+    ],
+    "defaults": {
+      "_legacy_route": "api_assurances_update"
+    }
+  },
+  "resource_api_insurance_claims_patient_pay": {
+    "path": "/api/insurance-claims/{id}/patient-pay",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\InsuranceController::payPatientShare",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_insurance_claims_patient_pay"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_assurances_lots_list": {
+    "path": "/api/insurers/{code}/batches",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\LotFactureAssuranceController::listLots",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_assurances_lots_list"
+    }
+  },
+  "resource_api_assurances_lots_open": {
+    "path": "/api/insurers/{code}/batches",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\LotFactureAssuranceController::openLot",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_assurances_lots_open"
+    }
+  },
+  "resource_api_assurances_lots_detail": {
+    "path": "/api/insurance-batches/{id}",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\LotFactureAssuranceController::getLot",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_assurances_lots_detail"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_assurances_lots_update": {
+    "path": "/api/insurance-batches/{id}",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\LotFactureAssuranceController::updateLot",
+    "methods": [
+      "PATCH"
+    ],
+    "defaults": {
+      "_legacy_route": "api_assurances_lots_update"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_assurances_lots_send": {
+    "path": "/api/insurance-batches/{id}/send",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\LotFactureAssuranceController::sendLot",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_assurances_lots_send"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_assurances_lots_reopen": {
+    "path": "/api/insurance-batches/{id}/reopen",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\LotFactureAssuranceController::reopenLot",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_assurances_lots_reopen"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_assurances_lots_confirm": {
+    "path": "/api/insurance-batches/{id}/confirm",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\LotFactureAssuranceController::confirmLot",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_assurances_lots_confirm"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_assurances_lots_unconfirm": {
+    "path": "/api/insurance-batches/{id}/unconfirm",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\LotFactureAssuranceController::unconfirmLot",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_assurances_lots_unconfirm"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_assurances_lots_refund": {
+    "path": "/api/insurance-batches/{id}/refund",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\LotFactureAssuranceController::refundLot",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_assurances_lots_refund"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_assurances_lots_recover": {
+    "path": "/api/insurance-batches/{id}/recover",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\LotFactureAssuranceController::recoverLot",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_assurances_lots_recover"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_assurances_lots_recover_cancel": {
+    "path": "/api/insurance-batches/{id}/recover/cancel",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\LotFactureAssuranceController::cancelLotRecovery",
+    "methods": [
+      "PATCH"
+    ],
+    "defaults": {
+      "_legacy_route": "api_assurances_lots_recover_cancel"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_assurances_lots_add_claim": {
+    "path": "/api/insurance-batches/{id}/claims",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\LotFactureAssuranceController::addClaimToLot",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_assurances_lots_add_claim"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_assurances_claims_move_lot": {
+    "path": "/api/insurance-claims/{factureId}/move-lot",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\LotFactureAssuranceController::moveClaimToLot",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_assurances_claims_move_lot"
+    },
+    "requirements": {
+      "factureId": "\\d+"
+    }
+  },
+  "resource_api_consultation_set_fiche": {
+    "path": "/api/medical-records/{ficheId}/consultation-links",
+    "controller": "App\\CareDelivery\\Presentation\\Api\\Controller\\ConsultationController::setFiche",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_consultation_set_fiche"
+    },
+    "requirements": {
+      "ficheId": "\\d+"
+    }
+  },
+  "resource_api_consultation_ordonnances": {
+    "path": "/api/consultations/{consultation}/prescriptions",
+    "controller": "App\\CareDelivery\\Presentation\\Api\\Controller\\ConsultationController::listOrdonnances",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_consultation_ordonnances"
+    },
+    "requirements": {
+      "consultation": "\\d+"
+    }
+  },
+  "resource_api_consultation_ordonnance_add": {
+    "path": "/api/consultations/{consultation}/prescriptions",
+    "controller": "App\\CareDelivery\\Presentation\\Api\\Controller\\ConsultationController::addOrdonnance",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_consultation_ordonnance_add"
+    },
+    "requirements": {
+      "consultation": "\\d+"
+    }
+  },
+  "resource_api_ordonnance_get": {
+    "path": "/api/prescriptions/{id}",
+    "controller": "App\\CareDelivery\\Presentation\\Api\\Controller\\ConsultationController::getOrdonnance",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_ordonnance_get"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_ordonnance_update": {
+    "path": "/api/prescriptions/{id}",
+    "controller": "App\\CareDelivery\\Presentation\\Api\\Controller\\ConsultationController::updateOrdonnance",
+    "methods": [
+      "PUT"
+    ],
+    "defaults": {
+      "_legacy_route": "api_ordonnance_update"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_print_ordonnance_data": {
+    "path": "/api/prints/prescriptions/{id}",
+    "controller": "App\\CareDelivery\\Presentation\\Api\\Controller\\ConsultationController::getOrdonnancePrintData",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_print_ordonnance_data"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_consultation_facture": {
+    "path": "/api/consultations/{consultation}/invoice",
+    "controller": "App\\CareDelivery\\Presentation\\Api\\Controller\\ConsultationController::getFactureLines",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_consultation_facture"
+    },
+    "requirements": {
+      "consultation": "\\d+"
+    }
+  },
+  "resource_api_consultation_facture_update": {
+    "path": "/api/consultations/{consultation}/invoice",
+    "controller": "App\\CareDelivery\\Presentation\\Api\\Controller\\ConsultationController::updateFactureLines",
+    "methods": [
+      "PUT"
+    ],
+    "defaults": {
+      "_legacy_route": "api_consultation_facture_update"
+    },
+    "requirements": {
+      "consultation": "\\d+"
+    }
+  },
+  "resource_api_consultation_details": {
+    "path": "/api/consultations/{id}/administrative-details",
+    "controller": "App\\CareDelivery\\Presentation\\Api\\Controller\\ConsultationController::getConsultationDetailsJson",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_consultation_details"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_consultation_details_public": {
+    "path": "/api/consultations/{id}",
+    "controller": "App\\CareDelivery\\Presentation\\Api\\Controller\\ConsultationController::getConsultationDetailsPublic",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_consultation_details_public"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_fiche_consultation_update_motif": {
+    "path": "/api/care-records/{ficheId}/reason",
+    "controller": "App\\CareDelivery\\Presentation\\Api\\Controller\\FicheConsultationController::updateMotif",
+    "methods": [
+      "PATCH"
+    ],
+    "defaults": {
+      "_legacy_route": "api_fiche_consultation_update_motif"
+    },
+    "requirements": {
+      "ficheId": "\\d+"
+    }
+  },
+  "resource_api_fiche_consultation_update_examens": {
+    "path": "/api/care-records/{ficheId}/examinations",
+    "controller": "App\\CareDelivery\\Presentation\\Api\\Controller\\FicheConsultationController::updateExamens",
+    "methods": [
+      "PATCH"
+    ],
+    "defaults": {
+      "_legacy_route": "api_fiche_consultation_update_examens"
+    },
+    "requirements": {
+      "ficheId": "\\d+"
+    }
+  },
+  "resource_api_fiche_consultation_update_traitements": {
+    "path": "/api/care-records/{ficheId}/treatments",
+    "controller": "App\\CareDelivery\\Presentation\\Api\\Controller\\FicheConsultationController::updateTraitements",
+    "methods": [
+      "PATCH"
+    ],
+    "defaults": {
+      "_legacy_route": "api_fiche_consultation_update_traitements"
+    },
+    "requirements": {
+      "ficheId": "\\d+"
+    }
+  },
+  "resource_api_fiche_consultation_update_devis": {
+    "path": "/api/care-records/{ficheId}/quotes",
+    "controller": "App\\CareDelivery\\Presentation\\Api\\Controller\\FicheConsultationController::updateDevis",
+    "methods": [
+      "PATCH"
+    ],
+    "defaults": {
+      "_legacy_route": "api_fiche_consultation_update_devis"
+    },
+    "requirements": {
+      "ficheId": "\\d+"
+    }
+  },
+  "resource_api_fiche_medicale_json": {
+    "path": "/api/medical-records/{ficheId}",
+    "controller": "App\\ClinicalRecord\\Presentation\\Api\\Controller\\FicheMedicaleController::getJson",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_fiche_medicale_json"
+    },
+    "requirements": {
+      "ficheId": "\\d+"
+    }
+  },
+  "resource_api_fiche_medicale_update_entretien": {
+    "path": "/api/medical-records/{ficheId}/interview",
+    "controller": "App\\ClinicalRecord\\Presentation\\Api\\Controller\\FicheMedicaleController::updateEntretien",
+    "methods": [
+      "PATCH"
+    ],
+    "defaults": {
+      "_legacy_route": "api_fiche_medicale_update_entretien"
+    },
+    "requirements": {
+      "ficheId": "\\d+"
+    }
+  },
+  "resource_api_fiche_medicale_update_examens": {
+    "path": "/api/medical-records/{ficheId}/examinations",
+    "controller": "App\\ClinicalRecord\\Presentation\\Api\\Controller\\FicheMedicaleController::updateExamens",
+    "methods": [
+      "PATCH"
+    ],
+    "defaults": {
+      "_legacy_route": "api_fiche_medicale_update_examens"
+    },
+    "requirements": {
+      "ficheId": "\\d+"
+    }
+  },
+  "resource_api_fiche_medicale_update_bilans": {
+    "path": "/api/medical-records/{ficheId}/assessments",
+    "controller": "App\\ClinicalRecord\\Presentation\\Api\\Controller\\FicheMedicaleController::updateBilans",
+    "methods": [
+      "PATCH"
+    ],
+    "defaults": {
+      "_legacy_route": "api_fiche_medicale_update_bilans"
+    },
+    "requirements": {
+      "ficheId": "\\d+"
+    }
+  },
+  "resource_api_fiche_medicale_update_plan_traitement": {
+    "path": "/api/medical-records/{ficheId}/treatment-plan",
+    "controller": "App\\ClinicalRecord\\Presentation\\Api\\Controller\\FicheMedicaleController::updatePlanTraitement",
+    "methods": [
+      "PATCH"
+    ],
+    "defaults": {
+      "_legacy_route": "api_fiche_medicale_update_plan_traitement"
+    },
+    "requirements": {
+      "ficheId": "\\d+"
+    }
+  },
+  "resource_api_fiche_medicale_update_documents": {
+    "path": "/api/medical-records/{ficheId}/documents",
+    "controller": "App\\ClinicalRecord\\Presentation\\Api\\Controller\\FicheMedicaleController::updateDocuments",
+    "methods": [
+      "PATCH"
+    ],
+    "defaults": {
+      "_legacy_route": "api_fiche_medicale_update_documents"
+    },
+    "requirements": {
+      "ficheId": "\\d+"
+    }
+  },
+  "resource_api_fiche_medicale_update_devis": {
+    "path": "/api/medical-records/{ficheId}/quotes",
+    "controller": "App\\ClinicalRecord\\Presentation\\Api\\Controller\\FicheMedicaleController::updateDevis",
+    "methods": [
+      "PATCH"
+    ],
+    "defaults": {
+      "_legacy_route": "api_fiche_medicale_update_devis"
+    },
+    "requirements": {
+      "ficheId": "\\d+"
+    }
+  },
+  "resource_api_sms_queue_details": {
+    "path": "/api/sms/queue/{id}",
+    "controller": "App\\Communication\\Presentation\\Api\\Controller\\SmsController::queueDetails",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_sms_queue_details"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_employee_details": {
+    "path": "/api/employees/{id}",
+    "controller": "App\\IdentityAccess\\Presentation\\Api\\Controller\\RHController::getEmployeeDetails",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_employee_details"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_consommable_retrait": {
+    "path": "/api/consumables/{id}/withdrawals",
+    "controller": "App\\Inventory\\Presentation\\Api\\Controller\\ConsommableController::withdraw",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_consommable_retrait"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_consommable_add_stock": {
+    "path": "/api/consumables/{id}/stock-entries",
+    "controller": "App\\Inventory\\Presentation\\Api\\Controller\\ConsommableController::addStock",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_consommable_add_stock"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_patient_update": {
+    "path": "/api/patients/{id}",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\PatientController::updatePatient",
+    "methods": [
+      "PATCH"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patient_update"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_patient_archive_file_add": {
+    "path": "/api/patients/{id}/archive-files",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\PatientController::addArchiveFile",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patient_archive_file_add"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_patient_archive_file_remove": {
+    "path": "/api/patients/{id}/archive-files",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\PatientController::removeArchiveFile",
+    "methods": [
+      "DELETE"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patient_archive_file_remove"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_consultation_check_active": {
+    "path": "/api/patients/{id}/active-consultation",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\PatientController::checkConsultationEnCours",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_consultation_check_active"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_patient_soft_delete": {
+    "path": "/api/patients/{id}",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\PatientController::softDeletePatient",
+    "methods": [
+      "DELETE"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patient_soft_delete"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_patient_restore": {
+    "path": "/api/patients/{id}/restore",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\PatientController::restorePatient",
+    "methods": [
+      "PATCH"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patient_restore"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_patient_details": {
+    "path": "/api/patients/{id}",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\PatientController::getPatientDetails",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patient_details"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_consultation_create": {
+    "path": "/api/patients/{patientId}/consultations",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\PatientController::createConsultation",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_consultation_create"
+    },
+    "requirements": {
+      "patientId": "\\d+"
+    }
+  },
+  "resource_api_patient_rdv_create": {
+    "path": "/api/patients/{id}/appointments",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\PatientController::createRdv",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patient_rdv_create"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_patient_dossier_get": {
+    "path": "/api/patients/{id}/record",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\PatientController::getDossier",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patient_dossier_get"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_patient_fiche_latest": {
+    "path": "/api/patients/{id}/medical-records/latest",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\PatientController::getLatestFiche",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patient_fiche_latest"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_patient_fiches_medicales_create": {
+    "path": "/api/patients/{id}/medical-records",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\PatientController::createFicheMedicale",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patient_fiches_medicales_create"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_patient_consultations": {
+    "path": "/api/patients/{id}/consultations",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\PatientController::getPatientConsultations",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patient_consultations"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_patient_portal_user_get": {
+    "path": "/api/patients/{id}/portal-user",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\PatientController::getPortalUser",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patient_portal_user_get"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_patient_portal_user_create": {
+    "path": "/api/patients/{id}/portal-user",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\PatientController::createPortalUser",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patient_portal_user_create"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_patient_portal_user_reset_password": {
+    "path": "/api/patients/{id}/portal-user/reset-password",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\PatientController::resetPortalUserPassword",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patient_portal_user_reset_password"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_patient_portal_user_toggle_active": {
+    "path": "/api/patients/{id}/portal-user/active",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\PatientController::togglePortalUserActive",
+    "methods": [
+      "PATCH"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patient_portal_user_toggle_active"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_patient_dossier_update": {
+    "path": "/api/patients/{id}/record",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\PatientController::updateDossier",
+    "methods": [
+      "PUT"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patient_dossier_update"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_patient_antecedent_add": {
+    "path": "/api/patients/{id}/medical-history",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\PatientController::addAntecedent",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patient_antecedent_add"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_patient_allergy_add": {
+    "path": "/api/patients/{id}/allergies",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\PatientController::addAllergy",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patient_allergy_add"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_print_patient_dossier_data": {
+    "path": "/api/prints/patient/{id}/record",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\PatientController::getPrintDossierData",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_print_patient_dossier_data"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_appreciation_consultation_create": {
+    "path": "/api/patient-portal/me/consultations/{consultationId}/review",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\Portal\\AppreciationController::createConsultationAppreciation",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_appreciation_consultation_create"
+    },
+    "requirements": {
+      "consultationId": "\\d+"
+    }
+  },
+  "resource_api_appreciation_admin_publish": {
+    "path": "/api/review-moderation/{id}/publish",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\Portal\\AppreciationController::setAdminAppreciationPublished",
+    "methods": [
+      "PATCH"
+    ],
+    "defaults": {
+      "_legacy_route": "api_appreciation_admin_publish"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_appreciation_admin_delete": {
+    "path": "/api/review-moderation/{id}",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\Portal\\AppreciationController::deleteAdminAppreciation",
+    "methods": [
+      "DELETE"
+    ],
+    "defaults": {
+      "_legacy_route": "api_appreciation_admin_delete"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_patient_me_paiement_recu": {
+    "path": "/api/patient-portal/me/payments/{id}/receipt",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\Portal\\PatientPortalController::recu",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patient_me_paiement_recu"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_patient_me_consultation_detail": {
+    "path": "/api/patient-portal/me/consultations/{id}",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\Portal\\PatientPortalController::consultationDetail",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patient_me_consultation_detail"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_patient_me_document_detail": {
+    "path": "/api/patient-portal/me/billing-documents/{id}",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\Portal\\PatientPortalController::documentDetail",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patient_me_document_detail"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_conges_update": {
+    "path": "/api/employee-leaves/{id}",
+    "controller": "App\\Scheduling\\Presentation\\Api\\Controller\\CongeController::update",
+    "methods": [
+      "PUT"
+    ],
+    "defaults": {
+      "_legacy_route": "api_conges_update"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_conges_delete": {
+    "path": "/api/employee-leaves/{id}",
+    "controller": "App\\Scheduling\\Presentation\\Api\\Controller\\CongeController::delete",
+    "methods": [
+      "DELETE"
+    ],
+    "defaults": {
+      "_legacy_route": "api_conges_delete"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_rdvs_stats_by_date": {
+    "path": "/api/appointments/statistics/dates/{date}",
+    "controller": "App\\Scheduling\\Presentation\\Api\\Controller\\RdvController::rdvStatsByDate",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_rdvs_stats_by_date"
+    }
+  },
+  "resource_api_rdvs_by_date": {
+    "path": "/api/appointments/dates/{date}",
+    "controller": "App\\Scheduling\\Presentation\\Api\\Controller\\RdvController::listRdvsByDate",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_rdvs_by_date"
+    }
+  },
+  "resource_api_rdvs_bymedecin": {
+    "path": "/api/me/appointments/dates/{date}",
+    "controller": "App\\Scheduling\\Presentation\\Api\\Controller\\RdvController::listRdvsForCurrentMedecin",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_rdvs_bymedecin"
+    }
+  },
+  "resource_api_salle_edit": {
+    "path": "/api/rooms/{id}",
+    "controller": "App\\Scheduling\\Presentation\\Api\\Controller\\SalleController::editSalle",
+    "methods": [
+      "PUT"
+    ],
+    "defaults": {
+      "_legacy_route": "api_salle_edit"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_salle_delete": {
+    "path": "/api/rooms/{salle}",
+    "controller": "App\\Scheduling\\Presentation\\Api\\Controller\\SalleController::deleteSalle",
+    "methods": [
+      "DELETE"
+    ],
+    "defaults": {
+      "_legacy_route": "api_salle_delete"
+    },
+    "requirements": {
+      "salle": "\\d+"
+    }
+  },
+  "resource_api_settings_devices_rename": {
+    "path": "/api/settings/devices/{deviceId}",
+    "controller": "App\\Settings\\Presentation\\Api\\Controller\\GlobalSettingsController::renameDevice",
+    "methods": [
+      "PATCH"
+    ],
+    "defaults": {
+      "_legacy_route": "api_settings_devices_rename"
+    },
+    "requirements": {
+      "deviceId": "\\d+"
+    }
+  },
+  "resource_api_assurances_claim_detail": {
+    "path": "/api/insurance-claims/{id}",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\LotFactureAssuranceController::getClaimDetail",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_assurances_claim_detail"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "resource_api_assurances_lots_refund_cancel": {
+    "path": "/api/insurance-batches/{id}/refunds/{transactionId}/cancel",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\LotFactureAssuranceController::cancelRefund",
+    "methods": [
+      "PATCH"
+    ],
+    "defaults": {
+      "_legacy_route": "api_assurances_lots_refund_cancel"
+    },
+    "requirements": {
+      "id": "\\d+",
+      "transactionId": "\\d+"
+    }
+  },
+  "resource_api_assurances_lots_remove_claim": {
+    "path": "/api/insurance-batches/{id}/claims/{factureId}",
+    "controller": "App\\Billing\\Presentation\\Api\\Controller\\LotFactureAssuranceController::removeClaimFromLot",
+    "methods": [
+      "DELETE"
+    ],
+    "defaults": {
+      "_legacy_route": "api_assurances_lots_remove_claim"
+    },
+    "requirements": {
+      "id": "\\d+",
+      "factureId": "\\d+"
+    }
+  },
+  "resource_api_fiche_consultation_json": {
+    "path": "/api/care-records/{ficheId}/consultations/{consultationId}",
+    "controller": "App\\CareDelivery\\Presentation\\Api\\Controller\\FicheConsultationController::getJson",
+    "methods": [
+      "GET"
+    ],
+    "defaults": {
+      "_legacy_route": "api_fiche_consultation_json"
+    },
+    "requirements": {
+      "ficheId": "\\d+",
+      "consultationId": "\\d+"
+    }
+  },
+  "resource_api_fiche_consultation_update": {
+    "path": "/api/care-records/{ficheId}/consultations/{consultationId}",
+    "controller": "App\\CareDelivery\\Presentation\\Api\\Controller\\FicheConsultationController::update",
+    "methods": [
+      "PATCH"
+    ],
+    "defaults": {
+      "_legacy_route": "api_fiche_consultation_update"
+    },
+    "requirements": {
+      "ficheId": "\\d+",
+      "consultationId": "\\d+"
+    }
+  },
+  "resource_api_fiche_consultation_cloture": {
+    "path": "/api/care-records/{ficheId}/consultations/{consultationId}/closure",
+    "controller": "App\\CareDelivery\\Presentation\\Api\\Controller\\FicheConsultationController::close",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_fiche_consultation_cloture"
+    },
+    "requirements": {
+      "ficheId": "\\d+",
+      "consultationId": "\\d+"
+    }
+  },
+  "resource_api_patient_antecedent_delete": {
+    "path": "/api/patients/{id}/medical-history/{antecedentId}",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\PatientController::deleteAntecedent",
+    "methods": [
+      "DELETE"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patient_antecedent_delete"
+    },
+    "requirements": {
+      "id": "\\d+",
+      "antecedentId": "\\d+"
+    }
+  },
+  "resource_api_patient_allergy_delete": {
+    "path": "/api/patients/{id}/allergies/{allergyId}",
+    "controller": "App\\Patient\\Presentation\\Api\\Controller\\PatientController::deleteAllergy",
+    "methods": [
+      "DELETE"
+    ],
+    "defaults": {
+      "_legacy_route": "api_patient_allergy_delete"
+    },
+    "requirements": {
+      "id": "\\d+",
+      "allergyId": "\\d+"
+    }
+  },
+  "resource_api_rdv_action": {
+    "path": "/api/appointments/{id}/transitions/{action}",
+    "controller": "App\\Scheduling\\Presentation\\Api\\Controller\\RdvController::handleRdvAction",
+    "methods": [
+      "POST"
+    ],
+    "defaults": {
+      "_legacy_route": "api_rdv_action"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  }
+}

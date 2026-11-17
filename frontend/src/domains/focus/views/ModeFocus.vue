@@ -1,0 +1,1501 @@
+<script setup>
+import ConsultationDetailsDialog from '@/domains/care-delivery/components/ConsultationDetailsDialog.vue';
+import QuickClotureConsultationDialog from '@/domains/care-delivery/components/QuickClotureConsultationDialog.vue';
+import CaisseInvoiceDialogs from '@/domains/billing/components/CaisseInvoiceDialogs.vue';
+import FocusMedecinView from '@/domains/focus/components/FocusMedecinView.vue';
+import FocusReceptionView from '@/domains/focus/components/FocusReceptionView.vue';
+import CreateConsultationDialog from '@/domains/patient/components/CreateConsultationDialog.vue';
+import FocusQuickAdmissionDialog from '@/domains/focus/components/FocusQuickAdmissionDialog.vue';
+import FormPatient from '@/domains/patient/components/FormPatient.vue';
+import FormRendezVous from '@/domains/patient/components/FormRendezVous.vue';
+import DossierPatientDialog from '@/domains/patient/components/DossierPatientDialog.vue';
+import { usePrinter } from '@/shared/print/usePrinter.js';
+import { useFocusRealtime } from '@/domains/focus/composables/useFocusRealtime.js';
+import {
+    defaultSoinList,
+    fetchConsultationDetails,
+    fetchConsultationInvoice,
+    fetchConsultationsByDate,
+    fetchFocusReceptionData,
+    normalizeSoinList,
+    updateConsultationInvoice,
+    cancelConsultation
+} from '@/domains/care-delivery/services/consultations.js';
+import { getDefaultClassicMethod } from '@/domains/billing/model/paymentMethodUtils.js';
+import { fetchFactureDetail, fetchInsuranceClaimDetail, fetchUnpaidFacturesByPatient, payFacture, payInsurancePatientShare, resetFacturePayments, validateEmptyFacture } from '@/domains/billing/services/caisseService.js';
+import { advanceAfterSettledTab, applyPartialPaymentToTab, buildPayTabs, factureTabId, isInsuranceFactureRow, resolveFacturePatientId, sumPriorReliquatFromTabs } from '@/domains/workforce/composables/usePayTabsDialog.js';
+import { fetchPublicGeneralSettings } from '@/domains/settings/services/globalSettingsService.js';
+import { consultationToFactureRow } from '@/domains/care-delivery/model/consultationRow.js';
+import { canUserModifyInvoice } from '@/domains/billing/model/invoiceModificationAccess.js';
+import { fetchFactureAssurancePrintData, fetchInvoicePrintData, fetchReceiptPrintData } from '@/shared/print/printService.js';
+import { checkConsultationActive, deleteConsultation } from '@/domains/patient/services/patients.js';
+import { fetchPatientById, normalizePatient } from '@/domains/patient/services/patients.js';
+import PrintDevisBody from '@/shared/print/components/PrintDevisBody.vue';
+import PrintFactureAssuranceBody from '@/shared/print/components/PrintFactureAssuranceBody.vue';
+import PrintReceiptBody from '@/shared/print/components/PrintReceiptBody.vue';
+import { sendInvoiceSms } from '@/domains/communication/services/smsService.js';
+import { useAuthStore } from '@/domains/auth/stores/auth.js';
+import { usePaymentMethodsStore } from '@/domains/billing/stores/paymentMethods.js';
+import Button from 'primevue/button';
+import SpeedDial from 'primevue/speeddial';
+import ConfirmPopup from 'primevue/confirmpopup';
+import AppDialog from '@/app/components/layout/AppDialog.vue';
+import { useConfirm } from 'primevue/useconfirm';
+import { useToast } from 'primevue/usetoast';
+import { computed, defineAsyncComponent, onMounted, onBeforeUnmount, ref, watch } from 'vue';
+import { useLayout } from '@/app/layout/composables/layout.js';
+
+const FocusRendezVousView = defineAsyncComponent(() => import('@/domains/scheduling/views/RendezVous.vue'));
+
+const auth = useAuthStore();
+const toast = useToast();
+const confirm = useConfirm();
+const token = localStorage.getItem('token');
+const { printComponent } = usePrinter();
+const paymentMethodsStore = usePaymentMethodsStore();
+
+const loading = ref(false);
+const createPatientFormRef = ref(null);
+const editPatientFormRef = ref(null);
+const rdvFormRef = ref(null);
+const consultations = ref([]);
+const allowReceptionQuickClose = ref(true);
+const allowReceptionInvoiceModification = ref(false);
+const hidePatientDossierForMedecins = ref(false);
+const hidePatientPhoneForMedecins = ref(false);
+const allowMedecinCreatePatientAndConsultation = ref(false);
+const allowMedecinInvoiceSettlement = ref(false);
+const quickAdmissionVisible = ref(false);
+const soinsList = ref([...defaultSoinList]);
+const selectedMode = ref('reception');
+const showCompletedSecretary = ref(true);
+const showCompletedMedecin = ref(true);
+const selectedConsultationId = ref(null);
+const selectedPatient = ref(null);
+const receptionRecentPatients = ref([]);
+const receptionBillingByConsultation = ref({});
+const receptionUnpaidByPatientId = ref({});
+const detailsDialogVisible = ref(false);
+const detailsLoading = ref(false);
+const detailData = ref(null);
+const factureDialogVisible = ref(false);
+const factureLoading = ref(false);
+const factureSaving = ref(false);
+const factureLines = ref([]);
+const factureDate = ref('');
+const factureTime = ref('');
+const factureConsultation = ref(null);
+const paymentMethods = ref([]);
+const payDialogVisible = ref(false);
+const selectedFacture = ref(null);
+const payTabs = ref([]);
+const activePayTabId = ref(null);
+
+const todayApiDate = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+const payForm = ref({
+    montant: 0,
+    modeId: null,
+    date: todayApiDate(),
+    time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', hour12: false })
+});
+const validateDialogVisible = ref(false);
+const validateLoading = ref(false);
+const pendingFacture = ref(null);
+const resetPaymentDialogVisible = ref(false);
+const resetPaymentsLoading = ref(false);
+const previewDialogVisible = ref(false);
+const previewLoading = ref(false);
+const previewData = ref(null);
+const previewDialogTab = ref('services');
+const payLoading = ref(false);
+const quickDialogVisible = ref(false);
+const quickDialogConsultation = ref(null);
+const createPatientDialogVisible = ref(false);
+const createConsultationDialogVisible = ref(false);
+const createConsultationPreSelectedPatient = ref(null);
+const createConsultationLoading = ref({});
+const consultationToolbarLoading = ref(false);
+const showActiveConsultWarn = ref(false);
+const activeConsultWarnPatient = ref(null);
+const activeConsultInfo = ref({ hasActive: false, consultationId: null, hasFiche: false });
+const editPatientDialogVisible = ref(false);
+const patientToEdit = ref(null);
+const showRdvDialog = ref(false);
+const rdvPatient = ref(null);
+const initialized = ref(false);
+const isRealtimeRefreshing = ref(false);
+const hasInitialLoadCompleted = ref(false);
+
+const roles = computed(() => auth.user?.roles || []);
+const isAdmin = computed(() => roles.value.includes('ROLE_ADMIN'));
+const canModifyInvoiceByRole = computed(() => canUserModifyInvoice(auth.user, { allowReceptionInvoiceModification: allowReceptionInvoiceModification.value }));
+const canMedecinSettleInvoices = computed(() => isMedecin.value && allowMedecinInvoiceSettlement.value);
+const isMedecin = computed(() => roles.value.includes('ROLE_MEDECIN'));
+const _isReception = computed(() => roles.value.includes('ROLE_RECEPTION') || roles.value.includes('ROLE_RECEPTIONNISTE') || roles.value.includes('ROLE_SECRETAIRE'));
+const isRestrictedMedecin = computed(() => isMedecin.value && !isAdmin.value);
+const showFocusQuickAdmission = computed(() => allowMedecinCreatePatientAndConsultation.value && (isAdmin.value || isRestrictedMedecin.value));
+const showFocusQuickActions = computed(() => showFocusQuickAdmission.value && selectedMode.value === 'medecin');
+const shouldHidePatientDossierForMedecin = computed(() => isRestrictedMedecin.value && hidePatientDossierForMedecins.value);
+const shouldHidePatientPhoneForMedecin = computed(() => isRestrictedMedecin.value && hidePatientPhoneForMedecins.value);
+const availableModes = computed(() => {
+    const receptionMode = { label: 'Reception', value: 'reception', icon: 'pi pi-users' };
+    const medecinMode = { label: 'Dentiste', value: 'medecin', icon: 'fas fa-stethoscope' };
+    const rdvMode = { label: 'Rendez-vous', value: 'rdv', icon: 'pi pi-calendar' };
+
+    if (isAdmin.value) {
+        return [receptionMode, medecinMode, rdvMode];
+    }
+    if (isMedecin.value) {
+        return [medecinMode, rdvMode];
+    }
+    return [receptionMode, rdvMode];
+});
+
+const selectedModeBorderClass = computed(() => {
+    if (selectedMode.value === 'reception') return 'border-primary-500';
+    if (selectedMode.value === 'medecin') return 'border-cyan-500';
+    return 'border-amber-500';
+});
+
+if (isMedecin.value && !isAdmin.value) {
+    selectedMode.value = 'medecin';
+}
+
+const initialsFromName = (value) =>
+    String(value || '')
+        .split(' ')
+        .filter(Boolean)
+        .map((item) => item.charAt(0))
+        .join('')
+        .slice(0, 2)
+        .toUpperCase();
+
+const resolvePatientPhoto = (value = {}) => value.photo || value.photoUrl || value.photo_url || value.patientPhoto || value.patient_photo || null;
+
+const currentConsultation = computed(() => consultations.value.find((item) => item.id === selectedConsultationId.value) || null);
+const isInsurancePayment = (payment) => {
+    const role = String(payment?.rolePaiement || payment?.role || '').toLowerCase();
+    return role === 'patient_insurance';
+};
+
+const currentReceptionBilling = computed(() => {
+    if (!currentConsultation.value?.id) return null;
+    return receptionBillingByConsultation.value?.[currentConsultation.value.id] || null;
+});
+const currentReceptionInvoiceRow = computed(() => {
+    if (!currentConsultation.value || !currentReceptionBilling.value?.invoiceId) {
+        return null;
+    }
+
+    const payments = Array.isArray(currentReceptionBilling.value.payments) ? currentReceptionBilling.value.payments : [];
+    const insurancePayments = payments.filter((payment) => isInsurancePayment(payment));
+    const directPayments = payments.filter((payment) => !isInsurancePayment(payment));
+    const latestInsurancePayment = insurancePayments[0] || null;
+    const total = Number(currentReceptionBilling.value.total ?? 0) || 0;
+    const remaining = Number(currentReceptionBilling.value.remaining ?? 0) || 0;
+
+    return {
+        id: currentReceptionBilling.value.invoiceId,
+        consultation: currentConsultation.value.id,
+        date: currentConsultation.value.createdAt,
+        montant: total,
+        reste: remaining,
+        statut: remaining === 0 && total > 0 ? 1 : 0,
+        isRegle: (total > 0 && remaining === 0) || (total === 0 && remaining === 0 && currentReceptionBilling.value?.state?.severity === 'success'),
+        patient: currentConsultation.value.patient,
+        patientId: Number(currentConsultation.value.patientId ?? currentConsultation.value.patient?.id ?? 0) || null,
+        telephone: currentConsultation.value.patient?.telephone || currentConsultation.value.patientPhone || '',
+        insurance: {
+            hasInsurance: insurancePayments.length > 0,
+            insuranceStatus: insurancePayments.some((payment) => payment?.status === 'pending') ? 'pending' : 'validated',
+            assuranceId: null,
+            insuranceModeLabel: latestInsurancePayment?.mode ?? null,
+            insuranceRate: latestInsurancePayment?.insuranceRate ?? 0,
+            insuranceAmount: insurancePayments.reduce((sum, payment) => sum + (Number(payment?.montant) || 0), 0),
+            insurancePaidAmount: insurancePayments.reduce((sum, payment) => sum + (Number(payment?.montant) || 0), 0),
+            insurancePendingAmount: insurancePayments.filter((payment) => payment?.status === 'pending').reduce((sum, payment) => sum + (Number(payment?.montant) || 0), 0),
+            insuranceTransactionId: null,
+            insurancePaymentId: latestInsurancePayment?.id ?? null,
+            patientPaidAmount: directPayments.reduce((sum, payment) => sum + (Number(payment?.montant) || 0), 0),
+            patientRemainingAmount: remaining
+        }
+    };
+});
+
+const _currentConsultationClosed = computed(() => Number(currentConsultation.value?.state) === 1);
+
+const focusStats = computed(() => {
+    const total = consultations.value.length;
+    const closed = consultations.value.filter((item) => Number(item.state) === 1).length;
+    const pending = total - closed;
+    return { total, closed, pending };
+});
+
+const showFocusSkeleton = computed(() => loading.value && !hasInitialLoadCompleted.value);
+
+const formatFcfa = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
+
+const activeInvoiceContext = computed(() => {
+    if (selectedFacture.value?.id) {
+        return selectedFacture.value;
+    }
+
+    if (previewData.value?.id) {
+        return previewData.value;
+    }
+
+    return null;
+});
+
+const selectedFactureInsurance = computed(() => activeInvoiceContext.value?.insurance || null);
+const invoiceHasInsurance = computed(() => selectedFactureInsurance.value?.hasInsurance === true);
+const invoiceInsuranceRate = computed(() => Number(selectedFactureInsurance.value?.insuranceRate) || 0);
+const insuranceCoveredAmount = computed(() => {
+    if (!invoiceHasInsurance.value) return 0;
+    return Number(selectedFactureInsurance.value?.insuranceAmount) || 0;
+});
+const patientAlreadyPaidAmount = computed(() => Number(selectedFactureInsurance.value?.patientPaidAmount) || 0);
+const insuranceStatusLabel = computed(() => {
+    if (!invoiceHasInsurance.value) return 'Aucune assurance';
+    return selectedFactureInsurance.value?.assuranceNom || selectedFactureInsurance.value?.insuranceModeLabel || (selectedFactureInsurance.value?.insuranceStatus === 'pending' ? 'Assurance en attente' : 'Assurance enregistrée');
+});
+const previewPayments = computed(() => (Array.isArray(previewData.value?.paiements) ? previewData.value.paiements : []));
+const previewPaymentRoleTag = (payment) => {
+    if (payment?.status === 'pending' && isInsurancePayment(payment)) {
+        return payment?.status === 'pending' ? { label: 'Assurance en attente', severity: 'warning' } : { label: 'Assurance', severity: 'info' };
+    }
+
+    if (isInsurancePayment(payment)) {
+        return { label: 'Assurance', severity: 'info' };
+    }
+
+    return { label: 'Client', severity: 'success' };
+};
+const previewPaymentModeTag = (payment) => {
+    if (payment?.status === 'pending' && isInsurancePayment(payment)) {
+        return {
+            label: payment?.mode || 'Assurance',
+            severity: payment?.status === 'pending' ? 'warning' : 'info'
+        };
+    }
+
+    if (isInsurancePayment(payment)) {
+        return {
+            label: payment?.mode || 'Assurance',
+            severity: 'info'
+        };
+    }
+
+    return { label: payment?.mode || '—', severity: 'success' };
+};
+const previewServicesTotal = computed(() => (previewData.value?.contenus || []).reduce((sum, line) => sum + (Number(line?.total) || 0), 0));
+const patientOutstandingAmount = computed(() => {
+    if (!selectedFacture.value) return 0;
+    return Math.max(0, Number(selectedFacture.value.reste) || 0);
+});
+
+const activePayTab = computed(() => (payTabs.value || []).find((tab) => String(tab.id) === String(activePayTabId.value)) || null);
+const activePayTabMode = computed(() => activePayTab.value?.mode || 'pay');
+const priorReliquatTotal = computed(() => sumPriorReliquatFromTabs(payTabs.value, activePayTabId.value));
+const hasPayReliquatTabs = computed(() => (payTabs.value || []).length > 1);
+const maxClientPaymentAmount = computed(() => {
+    if (!selectedFacture.value) return 0;
+    return Math.max(0, Number(selectedFacture.value.reste) || 0);
+});
+const canResetInvoicePayments = computed(() => {
+    if (!isAdmin.value || !activeInvoiceContext.value) return false;
+    return patientAlreadyPaidAmount.value > 0 || invoiceHasInsurance.value || (Number(activeInvoiceContext.value.reste) || 0) !== (Number(activeInvoiceContext.value.montant) || 0);
+});
+const remainingAfterPay = computed(() => {
+    if (!selectedFacture.value) return 0;
+    const reste = Number(selectedFacture.value.reste) || 0;
+    const montantPatient = Number(payForm.value.montant) || 0;
+    return Math.max(0, reste - montantPatient);
+});
+const classicPaymentOptions = computed(() => (paymentMethods.value || []).filter((method) => method?.actif !== false).map((method) => ({ label: method.libelle, value: method.id, disabled: false })));
+const factureTotal = computed(() => factureLines.value.reduce((sum, line) => sum + (Number(line.prix) || 0) * (Number(line.quantite) || 0), 0));
+
+const normalizePatientForCard = (payload = {}) => {
+    const normalized = normalizePatient(payload || {});
+    const fullName = `${normalized.nom || ''} ${normalized.prenom || ''}`.trim();
+    const maskedPhone = shouldHidePatientPhoneForMedecin.value ? "Masqué par l'administrateur" : normalized.telephone || '--';
+    const resolvedPhoto = resolvePatientPhoto(payload) || resolvePatientPhoto(normalized);
+    return {
+        ...payload,
+        ...normalized,
+        photo: resolvedPhoto,
+        initials: initialsFromName(fullName || payload.fullname || payload.nom),
+        numeroDossier: payload.numeroDossier || payload.numero_dossier || payload.code || `PAT-${normalized.id || '--'}`,
+        age: normalized.age ?? (normalized.dateNaissance ? Math.max(0, Math.floor((Date.now() - new Date(normalized.dateNaissance).getTime()) / (1000 * 60 * 60 * 24 * 365.25))) : 0),
+        groupeSanguin: normalized.groupeSanguin || '--',
+        telephone: maskedPhone,
+        email: normalized.email || '--',
+        adresse: normalized.adresse || '--',
+        antecedents: Array.isArray(payload.antecedents) ? payload.antecedents : [],
+        allergies: Array.isArray(payload.allergies) ? payload.allergies : []
+    };
+};
+
+const mergePatientForCard = (payload = {}) => {
+    const incoming = normalizePatientForCard(payload);
+    const current = selectedPatient.value || {};
+
+    return {
+        ...current,
+        ...incoming,
+        photo: incoming.photo || current.photo || null,
+        numeroDossier: incoming.numeroDossier || current.numeroDossier || '--'
+    };
+};
+
+const handlePatientLoaded = (payload) => {
+    selectedPatient.value = mergePatientForCard(payload);
+};
+
+const loadSettings = async () => {
+    try {
+        const settings = await fetchPublicGeneralSettings(token);
+        allowReceptionQuickClose.value = settings?.allowReceptionConsultationQuickActions !== false && settings?.allowReceptionQuickCloseConsultation !== false;
+        allowReceptionInvoiceModification.value = settings?.allowReceptionInvoiceModification === true;
+        hidePatientDossierForMedecins.value = settings?.hidePatientDossierForMedecins === true;
+        hidePatientPhoneForMedecins.value = settings?.hidePatientPhoneForMedecins === true;
+        allowMedecinCreatePatientAndConsultation.value = settings?.allowMedecinCreatePatientAndConsultation === true;
+        allowMedecinInvoiceSettlement.value = settings?.allowMedecinInvoiceSettlement === true;
+        soinsList.value = normalizeSoinList(settings?.soinsList);
+    } catch (_) {
+        allowReceptionQuickClose.value = true;
+        allowReceptionInvoiceModification.value = false;
+        hidePatientDossierForMedecins.value = false;
+        hidePatientPhoneForMedecins.value = false;
+        allowMedecinCreatePatientAndConsultation.value = false;
+        allowMedecinInvoiceSettlement.value = false;
+        soinsList.value = [...defaultSoinList];
+    }
+};
+
+const syncSelection = () => {
+    if (selectedConsultationId.value && consultations.value.some((item) => item.id === selectedConsultationId.value)) {
+        return;
+    }
+
+    selectedConsultationId.value = null;
+    selectedPatient.value = null;
+};
+
+const clearSelection = () => {
+    selectedConsultationId.value = null;
+    selectedPatient.value = null;
+};
+
+const resetReceptionFocusData = () => {
+    receptionRecentPatients.value = [];
+    receptionBillingByConsultation.value = {};
+    receptionUnpaidByPatientId.value = {};
+};
+
+const setCreateConsultationLoading = (patientId, value) => {
+    if (patientId === undefined || patientId === null) return;
+    createConsultationLoading.value = {
+        ...createConsultationLoading.value,
+        [patientId]: value
+    };
+};
+
+const loadConsultations = async ({ silent = false, realtime = false } = {}) => {
+    if (selectedMode.value === 'rdv') {
+        if (!silent) {
+            loading.value = false;
+        }
+        if (realtime) {
+            isRealtimeRefreshing.value = false;
+        }
+        return;
+    }
+
+    if (!silent) {
+        loading.value = true;
+    }
+    if (realtime) {
+        isRealtimeRefreshing.value = true;
+    }
+    try {
+        if (selectedMode.value === 'reception') {
+            const payload = await fetchFocusReceptionData(todayApiDate(), token);
+            consultations.value = payload.consultations;
+            receptionRecentPatients.value = payload.recentPatients;
+            receptionBillingByConsultation.value = payload.billingByConsultation;
+            receptionUnpaidByPatientId.value = payload.unpaidByPatientId || {};
+        } else {
+            consultations.value = await fetchConsultationsByDate(todayApiDate(), token);
+            resetReceptionFocusData();
+        }
+        syncSelection();
+    } catch (_) {
+        resetReceptionFocusData();
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger les consultations du jour.', life: 3000 });
+    } finally {
+        if (!silent) {
+            loading.value = false;
+        }
+        if (realtime) {
+            isRealtimeRefreshing.value = false;
+        }
+        if (!hasInitialLoadCompleted.value) {
+            hasInitialLoadCompleted.value = true;
+        }
+    }
+};
+
+const loadSelectedPatient = async () => {
+    const consultation = currentConsultation.value;
+    if (!consultation?.patientId) {
+        selectedPatient.value = null;
+        return;
+    }
+
+    try {
+        const patient = await fetchPatientById(consultation.patientId, token);
+        selectedPatient.value = mergePatientForCard(patient);
+    } catch (_) {
+        selectedPatient.value = null;
+    }
+};
+
+const openDetails = async (consultation) => {
+    if (!consultation?.id) return;
+    detailsDialogVisible.value = true;
+    detailsLoading.value = true;
+    detailData.value = null;
+    try {
+        detailData.value = await fetchConsultationDetails(consultation.id, token);
+    } catch (_) {
+        detailsDialogVisible.value = false;
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger les détails.', life: 3000 });
+    } finally {
+        detailsLoading.value = false;
+    }
+};
+
+const loadPaymentMethods = async () => {
+    paymentMethods.value = await paymentMethodsStore.load(token);
+};
+
+const syncPayFormForFacture = (row) => {
+    const defaultClassicMethod = getDefaultClassicMethod(paymentMethods.value);
+    payForm.value = {
+        montant: Number(row?.reste) || 0,
+        modeId: defaultClassicMethod?.id ?? payForm.value.modeId ?? null,
+        date: todayApiDate(),
+        time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', hour12: false })
+    };
+};
+
+const selectPayTab = (tabId) => {
+    activePayTabId.value = tabId == null ? null : String(tabId);
+    const tab = (payTabs.value || []).find((item) => String(item.id) === String(activePayTabId.value));
+    if (!tab) return;
+    selectedFacture.value = tab.facture;
+    if (tab.mode === 'validate') {
+        pendingFacture.value = tab.facture;
+    }
+    if (tab.mode === 'pay') {
+        syncPayFormForFacture(tab.facture);
+    }
+};
+
+const closePayDialog = () => {
+    payDialogVisible.value = false;
+    payTabs.value = [];
+    activePayTabId.value = null;
+};
+
+const onPayDialogVisibleUpdate = (visible) => {
+    if (!visible) {
+        closePayDialog();
+        return;
+    }
+    payDialogVisible.value = true;
+};
+
+const handleAfterInvoiceSettled = async () => {
+    const settledId = activePayTabId.value ?? factureTabId(selectedFacture.value);
+    const hadReliquatTabs = hasPayReliquatTabs.value;
+
+    await loadConsultations();
+
+    if (!hadReliquatTabs) {
+        closePayDialog();
+        return;
+    }
+
+    const advanced = advanceAfterSettledTab(payTabs.value, settledId);
+    payTabs.value = advanced.tabs;
+    if (advanced.shouldClose || !advanced.nextTabId) {
+        closePayDialog();
+        return;
+    }
+    selectPayTab(advanced.nextTabId);
+};
+
+const openPayDialog = async ({ primaryMode = null, row: sourceRow = null } = {}) => {
+    const source = sourceRow || currentReceptionInvoiceRow.value;
+    if (!source) return;
+    const row = {
+        ...source,
+        patientId: resolveFacturePatientId(source) || Number(currentConsultation.value?.patientId ?? currentConsultation.value?.patient?.id ?? 0) || null
+    };
+    selectedFacture.value = row;
+    await loadPaymentMethods();
+
+    const patientId = resolveFacturePatientId(row);
+    let unpaidRows = [];
+    if (patientId) {
+        try {
+            unpaidRows = await fetchUnpaidFacturesByPatient(patientId, token);
+        } catch (_) {
+            unpaidRows = [];
+        }
+    }
+
+    const mode = primaryMode || ((Number(row?.reste) || 0) === 0 && !row?.isRegle ? 'validate' : 'pay');
+    payTabs.value = buildPayTabs(row, unpaidRows, { primaryMode: mode });
+    activePayTabId.value = factureTabId(row);
+    pendingFacture.value = mode === 'validate' ? row : null;
+    syncPayFormForFacture(row);
+    payDialogVisible.value = true;
+};
+
+const openValidateDialog = async () => {
+    if (!currentReceptionInvoiceRow.value) return;
+
+    const patientId = resolveFacturePatientId(currentReceptionInvoiceRow.value) || Number(currentConsultation.value?.patientId ?? currentConsultation.value?.patient?.id ?? 0) || null;
+
+    if (patientId) {
+        try {
+            const unpaidRows = await fetchUnpaidFacturesByPatient(patientId, token);
+            const tabs = buildPayTabs(currentReceptionInvoiceRow.value, unpaidRows, { primaryMode: 'validate' });
+            if (tabs.length > 1) {
+                await openPayDialog({ primaryMode: 'validate' });
+                return;
+            }
+        } catch (_) {
+            // fall through to simple validate dialog
+        }
+    }
+
+    pendingFacture.value = currentReceptionInvoiceRow.value;
+    validateDialogVisible.value = true;
+};
+
+const openModifyDialog = async () => {
+    if (!canModifyInvoiceByRole.value || !currentConsultation.value?.id) return;
+    factureConsultation.value = currentConsultation.value;
+    factureDialogVisible.value = true;
+    factureLoading.value = true;
+    try {
+        const invoice = await fetchConsultationInvoice(currentConsultation.value.id, token);
+        factureLines.value = invoice.lines;
+        factureDate.value = invoice.date || '';
+        factureTime.value = invoice.time || '';
+    } finally {
+        factureLoading.value = false;
+    }
+};
+
+const mapClaimToPreviewData = (detail, claimId) => ({
+    ...detail,
+    insurance: {
+        hasInsurance: true,
+        assuranceNom: detail?.assurance?.nom,
+        assuranceCode: detail?.assurance?.code,
+        tauxCouverture: detail?.tauxCouverture,
+        insuranceRate: detail?.tauxCouverture,
+        montantTotal: detail?.montantTotal,
+        montantAssurance: detail?.montantAssurance,
+        insuranceAmount: detail?.montantAssurance,
+        montantPatient: detail?.montantPatient,
+        restePatient: detail?.restePatient,
+        patientPaidAmount: detail?.patientPaidAmount,
+        factureAssuranceId: claimId
+    },
+    type: 'FactureAssurance',
+    montant: detail?.montantPatient ?? 0,
+    reste: detail?.restePatient ?? 0,
+    contenus: detail?.lignes || []
+});
+
+const openPreviewDialog = async (row = null) => {
+    const source = row?.id ? row : currentReceptionInvoiceRow.value;
+    if (!source?.id) return;
+    previewDialogVisible.value = true;
+    previewLoading.value = true;
+    previewDialogTab.value = 'services';
+    selectedFacture.value = source;
+    try {
+        if (source.type === 'FactureAssurance') {
+            const claimId = source.factureAssuranceId || source.insurance?.factureAssuranceId || source.id;
+            const detail = await fetchInsuranceClaimDetail(claimId, token);
+            previewData.value = mapClaimToPreviewData(detail, claimId);
+        } else {
+            previewData.value = await fetchFactureDetail(source.id, token);
+        }
+    } catch (_) {
+        previewDialogVisible.value = false;
+        toast.add({ severity: 'error', summary: 'Facture', detail: 'Aperçu indisponible', life: 3500 });
+    } finally {
+        previewLoading.value = false;
+    }
+};
+
+const openMedecinInvoicePreview = (consultation) => openPreviewDialog(consultationToFactureRow(consultation));
+const openMedecinInvoicePay = (consultation) => openPayDialog({ row: consultationToFactureRow(consultation) });
+
+const handleMedecinConsultationClosed = async (consultation) => {
+    const consultationId = Number(consultation?.id ?? selectedConsultationId.value ?? 0) || null;
+    await loadConsultations();
+
+    if (selectedMode.value !== 'medecin' || !canMedecinSettleInvoices.value || !consultationId) {
+        return;
+    }
+
+    const refreshed = consultations.value.find((item) => Number(item.id) === consultationId);
+    const row = consultationToFactureRow(refreshed);
+    if (!row || (Number(row.reste) || 0) <= 0) {
+        return;
+    }
+
+    await openPayDialog({ row });
+};
+
+const submitPayment = async () => {
+    if (!selectedFacture.value) return;
+    const montant = Number(payForm.value.montant) || 0;
+    const max = Number(selectedFacture.value.reste) || 0;
+    if (montant <= 0 || montant > max) {
+        toast.add({ severity: 'warn', summary: 'Paiement', detail: 'Montant invalide', life: 3500 });
+        return;
+    }
+    if (!payForm.value.modeId || !payForm.value.date || !payForm.value.time) {
+        toast.add({ severity: 'warn', summary: 'Paiement', detail: 'Informations de paiement incomplètes.', life: 3500 });
+        return;
+    }
+    payLoading.value = true;
+    try {
+        const canPrintClientReceipt = montant > 0;
+        const isInsured = isInsuranceFactureRow(selectedFacture.value);
+        const settledFully = montant >= max;
+        let res;
+
+        if (isInsured) {
+            const claimId = selectedFacture.value.factureAssuranceId || selectedFacture.value.insurance?.factureAssuranceId || selectedFacture.value.id;
+            res = await payInsurancePatientShare(
+                claimId,
+                {
+                    modeId: payForm.value.modeId,
+                    date: `${payForm.value.date}T${payForm.value.time}`,
+                    amount: montant
+                },
+                token
+            );
+        } else {
+            res = await payFacture(
+                selectedFacture.value.id,
+                {
+                    montant,
+                    modeId: payForm.value.modeId,
+                    date: payForm.value.date,
+                    time: payForm.value.time
+                },
+                token
+            );
+        }
+
+        const paymentId = res?.paiement_id ?? res?.paiementId ?? null;
+        toast.add({
+            severity: 'success',
+            summary: 'Paiement',
+            detail: 'Paiement enregistré.',
+            life: canPrintClientReceipt ? 10000 : 3000,
+            data:
+                canPrintClientReceipt && paymentId
+                    ? {
+                          actionLabel: 'Imprimer le reçu',
+                          action: () => printReceiptById(paymentId)
+                      }
+                    : undefined
+        });
+
+        if (settledFully) {
+            await handleAfterInvoiceSettled();
+        } else {
+            payTabs.value = applyPartialPaymentToTab(payTabs.value, activePayTabId.value, montant);
+            selectPayTab(activePayTabId.value);
+            await loadConsultations();
+        }
+    } catch (_) {
+        toast.add({ severity: 'error', summary: 'Paiement', detail: 'Enregistrement impossible', life: 3500 });
+    } finally {
+        payLoading.value = false;
+    }
+};
+
+const reloadFacturePreview = async (factureId) => {
+    if (!previewDialogVisible.value || !factureId) {
+        return;
+    }
+
+    previewLoading.value = true;
+    try {
+        previewData.value = await fetchFactureDetail(factureId, token);
+    } catch (_) {
+        toast.add({ severity: 'error', summary: 'Facture', detail: 'Actualisation du détail impossible', life: 3500 });
+    } finally {
+        previewLoading.value = false;
+    }
+};
+
+const resetSelectedDevisPayments = async () => {
+    const factureId = selectedFacture.value?.id ?? previewData.value?.id ?? currentReceptionInvoiceRow.value?.id;
+    if (!factureId) return;
+
+    resetPaymentsLoading.value = true;
+    try {
+        await resetFacturePayments(factureId, token);
+        resetPaymentDialogVisible.value = false;
+        closePayDialog();
+        toast.add({ severity: 'success', summary: 'Facture', detail: 'Facture réinitialisée.', life: 3000 });
+        await loadConsultations();
+        await reloadFacturePreview(factureId);
+
+        if (currentReceptionInvoiceRow.value) {
+            selectedFacture.value = currentReceptionInvoiceRow.value;
+        }
+    } catch (_) {
+        toast.add({ severity: 'error', summary: 'Facture', detail: 'Réinitialisation impossible.', life: 3500 });
+    } finally {
+        resetPaymentsLoading.value = false;
+    }
+};
+
+const confirmValidate = async () => {
+    const target = pendingFacture.value || selectedFacture.value;
+    if (!target) return;
+    validateLoading.value = true;
+    const fromPayDialog = payDialogVisible.value;
+    try {
+        const isInsured = isInsuranceFactureRow(target);
+        if (isInsured) {
+            await loadPaymentMethods();
+            const claimId = target.factureAssuranceId || target.insurance?.factureAssuranceId || target.id;
+            const classicMethod = getDefaultClassicMethod(paymentMethods.value);
+            await payInsurancePatientShare(
+                claimId,
+                {
+                    modeId: classicMethod?.id,
+                    date: new Date().toISOString(),
+                    amount: 0
+                },
+                token
+            );
+        } else {
+            await validateEmptyFacture(target.id, token);
+        }
+        validateDialogVisible.value = false;
+        toast.add({ severity: 'success', summary: 'Validation', detail: 'Facture vide validée.', life: 3000 });
+
+        if (fromPayDialog) {
+            await handleAfterInvoiceSettled();
+        } else {
+            await loadConsultations();
+        }
+    } catch (_) {
+        toast.add({ severity: 'error', summary: 'Validation', detail: 'Échec de la validation', life: 3500 });
+    } finally {
+        validateLoading.value = false;
+    }
+};
+
+const printInvoice = async () => {
+    const context = previewData.value || selectedFacture.value || currentReceptionInvoiceRow.value;
+    const invoiceId = context?.id;
+    if (!invoiceId && !context?.factureAssuranceId) return;
+    try {
+        if (context?.type === 'FactureAssurance' || previewData.value?.type === 'FactureAssurance') {
+            const claimId = context?.insurance?.factureAssuranceId || context?.factureAssuranceId || selectedFacture.value?.factureAssuranceId || invoiceId;
+            const res = await fetchFactureAssurancePrintData(claimId, token);
+            await printComponent(PrintFactureAssuranceBody, { doc: res.doc, title: res.title || 'Facture assurance' });
+            return;
+        }
+        const res = await fetchInvoicePrintData(invoiceId, token);
+        await printComponent(PrintDevisBody, { doc: res.doc, title: res.title || 'Facture' });
+    } catch (_) {
+        toast.add({ severity: 'error', summary: 'Facture', detail: 'Impression indisponible', life: 3500 });
+    }
+};
+
+const printReceiptById = async (paymentId) => {
+    if (!paymentId) return;
+    try {
+        const res = await fetchReceiptPrintData(paymentId, token);
+        await printComponent(PrintReceiptBody, { paiement: res.paiement }, { format: [226.77, 255.12], width: '80mm' });
+    } catch (_) {
+        toast.add({ severity: 'error', summary: 'Reçu', detail: 'Impression indisponible', life: 3500 });
+    }
+};
+
+const sendInvoiceBySms = async () => {
+    if (!currentReceptionInvoiceRow.value?.id) return;
+    try {
+        const res = await sendInvoiceSms(currentReceptionInvoiceRow.value.id, {}, token);
+        toast.add({
+            severity: res?.success ? 'success' : 'warn',
+            summary: 'SMS Facture',
+            detail: res?.success ? 'Facture ajoutée à la file SMS.' : res?.error || "Échec de l'envoi.",
+            life: 3500
+        });
+    } catch (_) {
+        toast.add({ severity: 'error', summary: 'SMS Facture', detail: 'Envoi impossible.', life: 3500 });
+    }
+};
+
+const handleSaveFacture = async () => {
+    if (!factureConsultation.value?.id) return;
+    factureSaving.value = true;
+    try {
+        await updateConsultationInvoice(
+            factureConsultation.value.id,
+            {
+                lines: factureLines.value,
+                date: factureDate.value,
+                time: factureTime.value
+            },
+            token
+        );
+        toast.add({ severity: 'success', summary: 'Facture mise a jour', life: 2200 });
+        factureDialogVisible.value = false;
+        await loadConsultations();
+    } catch (_) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: "Impossible d'enregistrer la facture.", life: 3000 });
+    } finally {
+        factureSaving.value = false;
+    }
+};
+
+const openQuickDialog = (consultation) => {
+    if (!consultation?.id || Number(consultation.state) === 1) return;
+    quickDialogConsultation.value = consultation;
+    quickDialogVisible.value = true;
+};
+
+const handleQuickDialogDone = async () => {
+    quickDialogVisible.value = false;
+    quickDialogConsultation.value = null;
+    await loadConsultations();
+};
+
+const handlePatientSaved = async (patient) => {
+    createPatientDialogVisible.value = false;
+    editPatientDialogVisible.value = false;
+    if (patient?.id) {
+        selectedPatient.value = mergePatientForCard(patient);
+    }
+    await loadConsultations();
+};
+
+const openCreateRdvForPatient = (patient) => {
+    rdvPatient.value = patient || null;
+    showRdvDialog.value = true;
+};
+
+const handleRdvSaved = () => {
+    showRdvDialog.value = false;
+    rdvPatient.value = null;
+    toast.add({ severity: 'success', summary: 'Rendez-vous', detail: 'Rendez-vous créé avec succès.', life: 2500 });
+};
+
+const dossierDialogVisible = ref(false);
+const dossierDialogPatientId = ref(null);
+
+const openPatientDossier = (patient) => {
+    const patientId = Number(patient?.id ?? patient?.patientId ?? 0);
+    if (!patientId) return;
+    dossierDialogPatientId.value = patientId;
+    dossierDialogVisible.value = true;
+};
+
+const handleDossierUpdated = () => {
+    loadConsultations({ silent: true });
+};
+
+const focusQuickActions = computed(() => [
+    {
+        label: 'Consultation seule',
+        icon: 'pi pi-plus',
+        command: () => openCreateConsultationDialog()
+    },
+    {
+        label: 'Patient et consultation',
+        icon: 'pi pi-user-plus',
+        command: () => {
+            quickAdmissionVisible.value = true;
+        }
+    }
+]);
+
+const openCreateConsultationDialog = () => {
+    consultationToolbarLoading.value = true;
+    try {
+        createConsultationPreSelectedPatient.value = null;
+        createConsultationDialogVisible.value = true;
+    } finally {
+        consultationToolbarLoading.value = false;
+    }
+};
+
+const openCreateConsultationDialogForPatient = async (patient) => {
+    const patientId = patient?.id ?? null;
+    if (patientId) {
+        setCreateConsultationLoading(patientId, true);
+    } else {
+        consultationToolbarLoading.value = true;
+    }
+
+    if (!patient?.id) {
+        try {
+            createConsultationPreSelectedPatient.value = patient || null;
+            createConsultationDialogVisible.value = true;
+            return;
+        } finally {
+            consultationToolbarLoading.value = false;
+        }
+    }
+
+    try {
+        const res = await checkConsultationActive(patient.id, token);
+        activeConsultInfo.value = {
+            hasActive: Boolean(res?.hasActive),
+            consultationId: res?.consultationId ?? null,
+            hasFiche: Boolean(res?.hasFiche)
+        };
+
+        if (res?.hasActive) {
+            activeConsultWarnPatient.value = patient;
+            showActiveConsultWarn.value = true;
+
+            if (res?.consultationId) {
+                selectedConsultationId.value = res.consultationId;
+            }
+            return;
+        }
+
+        activeConsultWarnPatient.value = null;
+        showActiveConsultWarn.value = false;
+        createConsultationPreSelectedPatient.value = patient;
+        createConsultationDialogVisible.value = true;
+    } catch (_) {
+        toast.add({ severity: 'warn', summary: 'Vérification', detail: 'Impossible de vérifier les consultations en cours.', life: 2500 });
+        return;
+    } finally {
+        if (patientId) {
+            setCreateConsultationLoading(patientId, false);
+        } else {
+            consultationToolbarLoading.value = false;
+        }
+    }
+};
+
+const closeActiveConsultWarn = () => {
+    const patientId = activeConsultWarnPatient.value?.id;
+    showActiveConsultWarn.value = false;
+    activeConsultWarnPatient.value = null;
+    activeConsultInfo.value = { hasActive: false, consultationId: null, hasFiche: false };
+    consultationToolbarLoading.value = false;
+    if (patientId) {
+        setCreateConsultationLoading(patientId, false);
+    }
+};
+
+const cancelActiveConsultation = async () => {
+    if (!activeConsultInfo.value.consultationId) return;
+    const patient = activeConsultWarnPatient.value;
+    if (patient?.id) {
+        setCreateConsultationLoading(patient.id, true);
+    }
+
+    try {
+        await deleteConsultation(activeConsultInfo.value.consultationId, token);
+        toast.add({ severity: 'success', summary: 'Consultation annulée', detail: 'La consultation en cours a été supprimée.', life: 3000 });
+        closeActiveConsultWarn();
+        await loadConsultations({ silent: true, realtime: true });
+        if (patient) {
+            await openCreateConsultationDialogForPatient(patient);
+        }
+    } catch (_) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de supprimer la consultation en cours.', life: 3000 });
+    } finally {
+        if (patient?.id) {
+            setCreateConsultationLoading(patient.id, false);
+        }
+    }
+};
+
+const handleConsultationCreated = async (saved) => {
+    createConsultationDialogVisible.value = false;
+    createConsultationPreSelectedPatient.value = null;
+
+    const consultationId = saved?.consultation_id ?? saved?.consultationId ?? null;
+    const paymentId = saved?.paiement_id ?? saved?.paiementId ?? null;
+
+    if (consultationId) {
+        selectedConsultationId.value = consultationId;
+        consultations.value = consultations.value.map((consultation) =>
+            consultation.id === consultationId
+                ? {
+                      ...consultation,
+                      paymentId: paymentId ?? consultation.paymentId ?? null,
+                      isPaid: Boolean(paymentId ?? consultation.paymentId ?? consultation.isPaid)
+                  }
+                : consultation
+        );
+    }
+
+    if (!realtimeEnabled.value) {
+        await loadConsultations();
+    }
+};
+
+const openMedicalWorkspace = (consultation) => {
+    if (!consultation?.id) return;
+    selectedConsultationId.value = consultation.id;
+    selectedMode.value = 'medecin';
+};
+
+const handleCancel = async (consultation) => {
+    if (!consultation?.id) return;
+    try {
+        await cancelConsultation(consultation.id, token);
+        toast.add({ severity: 'success', summary: 'Consultation annulee', life: 2200 });
+        await loadConsultations();
+    } catch (_) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: "Impossible d'annuler la consultation.", life: 3000 });
+    }
+};
+
+const askCancel = (eventOrTarget, consultation) => {
+    const fallbackTarget = typeof document !== 'undefined' && consultation?.id ? document.querySelector(`[data-cancel-consultation-id="${consultation.id}"]`) : null;
+    const activeElement = typeof document !== 'undefined' ? document.activeElement : null;
+    const target = eventOrTarget?.currentTarget || eventOrTarget?.target?.closest?.('button') || eventOrTarget?.target || eventOrTarget || fallbackTarget || (activeElement instanceof HTMLElement ? activeElement : null);
+
+    confirm.require({
+        group: 'focus-cancel-consultation',
+        target,
+        message: 'Annuler cette consultation ? Cette action est irréversible.',
+        icon: 'pi pi-exclamation-triangle',
+        acceptLabel: 'Oui, annuler',
+        rejectLabel: 'Non',
+        acceptClass: 'p-button-danger',
+        accept: () => handleCancel(consultation)
+    });
+};
+
+const onFocusRealtimeEvent = async () => {
+    if (selectedMode.value === 'rdv') {
+        return;
+    }
+
+    await loadConsultations({ silent: true, realtime: true });
+    await loadSelectedPatient();
+};
+
+const { realtimeEnabled } = useFocusRealtime(onFocusRealtimeEvent);
+
+watch(
+    () => selectedConsultationId.value,
+    () => {
+        loadSelectedPatient();
+    },
+    { immediate: true }
+);
+
+watch(
+    () => selectedMode.value,
+    () => {
+        if (!initialized.value) return;
+        loadConsultations();
+    }
+);
+
+const initializeFocusPage = async () => {
+    if (initialized.value) {
+        return;
+    }
+
+    initialized.value = true;
+    await loadSettings();
+    await loadPaymentMethods();
+    await loadConsultations();
+};
+
+onMounted(() => {
+    initializeFocusPage();
+    if (useLayout().isSidebarActive) useLayout().toggleMenu();
+});
+
+onBeforeUnmount(() => {
+    if (!useLayout().isSidebarActive) useLayout().toggleMenu();
+});
+</script>
+
+<template>
+    <section class="flex h-[calc(100dvh-var(--layout-topbar-height)-2.5rem)] flex-col transition-colors duration-300">
+        <ConfirmPopup group="focus-cancel-consultation" />
+
+        <!-- Header ultra-mince (h-12 = 48px) avec bordure inférieure colorée selon le mode -->
+        <header class="sticky top-0 z-30 h-12 shrink-0 border-b-2 bg-white/90 backdrop-blur-xl dark:bg-surface-900/90" :class="selectedModeBorderClass">
+            <div class="mx-auto flex h-full max-w-[1920px] items-center justify-between gap-2 px-3 md:px-6">
+                <div class="flex min-w-0 items-center gap-2 md:gap-3">
+                    <div
+                        :class="[
+                            'flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-white',
+                            selectedMode === 'medecin' ? 'bg-gradient-to-br from-cyan-500 to-teal-600' : selectedMode === 'rdv' ? 'bg-gradient-to-br from-amber-500 to-amber-600' : 'bg-primary-500'
+                        ]"
+                    >
+                        <i :class="selectedMode === 'medecin' ? 'pi pi-heart text-xs' : selectedMode === 'rdv' ? 'pi pi-calendar text-xs' : 'pi pi-bolt text-xs'"></i>
+                    </div>
+                    <h1 class="hidden text-sm font-bold tracking-tight text-surface-900 dark:text-surface-50 sm:inline">Mode Focus</h1>
+                    <span class="hidden sm:inline text-xs text-surface-500"> {{ focusStats.pending }} en attente · {{ focusStats.closed }} terminées </span>
+                    <span v-if="isRealtimeRefreshing" class="hidden lg:inline text-xs text-primary-600 dark:text-primary-300"> <i class="pi pi-spin pi-spinner mr-1"></i>Sync en cours </span>
+                </div>
+
+                <div class="flex min-w-0 items-center gap-1.5 md:gap-2">
+                    <!-- Switcher de mode scrollable sur mobile -->
+                    <div v-if="availableModes.length > 1" class="max-w-[55vw] overflow-x-auto rounded-md bg-surface-100 p-0.5 dark:bg-surface-800 sm:max-w-none">
+                        <div class="flex whitespace-nowrap">
+                            <button
+                                v-for="mode in availableModes"
+                                :key="mode.value"
+                                type="button"
+                                :title="mode.label"
+                                :aria-label="mode.label"
+                                @click="selectedMode = mode.value"
+                                :class="[
+                                    'inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium transition-all sm:px-2.5 md:px-3',
+                                    selectedMode === mode.value
+                                        ? mode.value === 'medecin'
+                                            ? 'bg-white text-cyan-700 shadow-sm ring-1 ring-cyan-500/30 dark:bg-surface-700 dark:text-cyan-300 dark:ring-cyan-400/30'
+                                            : mode.value === 'rdv'
+                                              ? 'bg-white text-amber-700 shadow-sm ring-1 ring-amber-500/30 dark:bg-surface-700 dark:text-amber-300 dark:ring-amber-400/30'
+                                              : 'bg-white text-surface-900 shadow-sm ring-1 ring-primary-500/20 dark:bg-surface-700 dark:text-surface-50 dark:ring-primary-400/20'
+                                        : 'text-surface-500 hover:text-surface-700 dark:text-surface-400 dark:hover:text-surface-200'
+                                ]"
+                            >
+                                <i :class="[mode.icon, 'text-xs']" aria-hidden="true"></i>
+                                <span class="hidden sm:inline">{{ mode.label }}</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="hidden h-4 w-px bg-surface-200 dark:bg-surface-700 sm:block"></div>
+
+                    <!-- Temps réel : pastille seule sur mobile -->
+                    <button
+                        @click="realtimeEnabled = !realtimeEnabled"
+                        :title="realtimeEnabled ? 'Temps réel activé' : 'Temps réel désactivé'"
+                        :class="[
+                            'flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium transition-all',
+                            realtimeEnabled ? 'bg-green-50 text-green-700 ring-1 ring-green-300 dark:bg-green-900/20 dark:text-green-400 dark:ring-green-700' : 'text-surface-500 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800'
+                        ]"
+                    >
+                        <span class="relative flex h-1.5 w-1.5">
+                            <span v-if="realtimeEnabled" class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
+                            <span class="relative inline-flex h-1.5 w-1.5 rounded-full" :class="realtimeEnabled ? 'bg-green-500' : 'bg-surface-300 dark:bg-surface-600'"></span>
+                        </span>
+                        <span class="hidden sm:inline">Temps réel</span>
+                    </button>
+
+                    <!-- Rafraîchir -->
+                    <button @click="loadConsultations" :disabled="loading" class="rounded p-1.5 text-sm text-surface-500 transition hover:bg-surface-100 disabled:opacity-50 dark:text-surface-400 dark:hover:bg-surface-800">
+                        <i :class="loading ? 'pi pi-spin pi-spinner' : 'pi pi-refresh'"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Contenu Principal -->
+        <div class="mx-auto flex min-h-0 w-full max-w-[1920px] flex-1 flex-col px-0 sm:px-0 md:px-0 bg-transparent my-2" :class="selectedMode === 'rdv' ? 'overflow-hidden' : undefined">
+            <FocusReceptionView
+                v-if="selectedMode === 'reception'"
+                class="min-h-0 flex-1"
+                v-model:showCompletedSecretary="showCompletedSecretary"
+                :consultations="consultations"
+                :recent-patients="receptionRecentPatients"
+                :billing-by-consultation="receptionBillingByConsultation"
+                :unpaid-by-patient-id="receptionUnpaidByPatientId"
+                :loading="showFocusSkeleton"
+                :consultation-toolbar-loading="consultationToolbarLoading"
+                :consultation-loading-by-patient="createConsultationLoading"
+                :allow-reception-quick-close="allowReceptionQuickClose"
+                :allow-reception-invoice-modification="canModifyInvoiceByRole"
+                :is-admin="isAdmin"
+                :is-medecin="isMedecin"
+                :selected-consultation-id="selectedConsultationId"
+                @refresh="loadConsultations"
+                @select-consultation="
+                    (consultationId) => {
+                        selectedConsultationId = consultationId;
+                    }
+                "
+                @open-create-patient="createPatientDialogVisible = true"
+                @open-create-consultation="openCreateConsultationDialog"
+                @open-create-consultation-for-patient="openCreateConsultationDialogForPatient"
+                @open-edit-patient="
+                    (patient) => {
+                        patientToEdit = patient;
+                        editPatientDialogVisible = true;
+                    }
+                "
+                @open-create-rdv-for-patient="openCreateRdvForPatient"
+                @open-patient-dossier="openPatientDossier"
+                @open-caisse-pay="openPayDialog"
+                @open-caisse-validate="openValidateDialog"
+                @open-caisse-modify="openModifyDialog"
+                @open-caisse-preview="openPreviewDialog"
+                @send-invoice-sms="sendInvoiceBySms"
+                @open-details="openDetails"
+                @open-quick-dialog="openQuickDialog"
+                @select-medical-workspace="openMedicalWorkspace"
+                @cancel-consultation="askCancel"
+            />
+
+            <FocusMedecinView
+                v-else-if="selectedMode === 'medecin'"
+                class="min-h-0 flex-1"
+                v-model:showCompletedMedecin="showCompletedMedecin"
+                :consultations="consultations"
+                :selected-consultation-id="selectedConsultationId"
+                :selected-patient="selectedPatient"
+                :hide-patient-dossier="shouldHidePatientDossierForMedecin"
+                :hide-patient-phone="shouldHidePatientPhoneForMedecin"
+                :allow-invoice-settlement="canMedecinSettleInvoices"
+                @preview-invoice="openMedecinInvoicePreview"
+                @pay-invoice="openMedecinInvoicePay"
+                @clear-selection="clearSelection"
+                @select-consultation="
+                    (consultationId) => {
+                        selectedConsultationId = consultationId;
+                    }
+                "
+                @patient-loaded="handlePatientLoaded"
+                @consultation-closed="handleMedecinConsultationClosed"
+            />
+
+            <FocusRendezVousView v-else-if="selectedMode === 'rdv'" class="min-h-0 min-w-0 flex-1" embedded />
+
+            <DossierPatientDialog v-model:visible="dossierDialogVisible" :patient-id="dossierDialogPatientId" @updated="handleDossierUpdated" />
+
+            <!-- Dialogs restent inchangés -->
+            <ConsultationDetailsDialog v-model:visible="detailsDialogVisible" :details="detailData" :loading="detailsLoading" />
+            <QuickClotureConsultationDialog v-model:visible="quickDialogVisible" :consultation="quickDialogConsultation" :soins="soinsList" @saved="handleQuickDialogDone" @closed="handleQuickDialogDone" />
+            <CaisseInvoiceDialogs
+                :pay-dialog-visible="payDialogVisible"
+                :selected-facture="selectedFacture"
+                :pay-form="payForm"
+                :classic-payment-options="classicPaymentOptions"
+                :insurance-covered-amount="insuranceCoveredAmount"
+                :insurance-rate="invoiceInsuranceRate"
+                :patient-already-paid-amount="patientAlreadyPaidAmount"
+                :patient-outstanding-amount="patientOutstandingAmount"
+                :invoice-has-insurance="invoiceHasInsurance"
+                :insurance-status-label="insuranceStatusLabel"
+                :max-client-payment-amount="maxClientPaymentAmount"
+                :remaining-after-pay="remainingAfterPay"
+                :can-reset-invoice-payments="canResetInvoicePayments"
+                :pay-loading="payLoading"
+                :pay-tabs="payTabs"
+                :active-pay-tab-id="activePayTabId"
+                :prior-reliquat-total="priorReliquatTotal"
+                :active-pay-tab-mode="activePayTabMode"
+                :reset-payment-dialog-visible="resetPaymentDialogVisible"
+                :reset-payments-loading="resetPaymentsLoading"
+                :validate-dialog-visible="validateDialogVisible"
+                :validate-loading="validateLoading"
+                :facture-dialog-visible="factureDialogVisible"
+                :facture-lines="factureLines"
+                :facture-date="factureDate"
+                :facture-time="factureTime"
+                :facture-saving="factureSaving"
+                :facture-total="factureTotal"
+                :soins-list="soinsList"
+                :preview-dialog-visible="previewDialogVisible"
+                :preview-loading="previewLoading"
+                :preview-data="previewData"
+                :preview-dialog-tab="previewDialogTab"
+                :preview-payments="previewPayments"
+                :preview-services-total="previewServicesTotal"
+                :format-fcfa="formatFcfa"
+                :preview-payment-mode-tag="previewPaymentModeTag"
+                :preview-payment-role-tag="previewPaymentRoleTag"
+                @update:payDialogVisible="onPayDialogVisibleUpdate"
+                @update:activePayTabId="selectPayTab"
+                @update:resetPaymentDialogVisible="resetPaymentDialogVisible = $event"
+                @update:validateDialogVisible="validateDialogVisible = $event"
+                @update:factureDialogVisible="factureDialogVisible = $event"
+                @update:factureDate="factureDate = $event"
+                @update:factureTime="factureTime = $event"
+                @update:previewDialogVisible="previewDialogVisible = $event"
+                @update:previewDialogTab="previewDialogTab = $event"
+                @submit-payment="submitPayment"
+                @confirm-reset="resetSelectedDevisPayments"
+                @confirm-validate="confirmValidate"
+                @save-facture="handleSaveFacture"
+                @print-invoice="printInvoice"
+            />
+            <AppDialog
+                v-model:visible="createPatientDialogVisible"
+                title="Nouveau patient"
+                subtitle="Ajouter un patient depuis le mode focus"
+                icon="pi pi-user-plus"
+                icon-tone="primary"
+                size="lg"
+                maximizable
+                :loading="Boolean(createPatientFormRef?.loading)"
+                cancel-label="Annuler"
+                :confirm-label="createPatientFormRef?.isEdit ? 'Mettre à jour' : 'Créer'"
+                @confirm="createPatientFormRef?.submit()"
+                @cancel="createPatientDialogVisible = false"
+            >
+                <FormPatient ref="createPatientFormRef" hide-actions @saved="handlePatientSaved" @cancel="createPatientDialogVisible = false" />
+            </AppDialog>
+            <CreateConsultationDialog
+                v-model:visible="createConsultationDialogVisible"
+                :patient="createConsultationPreSelectedPatient"
+                maximizable
+                subtitle="Créer une consultation depuis le mode focus"
+                @saved="handleConsultationCreated"
+                @cancel="
+                    createConsultationDialogVisible = false;
+                    createConsultationPreSelectedPatient = null;
+                "
+            />
+            <AppDialog v-model:visible="showActiveConsultWarn" title="Consultation en cours" icon="fas fa-exclamation-triangle" icon-tone="warning" size="md" :show-footer="true">
+                <p class="mb-4 text-surface-700 dark:text-surface-300">Une consultation est déjà ouverte pour ce patient. Clôturez-la ou continuez-la avant d'en créer une nouvelle.</p>
+
+                <p v-if="!activeConsultInfo.hasFiche" class="mb-4 text-sm text-surface-600 dark:text-surface-400">Si cette consultation a été ouverte par erreur, vous pouvez l'annuler directement depuis ce dialogue.</p>
+
+                <div v-if="activeConsultInfo.hasFiche" class="mb-4 flex items-center gap-2 rounded-lg bg-surface-50 p-3 dark:bg-surface-800/50">
+                    <i class="pi pi-info-circle text-surface-500"></i>
+                    <span class="text-sm text-surface-600 dark:text-surface-400"> Cette consultation est liée à une fiche : elle ne peut pas être supprimée. </span>
+                </div>
+
+                <template #footer>
+                    <div class="flex flex-col-reverse justify-end gap-2 sm:flex-row w-full">
+                        <Button label="Compris" severity="secondary" text class="rounded-xl px-5" @click="closeActiveConsultWarn" />
+                        <Button v-if="!activeConsultInfo.hasFiche" label="Annuler la consultation" icon="pi pi-times" severity="danger" class="rounded-xl px-5" @click="cancelActiveConsultation" />
+                    </div>
+                </template>
+            </AppDialog>
+            <AppDialog
+                v-model:visible="editPatientDialogVisible"
+                title="Modifier le patient"
+                subtitle="Mettre à jour les informations du patient"
+                icon="pi pi-user-edit"
+                icon-tone="info"
+                size="lg"
+                maximizable
+                :loading="Boolean(editPatientFormRef?.loading)"
+                cancel-label="Annuler"
+                confirm-label="Mettre à jour"
+                @confirm="editPatientFormRef?.submit()"
+                @cancel="
+                    editPatientDialogVisible = false;
+                    patientToEdit = null;
+                "
+            >
+                <FormPatient
+                    ref="editPatientFormRef"
+                    hide-actions
+                    :patient="patientToEdit"
+                    @saved="handlePatientSaved"
+                    @cancel="
+                        editPatientDialogVisible = false;
+                        patientToEdit = null;
+                    "
+                />
+            </AppDialog>
+            <AppDialog
+                v-model:visible="showRdvDialog"
+                title="Nouveau rendez-vous"
+                :subtitle="rdvPatient?.fullname || `${rdvPatient?.prenom ?? ''} ${rdvPatient?.nom ?? ''}`.trim() || 'Patient'"
+                icon="fas fa-calendar-plus"
+                icon-tone="info"
+                size="lg"
+                maximizable
+                :loading="Boolean(rdvFormRef?.loading)"
+                cancel-label="Annuler"
+                confirm-label="Créer"
+                @confirm="rdvFormRef?.submit()"
+                @cancel="
+                    showRdvDialog = false;
+                    rdvPatient = null;
+                "
+            >
+                <FormRendezVous
+                    ref="rdvFormRef"
+                    hide-actions
+                    :patient="rdvPatient"
+                    :patient-id="rdvPatient?.id"
+                    @saved="handleRdvSaved"
+                    @cancel="
+                        showRdvDialog = false;
+                        rdvPatient = null;
+                    "
+                />
+            </AppDialog>
+            <SpeedDial
+                v-if="showFocusQuickActions"
+                :model="focusQuickActions"
+                direction="up"
+                :transition-delay="40"
+                class="focus-quick-actions right-6 z-40"
+                :style="{ bottom: 'max(1.5rem, env(safe-area-inset-bottom))' }"
+                button-class="!h-14 !w-14 !border-0 !bg-gradient-to-r !from-primary-500 !to-primary-600 !shadow-lg"
+                :button-props="{ rounded: true, severity: 'primary' }"
+                show-icon="pi pi-plus"
+                hide-icon="pi pi-times"
+                aria-label="Ajouter une consultation"
+            >
+                <template #item="{ item, toggleCallback }">
+                    <button
+                        type="button"
+                        class="flex h-11 items-center gap-2 whitespace-nowrap rounded-full bg-white py-1 pl-1.5 pr-4 text-sm font-semibold text-surface-800 shadow-lg ring-1 ring-surface-200 transition hover:bg-surface-50 dark:bg-surface-800 dark:text-surface-50 dark:ring-surface-700 dark:hover:bg-surface-700"
+                        @click="toggleCallback"
+                    >
+                        <span class="flex h-8 w-8 items-center justify-center rounded-full bg-primary-500 text-white">
+                            <i :class="item.icon"></i>
+                        </span>
+                        {{ item.label }}
+                    </button>
+                </template>
+            </SpeedDial>
+            <FocusQuickAdmissionDialog v-model:visible="quickAdmissionVisible" @saved="loadConsultations" />
+        </div>
+    </section>
+</template>
+
+<style>
+.focus-quick-actions.p-speeddial {
+    position: fixed !important;
+    align-items: flex-end !important;
+}
+
+.focus-quick-actions .p-speeddial-list {
+    align-items: flex-end;
+}
+</style>

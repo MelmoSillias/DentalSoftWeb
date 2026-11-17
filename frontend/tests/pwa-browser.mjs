@@ -140,7 +140,7 @@ test('real production SW: required update blocks two tabs, installs on click and
                 cwd: root,
                 timeout: 75000,
                 maxBuffer: 8 * 1024 * 1024,
-                env: { ...process.env, PWA_RELEASE_FILE: '', PWA_RELEASE_METADATA: Buffer.from(JSON.stringify(release)).toString('base64') }
+                env: { ...process.env, VITE_ENABLE_PWA: '', PWA_RELEASE_FILE: '', PWA_RELEASE_METADATA: Buffer.from(JSON.stringify(release)).toString('base64') }
             });
         }
         let deployed = 'a';

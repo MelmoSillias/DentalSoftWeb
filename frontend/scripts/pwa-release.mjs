@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { validateRelease } from '../src/utils/pwaRelease.mjs';
+import { validateRelease } from '../src/shared/lib/pwaRelease.mjs';
 
 export function releaseFromHistory(records, buildId = randomUUID()) {
     if (!records.length) throw new Error('Empty release history');

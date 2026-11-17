@@ -1,0 +1,2716 @@
+[
+  {
+    "legacyName": "api_transaction_update",
+    "legacyPath": "/api/transactions/{id}",
+    "legacyMethods": "PUT|PATCH",
+    "canonicalName": "api_transaction_update",
+    "canonicalPath": "/api/transactions/{id}",
+    "canonicalMethods": "PUT|PATCH",
+    "changed": false
+  },
+  {
+    "legacyName": "api_services_cabinet_list",
+    "legacyPath": "/api/services-cabinet",
+    "legacyMethods": "GET",
+    "canonicalName": "api_services_cabinet_list",
+    "canonicalPath": "/api/services-cabinet",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_patient_services_cabinet_list",
+    "legacyPath": "/api/patients/{id}/services-cabinet",
+    "legacyMethods": "GET",
+    "canonicalName": "api_patient_services_cabinet_list",
+    "canonicalPath": "/api/patients/{id}/services-cabinet",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_patient_services_cabinet_create",
+    "legacyPath": "/api/patients/{id}/services-cabinet",
+    "legacyMethods": "POST",
+    "canonicalName": "api_patient_services_cabinet_create",
+    "canonicalPath": "/api/patients/{id}/services-cabinet",
+    "canonicalMethods": "POST",
+    "changed": false
+  },
+  {
+    "legacyName": "api_services_cabinet_get",
+    "legacyPath": "/api/services-cabinet/{id}",
+    "legacyMethods": "GET",
+    "canonicalName": "api_services_cabinet_get",
+    "canonicalPath": "/api/services-cabinet/{id}",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_services_cabinet_update",
+    "legacyPath": "/api/services-cabinet/{id}",
+    "legacyMethods": "PUT|PATCH",
+    "canonicalName": "api_services_cabinet_update",
+    "canonicalPath": "/api/services-cabinet/{id}",
+    "canonicalMethods": "PUT|PATCH",
+    "changed": false
+  },
+  {
+    "legacyName": "api_services_cabinet_cancel",
+    "legacyPath": "/api/services-cabinet/{id}/cancel",
+    "legacyMethods": "POST",
+    "canonicalName": "api_services_cabinet_cancel",
+    "canonicalPath": "/api/services-cabinet/{id}/cancel",
+    "canonicalMethods": "POST",
+    "changed": false
+  },
+  {
+    "legacyName": "api_factures_cabinet_preview",
+    "legacyPath": "/api/factures-cabinet/{id}",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_factures_cabinet_preview",
+    "canonicalPath": "/api/service-invoices/{id}",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_factures_cabinet_pay",
+    "legacyPath": "/api/factures-cabinet/{id}/pay",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_factures_cabinet_pay",
+    "canonicalPath": "/api/service-invoices/{id}/payments",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_print_facture_cabinet",
+    "legacyPath": "/api/prints/factures-cabinet/{id}",
+    "legacyMethods": "GET",
+    "canonicalName": "api_print_facture_cabinet",
+    "canonicalPath": "/api/prints/factures-cabinet/{id}",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_factures_list",
+    "legacyPath": "/api/factures",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_factures_list",
+    "canonicalPath": "/api/invoices",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_factures_classiques_list",
+    "legacyPath": "/api/factures/classiques",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_factures_classiques_list",
+    "canonicalPath": "/api/invoices/standard",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_factures_assurances_list",
+    "legacyPath": "/api/factures/assurances",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_factures_assurances_list",
+    "canonicalPath": "/api/invoices/insurers",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_factures_unpaid",
+    "legacyPath": "/api/factures/unpaid",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_factures_unpaid",
+    "canonicalPath": "/api/invoices/unpaid",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_factures_unpaid_by_patient",
+    "legacyPath": "/api/factures/unpaid-by-patient/{patientId}",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_factures_unpaid_by_patient",
+    "canonicalPath": "/api/patients/{patientId}/invoices/unpaid",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_factures_payments",
+    "legacyPath": "/api/factures/payments",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_factures_payments",
+    "canonicalPath": "/api/invoices/payments",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_factures_preview",
+    "legacyPath": "/api/factures/{id}",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_factures_preview",
+    "canonicalPath": "/api/invoices/{id}",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_factures_pay",
+    "legacyPath": "/api/factures/{id}/pay",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_factures_pay",
+    "canonicalPath": "/api/invoices/{id}/payments",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_factures_payments_reset",
+    "legacyPath": "/api/factures/{id}/payments/reset",
+    "legacyMethods": "DELETE",
+    "canonicalName": "resource_api_factures_payments_reset",
+    "canonicalPath": "/api/invoices/{id}/payments",
+    "canonicalMethods": "DELETE",
+    "changed": true
+  },
+  {
+    "legacyName": "api_factures_assurance_payments_reset",
+    "legacyPath": "/api/factures/assurance/{id}/payments/reset",
+    "legacyMethods": "DELETE",
+    "canonicalName": "resource_api_factures_assurance_payments_reset",
+    "canonicalPath": "/api/invoices/assurance/{id}/payments/reset",
+    "canonicalMethods": "DELETE",
+    "changed": true
+  },
+  {
+    "legacyName": "api_print_devis_data",
+    "legacyPath": "/api/prints/devis/{id}",
+    "legacyMethods": "GET",
+    "canonicalName": "api_print_devis_data",
+    "canonicalPath": "/api/prints/devis/{id}",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_print_factures_data",
+    "legacyPath": "/api/prints/factures/{id}",
+    "legacyMethods": "GET",
+    "canonicalName": "api_print_factures_data",
+    "canonicalPath": "/api/prints/factures/{id}",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_print_invoice_data",
+    "legacyPath": "/api/prints/invoices/{id}",
+    "legacyMethods": "GET",
+    "canonicalName": "api_print_invoice_data",
+    "canonicalPath": "/api/prints/invoices/{id}",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_print_payments_data",
+    "legacyPath": "/api/prints/payments",
+    "legacyMethods": "GET",
+    "canonicalName": "api_print_payments_data",
+    "canonicalPath": "/api/prints/payments",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_print_receipt_data",
+    "legacyPath": "/api/prints/receipts/{id}",
+    "legacyMethods": "GET",
+    "canonicalName": "api_print_receipt_data",
+    "canonicalPath": "/api/prints/receipts/{id}",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_print_ticket_data",
+    "legacyPath": "/api/prints/tickets/{id}",
+    "legacyMethods": "GET",
+    "canonicalName": "api_print_ticket_data",
+    "canonicalPath": "/api/prints/tickets/{id}",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_print_assurance_claim_data",
+    "legacyPath": "/api/prints/assurances/claims/{id}",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_print_assurance_claim_data",
+    "canonicalPath": "/api/prints/insurers/claims/{id}",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_assurances_list",
+    "legacyPath": "/api/assurances",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_assurances_list",
+    "canonicalPath": "/api/insurers",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_assurances_create",
+    "legacyPath": "/api/assurances",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_assurances_create",
+    "canonicalPath": "/api/insurers",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_assurances_toggle",
+    "legacyPath": "/api/assurances/{code}/toggle",
+    "legacyMethods": "PATCH",
+    "canonicalName": "resource_api_assurances_toggle",
+    "canonicalPath": "/api/insurers/{code}/toggle",
+    "canonicalMethods": "PATCH",
+    "changed": true
+  },
+  {
+    "legacyName": "api_assurances_update",
+    "legacyPath": "/api/assurances/{code}",
+    "legacyMethods": "PATCH",
+    "canonicalName": "resource_api_assurances_update",
+    "canonicalPath": "/api/insurers/{code}",
+    "canonicalMethods": "PATCH",
+    "changed": true
+  },
+  {
+    "legacyName": "api_insurance_claims_list",
+    "legacyPath": "/api/assurances/claims",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_insurance_claims_list",
+    "canonicalPath": "/api/insurance-claims",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_insurance_claims_patient_pay",
+    "legacyPath": "/api/assurances/claims/{id}/patient-pay",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_insurance_claims_patient_pay",
+    "canonicalPath": "/api/insurance-claims/{id}/patient-pay",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_assurances_dashboard",
+    "legacyPath": "/api/assurances/dashboard",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_assurances_dashboard",
+    "canonicalPath": "/api/insurers/dashboard",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_assurances_lots_list",
+    "legacyPath": "/api/assurances/{code}/lots",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_assurances_lots_list",
+    "canonicalPath": "/api/insurers/{code}/batches",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_assurances_lots_open",
+    "legacyPath": "/api/assurances/{code}/lots",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_assurances_lots_open",
+    "canonicalPath": "/api/insurers/{code}/batches",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_assurances_lots_detail",
+    "legacyPath": "/api/assurances/lots/{id}",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_assurances_lots_detail",
+    "canonicalPath": "/api/insurance-batches/{id}",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_assurances_lots_update",
+    "legacyPath": "/api/assurances/lots/{id}",
+    "legacyMethods": "PATCH",
+    "canonicalName": "resource_api_assurances_lots_update",
+    "canonicalPath": "/api/insurance-batches/{id}",
+    "canonicalMethods": "PATCH",
+    "changed": true
+  },
+  {
+    "legacyName": "api_assurances_lots_send",
+    "legacyPath": "/api/assurances/lots/{id}/send",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_assurances_lots_send",
+    "canonicalPath": "/api/insurance-batches/{id}/send",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_assurances_lots_reopen",
+    "legacyPath": "/api/assurances/lots/{id}/reopen",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_assurances_lots_reopen",
+    "canonicalPath": "/api/insurance-batches/{id}/reopen",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_assurances_lots_confirm",
+    "legacyPath": "/api/assurances/lots/{id}/confirm",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_assurances_lots_confirm",
+    "canonicalPath": "/api/insurance-batches/{id}/confirm",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_assurances_lots_unconfirm",
+    "legacyPath": "/api/assurances/lots/{id}/unconfirm",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_assurances_lots_unconfirm",
+    "canonicalPath": "/api/insurance-batches/{id}/unconfirm",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_assurances_lots_refund",
+    "legacyPath": "/api/assurances/lots/{id}/refund",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_assurances_lots_refund",
+    "canonicalPath": "/api/insurance-batches/{id}/refund",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_assurances_lots_recover",
+    "legacyPath": "/api/assurances/lots/{id}/recover",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_assurances_lots_recover",
+    "canonicalPath": "/api/insurance-batches/{id}/recover",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_assurances_lots_refund_cancel",
+    "legacyPath": "/api/assurances/lots/{id}/refunds/{transactionId}/cancel",
+    "legacyMethods": "PATCH",
+    "canonicalName": "resource_api_assurances_lots_refund_cancel",
+    "canonicalPath": "/api/insurance-batches/{id}/refunds/{transactionId}/cancel",
+    "canonicalMethods": "PATCH",
+    "changed": true
+  },
+  {
+    "legacyName": "api_assurances_lots_recover_cancel",
+    "legacyPath": "/api/assurances/lots/{id}/recover/cancel",
+    "legacyMethods": "PATCH",
+    "canonicalName": "resource_api_assurances_lots_recover_cancel",
+    "canonicalPath": "/api/insurance-batches/{id}/recover/cancel",
+    "canonicalMethods": "PATCH",
+    "changed": true
+  },
+  {
+    "legacyName": "api_assurances_lots_add_claim",
+    "legacyPath": "/api/assurances/lots/{id}/claims",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_assurances_lots_add_claim",
+    "canonicalPath": "/api/insurance-batches/{id}/claims",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_assurances_claims_move_lot",
+    "legacyPath": "/api/assurances/claims/{factureId}/move-lot",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_assurances_claims_move_lot",
+    "canonicalPath": "/api/insurance-claims/{factureId}/move-lot",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_assurances_lots_remove_claim",
+    "legacyPath": "/api/assurances/lots/{id}/claims/{factureId}",
+    "legacyMethods": "DELETE",
+    "canonicalName": "resource_api_assurances_lots_remove_claim",
+    "canonicalPath": "/api/insurance-batches/{id}/claims/{factureId}",
+    "canonicalMethods": "DELETE",
+    "changed": true
+  },
+  {
+    "legacyName": "api_modes_paiement_list",
+    "legacyPath": "/api/payment-methods",
+    "legacyMethods": "GET",
+    "canonicalName": "api_modes_paiement_list",
+    "canonicalPath": "/api/payment-methods",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_modes_paiement_create",
+    "legacyPath": "/api/payment-methods",
+    "legacyMethods": "POST",
+    "canonicalName": "api_modes_paiement_create",
+    "canonicalPath": "/api/payment-methods",
+    "canonicalMethods": "POST",
+    "changed": false
+  },
+  {
+    "legacyName": "api_modes_paiement_update",
+    "legacyPath": "/api/payment-methods/{id}",
+    "legacyMethods": "PUT",
+    "canonicalName": "api_modes_paiement_update",
+    "canonicalPath": "/api/payment-methods/{id}",
+    "canonicalMethods": "PUT",
+    "changed": false
+  },
+  {
+    "legacyName": "api_modes_paiement_delete",
+    "legacyPath": "/api/payment-methods/{id}",
+    "legacyMethods": "DELETE",
+    "canonicalName": "api_modes_paiement_delete",
+    "canonicalPath": "/api/payment-methods/{id}",
+    "canonicalMethods": "DELETE",
+    "changed": false
+  },
+  {
+    "legacyName": "api_modes_paiement_toggle",
+    "legacyPath": "/api/payment-methods/{id}/toggle",
+    "legacyMethods": "PATCH",
+    "canonicalName": "api_modes_paiement_toggle",
+    "canonicalPath": "/api/payment-methods/{id}/toggle",
+    "canonicalMethods": "PATCH",
+    "changed": false
+  },
+  {
+    "legacyName": "api_finances_chart_data",
+    "legacyPath": "/api/finances/chart-data",
+    "legacyMethods": "GET",
+    "canonicalName": "api_finances_chart_data",
+    "canonicalPath": "/api/finances/chart-data",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_finances_cross_table",
+    "legacyPath": "/api/finances/cross-table",
+    "legacyMethods": "GET",
+    "canonicalName": "api_finances_cross_table",
+    "canonicalPath": "/api/finances/cross-table",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_finances_cross_table_day_overview",
+    "legacyPath": "/api/finances/cross-table/day-overview",
+    "legacyMethods": "GET",
+    "canonicalName": "api_finances_cross_table_day_overview",
+    "canonicalPath": "/api/finances/cross-table/day-overview",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_finances_cross_table_period_overview",
+    "legacyPath": "/api/finances/cross-table/period-overview",
+    "legacyMethods": "GET",
+    "canonicalName": "api_finances_cross_table_period_overview",
+    "canonicalPath": "/api/finances/cross-table/period-overview",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_finances_fixed_charges_list",
+    "legacyPath": "/api/finances/fixed-charges",
+    "legacyMethods": "GET",
+    "canonicalName": "api_finances_fixed_charges_list",
+    "canonicalPath": "/api/finances/fixed-charges",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_finances_fixed_charges_create",
+    "legacyPath": "/api/finances/fixed-charges",
+    "legacyMethods": "POST",
+    "canonicalName": "api_finances_fixed_charges_create",
+    "canonicalPath": "/api/finances/fixed-charges",
+    "canonicalMethods": "POST",
+    "changed": false
+  },
+  {
+    "legacyName": "api_finances_fixed_charges_update",
+    "legacyPath": "/api/finances/fixed-charges/{id}",
+    "legacyMethods": "PUT",
+    "canonicalName": "api_finances_fixed_charges_update",
+    "canonicalPath": "/api/finances/fixed-charges/{id}",
+    "canonicalMethods": "PUT",
+    "changed": false
+  },
+  {
+    "legacyName": "api_finances_fixed_charges_delete",
+    "legacyPath": "/api/finances/fixed-charges/{id}",
+    "legacyMethods": "DELETE",
+    "canonicalName": "api_finances_fixed_charges_delete",
+    "canonicalPath": "/api/finances/fixed-charges/{id}",
+    "canonicalMethods": "DELETE",
+    "changed": false
+  },
+  {
+    "legacyName": "api_transactions_list",
+    "legacyPath": "/api/transactions",
+    "legacyMethods": "GET",
+    "canonicalName": "api_transactions_list",
+    "canonicalPath": "/api/transactions",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_transaction_create",
+    "legacyPath": "/api/transaction",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_transaction_create",
+    "canonicalPath": "/api/transactions",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_transaction_validate",
+    "legacyPath": "/api/transactions/{id}/validate",
+    "legacyMethods": "PATCH",
+    "canonicalName": "api_transaction_validate",
+    "canonicalPath": "/api/transactions/{id}/validate",
+    "canonicalMethods": "PATCH",
+    "changed": false
+  },
+  {
+    "legacyName": "api_transaction_reject",
+    "legacyPath": "/api/transactions/{id}/reject",
+    "legacyMethods": "PATCH",
+    "canonicalName": "api_transaction_reject",
+    "canonicalPath": "/api/transactions/{id}/reject",
+    "canonicalMethods": "PATCH",
+    "changed": false
+  },
+  {
+    "legacyName": "api_transaction_delete",
+    "legacyPath": "/api/transactions/{id}",
+    "legacyMethods": "DELETE",
+    "canonicalName": "api_transaction_delete",
+    "canonicalPath": "/api/transactions/{id}",
+    "canonicalMethods": "DELETE",
+    "changed": false
+  },
+  {
+    "legacyName": "api_transactions_intercompte",
+    "legacyPath": "/api/transactions/intercompte",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_transactions_intercompte",
+    "canonicalPath": "/api/transfers",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_consultation_set_fiche",
+    "legacyPath": "/api/consultation/set_fiche/{ficheId}",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_consultation_set_fiche",
+    "canonicalPath": "/api/medical-records/{ficheId}/consultation-links",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "consultations_pending",
+    "legacyPath": "/api/consultations/pending",
+    "legacyMethods": "ANY",
+    "canonicalName": "resource_consultations_pending",
+    "canonicalPath": "/api/consultations/pending",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_consultations_closed",
+    "legacyPath": "/api/consultations/closed",
+    "legacyMethods": "GET",
+    "canonicalName": "api_consultations_closed",
+    "canonicalPath": "/api/consultations/closed",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_consultations_day",
+    "legacyPath": "/api/consultations/day",
+    "legacyMethods": "GET",
+    "canonicalName": "api_consultations_day",
+    "canonicalPath": "/api/consultations/day",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_focus_reception",
+    "legacyPath": "/api/focus/reception",
+    "legacyMethods": "GET",
+    "canonicalName": "api_focus_reception",
+    "canonicalPath": "/api/focus/reception",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_consultation_delete",
+    "legacyPath": "/api/consultations/{id}",
+    "legacyMethods": "DELETE",
+    "canonicalName": "api_consultation_delete",
+    "canonicalPath": "/api/consultations/{id}",
+    "canonicalMethods": "DELETE",
+    "changed": false
+  },
+  {
+    "legacyName": "api_consultation_ordonnances",
+    "legacyPath": "/api/consultations/{consultation}/ordonnances",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_consultation_ordonnances",
+    "canonicalPath": "/api/consultations/{consultation}/prescriptions",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_consultation_ordonnance_add",
+    "legacyPath": "/api/consultations/{consultation}/ordonnances",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_consultation_ordonnance_add",
+    "canonicalPath": "/api/consultations/{consultation}/prescriptions",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_ordonnance_get",
+    "legacyPath": "/api/ordonnance/{id}",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_ordonnance_get",
+    "canonicalPath": "/api/prescriptions/{id}",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_ordonnance_update",
+    "legacyPath": "/api/ordonnance/{id}",
+    "legacyMethods": "PUT",
+    "canonicalName": "resource_api_ordonnance_update",
+    "canonicalPath": "/api/prescriptions/{id}",
+    "canonicalMethods": "PUT",
+    "changed": true
+  },
+  {
+    "legacyName": "api_print_ordonnance_data",
+    "legacyPath": "/api/prints/ordonnances/{id}",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_print_ordonnance_data",
+    "canonicalPath": "/api/prints/prescriptions/{id}",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_consultation_facture",
+    "legacyPath": "/api/consultations/{consultation}/facture",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_consultation_facture",
+    "canonicalPath": "/api/consultations/{consultation}/invoice",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_consultation_facture_update",
+    "legacyPath": "/api/consultations/{consultation}/facture/update",
+    "legacyMethods": "PUT",
+    "canonicalName": "resource_api_consultation_facture_update",
+    "canonicalPath": "/api/consultations/{consultation}/invoice",
+    "canonicalMethods": "PUT",
+    "changed": true
+  },
+  {
+    "legacyName": "api_consultation_details",
+    "legacyPath": "/api/admin/consultation/{id}/details",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_consultation_details",
+    "canonicalPath": "/api/consultations/{id}/administrative-details",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_consultation_details_public",
+    "legacyPath": "/api/consultations/{id}/details",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_consultation_details_public",
+    "canonicalPath": "/api/consultations/{id}",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_consultation_verify_medecin_password",
+    "legacyPath": "/api/consultations/{id}/verify-medecin-password",
+    "legacyMethods": "POST",
+    "canonicalName": "api_consultation_verify_medecin_password",
+    "canonicalPath": "/api/consultations/{id}/verify-medecin-password",
+    "canonicalMethods": "POST",
+    "changed": false
+  },
+  {
+    "legacyName": "api_fiche_consultation_json",
+    "legacyPath": "/api/fiches/{ficheId}/consultations/{consultationId}/json",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_fiche_consultation_json",
+    "canonicalPath": "/api/care-records/{ficheId}/consultations/{consultationId}",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_fiche_consultation_update_motif",
+    "legacyPath": "/api/fiches/{ficheId}/motif",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_fiche_consultation_update_motif",
+    "canonicalPath": "/api/care-records/{ficheId}/reason",
+    "canonicalMethods": "PATCH",
+    "changed": true
+  },
+  {
+    "legacyName": "api_fiche_consultation_update_examens",
+    "legacyPath": "/api/fiches/{ficheId}/examens",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_fiche_consultation_update_examens",
+    "canonicalPath": "/api/care-records/{ficheId}/examinations",
+    "canonicalMethods": "PATCH",
+    "changed": true
+  },
+  {
+    "legacyName": "api_fiche_consultation_update_traitements",
+    "legacyPath": "/api/fiches/{ficheId}/traitements",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_fiche_consultation_update_traitements",
+    "canonicalPath": "/api/care-records/{ficheId}/treatments",
+    "canonicalMethods": "PATCH",
+    "changed": true
+  },
+  {
+    "legacyName": "api_fiche_consultation_update_devis",
+    "legacyPath": "/api/fiches/{ficheId}/devis",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_fiche_consultation_update_devis",
+    "canonicalPath": "/api/care-records/{ficheId}/quotes",
+    "canonicalMethods": "PATCH",
+    "changed": true
+  },
+  {
+    "legacyName": "api_fiche_consultation_update",
+    "legacyPath": "/api/fiches/{ficheId}/consultations/{consultationId}",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_fiche_consultation_update",
+    "canonicalPath": "/api/care-records/{ficheId}/consultations/{consultationId}",
+    "canonicalMethods": "PATCH",
+    "changed": true
+  },
+  {
+    "legacyName": "api_fiche_consultation_cloture",
+    "legacyPath": "/api/fiches/{ficheId}/consultations/{consultationId}/cloture",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_fiche_consultation_cloture",
+    "canonicalPath": "/api/care-records/{ficheId}/consultations/{consultationId}/closure",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_fiche_medicale_json",
+    "legacyPath": "/api/fiches-medicales/{ficheId}/json",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_fiche_medicale_json",
+    "canonicalPath": "/api/medical-records/{ficheId}",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_fiche_medicale_update_entretien",
+    "legacyPath": "/api/fiches-medicales/{ficheId}/entretien",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_fiche_medicale_update_entretien",
+    "canonicalPath": "/api/medical-records/{ficheId}/interview",
+    "canonicalMethods": "PATCH",
+    "changed": true
+  },
+  {
+    "legacyName": "api_fiche_medicale_update_examens",
+    "legacyPath": "/api/fiches-medicales/{ficheId}/examens",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_fiche_medicale_update_examens",
+    "canonicalPath": "/api/medical-records/{ficheId}/examinations",
+    "canonicalMethods": "PATCH",
+    "changed": true
+  },
+  {
+    "legacyName": "api_fiche_medicale_update_bilans",
+    "legacyPath": "/api/fiches-medicales/{ficheId}/bilans",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_fiche_medicale_update_bilans",
+    "canonicalPath": "/api/medical-records/{ficheId}/assessments",
+    "canonicalMethods": "PATCH",
+    "changed": true
+  },
+  {
+    "legacyName": "api_fiche_medicale_update_plan_traitement",
+    "legacyPath": "/api/fiches-medicales/{ficheId}/plan-traitement",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_fiche_medicale_update_plan_traitement",
+    "canonicalPath": "/api/medical-records/{ficheId}/treatment-plan",
+    "canonicalMethods": "PATCH",
+    "changed": true
+  },
+  {
+    "legacyName": "api_fiche_medicale_update_documents",
+    "legacyPath": "/api/fiches-medicales/{ficheId}/documents",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_fiche_medicale_update_documents",
+    "canonicalPath": "/api/medical-records/{ficheId}/documents",
+    "canonicalMethods": "PATCH",
+    "changed": true
+  },
+  {
+    "legacyName": "api_fiche_medicale_update_devis",
+    "legacyPath": "/api/fiches-medicales/{ficheId}/devis",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_fiche_medicale_update_devis",
+    "canonicalPath": "/api/medical-records/{ficheId}/quotes",
+    "canonicalMethods": "PATCH",
+    "changed": true
+  },
+  {
+    "legacyName": "api_me_notifications",
+    "legacyPath": "/api/me/notifications",
+    "legacyMethods": "GET",
+    "canonicalName": "api_me_notifications",
+    "canonicalPath": "/api/me/notifications",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_me_notifications_mark_read",
+    "legacyPath": "/api/me/notifications/mark-read",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_me_notifications_mark_read",
+    "canonicalPath": "/api/me/notification-read-receipts",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_me_notifications_mark_all",
+    "legacyPath": "/api/me/notifications/mark-all",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_me_notifications_mark_all",
+    "canonicalPath": "/api/me/notification-read-receipts/all",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_admin_notifications_send",
+    "legacyPath": "/api/admin/notifications/send",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_admin_notifications_send",
+    "canonicalPath": "/api/notifications",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_me_notifications_mercure",
+    "legacyPath": "/api/me/notifications/mercure",
+    "legacyMethods": "GET",
+    "canonicalName": "api_me_notifications_mercure",
+    "canonicalPath": "/api/me/notifications/mercure",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_me_push_config",
+    "legacyPath": "/api/me/push/config",
+    "legacyMethods": "GET",
+    "canonicalName": "api_me_push_config",
+    "canonicalPath": "/api/me/push/config",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_me_push_subscription_upsert",
+    "legacyPath": "/api/me/push/subscription",
+    "legacyMethods": "PUT",
+    "canonicalName": "api_me_push_subscription_upsert",
+    "canonicalPath": "/api/me/push/subscription",
+    "canonicalMethods": "PUT",
+    "changed": false
+  },
+  {
+    "legacyName": "api_me_push_subscription_delete",
+    "legacyPath": "/api/me/push/subscription",
+    "legacyMethods": "DELETE",
+    "canonicalName": "api_me_push_subscription_delete",
+    "canonicalPath": "/api/me/push/subscription",
+    "canonicalMethods": "DELETE",
+    "changed": false
+  },
+  {
+    "legacyName": "api_me_realtime",
+    "legacyPath": "/api/me/realtime",
+    "legacyMethods": "GET",
+    "canonicalName": "api_me_realtime",
+    "canonicalPath": "/api/me/realtime",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_vitrine_mailbox_get",
+    "legacyPath": "/api/vitrine/mailbox",
+    "legacyMethods": "GET",
+    "canonicalName": "api_vitrine_mailbox_get",
+    "canonicalPath": "/api/vitrine/mailbox",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_vitrine_mailbox_save",
+    "legacyPath": "/api/vitrine/mailbox",
+    "legacyMethods": "PUT",
+    "canonicalName": "api_vitrine_mailbox_save",
+    "canonicalPath": "/api/vitrine/mailbox",
+    "canonicalMethods": "PUT",
+    "changed": false
+  },
+  {
+    "legacyName": "api_vitrine_messages",
+    "legacyPath": "/api/vitrine/messages",
+    "legacyMethods": "GET",
+    "canonicalName": "api_vitrine_messages",
+    "canonicalPath": "/api/vitrine/messages",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_vitrine_sync",
+    "legacyPath": "/api/vitrine/messages/sync",
+    "legacyMethods": "POST",
+    "canonicalName": "api_vitrine_sync",
+    "canonicalPath": "/api/vitrine/messages/sync",
+    "canonicalMethods": "POST",
+    "changed": false
+  },
+  {
+    "legacyName": "api_vitrine_message_status",
+    "legacyPath": "/api/vitrine/messages/{id}",
+    "legacyMethods": "PATCH",
+    "canonicalName": "api_vitrine_message_status",
+    "canonicalPath": "/api/vitrine/messages/{id}",
+    "canonicalMethods": "PATCH",
+    "changed": false
+  },
+  {
+    "legacyName": "api_vitrine_reply",
+    "legacyPath": "/api/vitrine/messages/{id}/reply",
+    "legacyMethods": "POST",
+    "canonicalName": "api_vitrine_reply",
+    "canonicalPath": "/api/vitrine/messages/{id}/reply",
+    "canonicalMethods": "POST",
+    "changed": false
+  },
+  {
+    "legacyName": "api_vitrine_portals",
+    "legacyPath": "/api/vitrine/portals",
+    "legacyMethods": "GET",
+    "canonicalName": "api_vitrine_portals",
+    "canonicalPath": "/api/vitrine/portals",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_vitrine_portal_username",
+    "legacyPath": "/api/vitrine/portals/{id}/username",
+    "legacyMethods": "PATCH",
+    "canonicalName": "api_vitrine_portal_username",
+    "canonicalPath": "/api/vitrine/portals/{id}/username",
+    "canonicalMethods": "PATCH",
+    "changed": false
+  },
+  {
+    "legacyName": "api_vitrine_portal_reset",
+    "legacyPath": "/api/vitrine/portals/{id}/reset-password",
+    "legacyMethods": "POST",
+    "canonicalName": "api_vitrine_portal_reset",
+    "canonicalPath": "/api/vitrine/portals/{id}/reset-password",
+    "canonicalMethods": "POST",
+    "changed": false
+  },
+  {
+    "legacyName": "api_sms_settings_get",
+    "legacyPath": "/api/sms/settings",
+    "legacyMethods": "GET",
+    "canonicalName": "api_sms_settings_get",
+    "canonicalPath": "/api/sms/settings",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_sms_settings_save",
+    "legacyPath": "/api/sms/settings",
+    "legacyMethods": "PUT",
+    "canonicalName": "api_sms_settings_save",
+    "canonicalPath": "/api/sms/settings",
+    "canonicalMethods": "PUT",
+    "changed": false
+  },
+  {
+    "legacyName": "api_sms_test_connection",
+    "legacyPath": "/api/sms/test-connection",
+    "legacyMethods": "POST",
+    "canonicalName": "api_sms_test_connection",
+    "canonicalPath": "/api/sms/test-connection",
+    "canonicalMethods": "POST",
+    "changed": false
+  },
+  {
+    "legacyName": "api_sms_test_send",
+    "legacyPath": "/api/sms/test-send",
+    "legacyMethods": "POST",
+    "canonicalName": "api_sms_test_send",
+    "canonicalPath": "/api/sms/test-send",
+    "canonicalMethods": "POST",
+    "changed": false
+  },
+  {
+    "legacyName": "api_sms_stats",
+    "legacyPath": "/api/sms/stats",
+    "legacyMethods": "GET",
+    "canonicalName": "api_sms_stats",
+    "canonicalPath": "/api/sms/stats",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_sms_provider_overview",
+    "legacyPath": "/api/sms/provider-overview",
+    "legacyMethods": "GET",
+    "canonicalName": "api_sms_provider_overview",
+    "canonicalPath": "/api/sms/provider-overview",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_sms_webhook_afriksms",
+    "legacyPath": "/api/sms/webhooks/afriksms",
+    "legacyMethods": "GET|POST",
+    "canonicalName": "api_sms_webhook_afriksms",
+    "canonicalPath": "/api/sms/webhooks/afriksms",
+    "canonicalMethods": "GET|POST",
+    "changed": false
+  },
+  {
+    "legacyName": "api_sms_logs",
+    "legacyPath": "/api/sms/logs",
+    "legacyMethods": "GET",
+    "canonicalName": "api_sms_logs",
+    "canonicalPath": "/api/sms/logs",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_sms_queue_list",
+    "legacyPath": "/api/sms/queue",
+    "legacyMethods": "GET",
+    "canonicalName": "api_sms_queue_list",
+    "canonicalPath": "/api/sms/queue",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_sms_queue_details",
+    "legacyPath": "/api/sms/queue/{id}/details",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_sms_queue_details",
+    "canonicalPath": "/api/sms/queue/{id}",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_sms_queue_update",
+    "legacyPath": "/api/sms/queue/{id}",
+    "legacyMethods": "PATCH",
+    "canonicalName": "api_sms_queue_update",
+    "canonicalPath": "/api/sms/queue/{id}",
+    "canonicalMethods": "PATCH",
+    "changed": false
+  },
+  {
+    "legacyName": "api_sms_templates_list",
+    "legacyPath": "/api/sms/templates",
+    "legacyMethods": "GET",
+    "canonicalName": "api_sms_templates_list",
+    "canonicalPath": "/api/sms/templates",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_sms_templates_save",
+    "legacyPath": "/api/sms/templates",
+    "legacyMethods": "PUT",
+    "canonicalName": "api_sms_templates_save",
+    "canonicalPath": "/api/sms/templates",
+    "canonicalMethods": "PUT",
+    "changed": false
+  },
+  {
+    "legacyName": "api_sms_templates_preview",
+    "legacyPath": "/api/sms/templates/preview",
+    "legacyMethods": "POST",
+    "canonicalName": "api_sms_templates_preview",
+    "canonicalPath": "/api/sms/templates/preview",
+    "canonicalMethods": "POST",
+    "changed": false
+  },
+  {
+    "legacyName": "api_sms_send_manual",
+    "legacyPath": "/api/sms/send/manual",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_sms_send_manual",
+    "canonicalPath": "/api/sms/messages",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_sms_queue_process",
+    "legacyPath": "/api/sms/queue/process",
+    "legacyMethods": "POST",
+    "canonicalName": "api_sms_queue_process",
+    "canonicalPath": "/api/sms/queue/process",
+    "canonicalMethods": "POST",
+    "changed": false
+  },
+  {
+    "legacyName": "api_sms_appointment_send_reminder",
+    "legacyPath": "/api/sms/appointments/{id}/send-reminder",
+    "legacyMethods": "POST",
+    "canonicalName": "api_sms_appointment_send_reminder",
+    "canonicalPath": "/api/sms/appointments/{id}/send-reminder",
+    "canonicalMethods": "POST",
+    "changed": false
+  },
+  {
+    "legacyName": "api_sms_appointment_schedule_reminder",
+    "legacyPath": "/api/sms/appointments/{id}/schedule-reminder",
+    "legacyMethods": "POST",
+    "canonicalName": "api_sms_appointment_schedule_reminder",
+    "canonicalPath": "/api/sms/appointments/{id}/schedule-reminder",
+    "canonicalMethods": "POST",
+    "changed": false
+  },
+  {
+    "legacyName": "api_sms_invoice_send",
+    "legacyPath": "/api/sms/invoices/{id}/send",
+    "legacyMethods": "POST",
+    "canonicalName": "api_sms_invoice_send",
+    "canonicalPath": "/api/sms/invoices/{id}/send",
+    "canonicalMethods": "POST",
+    "changed": false
+  },
+  {
+    "legacyName": "api_sms_receipt_send",
+    "legacyPath": "/api/sms/receipts/{id}/send",
+    "legacyMethods": "POST",
+    "canonicalName": "api_sms_receipt_send",
+    "canonicalPath": "/api/sms/receipts/{id}/send",
+    "canonicalMethods": "POST",
+    "changed": false
+  },
+  {
+    "legacyName": "api_client_errors",
+    "legacyPath": "/api/client-errors",
+    "legacyMethods": "POST",
+    "canonicalName": "api_client_errors",
+    "canonicalPath": "/api/client-errors",
+    "canonicalMethods": "POST",
+    "changed": false
+  },
+  {
+    "legacyName": "api_health",
+    "legacyPath": "/api/health",
+    "legacyMethods": "GET",
+    "canonicalName": "api_health",
+    "canonicalPath": "/api/health",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_health_mercure",
+    "legacyPath": "/api/health/mercure",
+    "legacyMethods": "GET",
+    "canonicalName": "api_health_mercure",
+    "canonicalPath": "/api/health/mercure",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_health_current_time",
+    "legacyPath": "/api/health/current-time",
+    "legacyMethods": "GET",
+    "canonicalName": "api_health_current_time",
+    "canonicalPath": "/api/health/current-time",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_health_features",
+    "legacyPath": "/api/health/features",
+    "legacyMethods": "GET",
+    "canonicalName": "api_health_features",
+    "canonicalPath": "/api/health/features",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_dashboard_data",
+    "legacyPath": "/api/dashboard/{role}/{type}",
+    "legacyMethods": "GET",
+    "canonicalName": "api_dashboard_data",
+    "canonicalPath": "/api/dashboard/{role}/{type}",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "app_identityaccess_api_inps_overview",
+    "legacyPath": "/api/inps",
+    "legacyMethods": "GET",
+    "canonicalName": "app_identityaccess_api_inps_overview",
+    "canonicalPath": "/api/inps",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "app_identityaccess_api_inps_remit",
+    "legacyPath": "/api/inps/remittances",
+    "legacyMethods": "POST",
+    "canonicalName": "app_identityaccess_api_inps_remit",
+    "canonicalPath": "/api/inps/remittances",
+    "canonicalMethods": "POST",
+    "changed": false
+  },
+  {
+    "legacyName": "app_identityaccess_api_inps_cancel",
+    "legacyPath": "/api/inps/remittances/{id}/cancel",
+    "legacyMethods": "POST",
+    "canonicalName": "app_identityaccess_api_inps_cancel",
+    "canonicalPath": "/api/inps/remittances/{id}/cancel",
+    "canonicalMethods": "POST",
+    "changed": false
+  },
+  {
+    "legacyName": "app_identityaccess_api_inps_closure",
+    "legacyPath": "/api/inps/{year}/{quarter}/closure",
+    "legacyMethods": "PUT",
+    "canonicalName": "app_identityaccess_api_inps_closure",
+    "canonicalPath": "/api/inps/{year}/{quarter}/closure",
+    "canonicalMethods": "PUT",
+    "changed": false
+  },
+  {
+    "legacyName": "api_medecins",
+    "legacyPath": "/api/medecins",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_medecins",
+    "canonicalPath": "/api/doctors",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_infirmiers",
+    "legacyPath": "/api/infirmiers",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_infirmiers",
+    "canonicalPath": "/api/nurses",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_payrolls_list",
+    "legacyPath": "/api/payrolls",
+    "legacyMethods": "GET",
+    "canonicalName": "api_payrolls_list",
+    "canonicalPath": "/api/payrolls",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_payrolls_employees",
+    "legacyPath": "/api/payrolls/employees",
+    "legacyMethods": "GET",
+    "canonicalName": "api_payrolls_employees",
+    "canonicalPath": "/api/payrolls/employees",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_payrolls_daily",
+    "legacyPath": "/api/payrolls/daily/{employeeId}",
+    "legacyMethods": "GET",
+    "canonicalName": "api_payrolls_daily",
+    "canonicalPath": "/api/payrolls/daily/{employeeId}",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_payrolls_context",
+    "legacyPath": "/api/payrolls/context/{employeeId}",
+    "legacyMethods": "GET",
+    "canonicalName": "api_payrolls_context",
+    "canonicalPath": "/api/payrolls/context/{employeeId}",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_payrolls_create",
+    "legacyPath": "/api/payrolls",
+    "legacyMethods": "POST",
+    "canonicalName": "api_payrolls_create",
+    "canonicalPath": "/api/payrolls",
+    "canonicalMethods": "POST",
+    "changed": false
+  },
+  {
+    "legacyName": "api_payrolls_payment_methods",
+    "legacyPath": "/api/payrolls/payment-methods",
+    "legacyMethods": "GET",
+    "canonicalName": "api_payrolls_payment_methods",
+    "canonicalPath": "/api/payrolls/payment-methods",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_payrolls_print",
+    "legacyPath": "/api/payrolls/{id}/print",
+    "legacyMethods": "GET",
+    "canonicalName": "api_payrolls_print",
+    "canonicalPath": "/api/payrolls/{id}/print",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_payrolls_show",
+    "legacyPath": "/api/payrolls/{id}",
+    "legacyMethods": "GET",
+    "canonicalName": "api_payrolls_show",
+    "canonicalPath": "/api/payrolls/{id}",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_payrolls_update",
+    "legacyPath": "/api/payrolls/{id}",
+    "legacyMethods": "PUT",
+    "canonicalName": "api_payrolls_update",
+    "canonicalPath": "/api/payrolls/{id}",
+    "canonicalMethods": "PUT",
+    "changed": false
+  },
+  {
+    "legacyName": "api_payrolls_delete",
+    "legacyPath": "/api/payrolls/{id}",
+    "legacyMethods": "DELETE",
+    "canonicalName": "api_payrolls_delete",
+    "canonicalPath": "/api/payrolls/{id}",
+    "canonicalMethods": "DELETE",
+    "changed": false
+  },
+  {
+    "legacyName": "api_employees_list",
+    "legacyPath": "/api/employees",
+    "legacyMethods": "GET",
+    "canonicalName": "api_employees_list",
+    "canonicalPath": "/api/employees",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_employees_trash",
+    "legacyPath": "/api/employees/trash",
+    "legacyMethods": "GET",
+    "canonicalName": "api_employees_trash",
+    "canonicalPath": "/api/employees/trash",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_employees_restore",
+    "legacyPath": "/api/employees/{id}/restore",
+    "legacyMethods": "PATCH",
+    "canonicalName": "api_employees_restore",
+    "canonicalPath": "/api/employees/{id}/restore",
+    "canonicalMethods": "PATCH",
+    "changed": false
+  },
+  {
+    "legacyName": "api_employees_delete",
+    "legacyPath": "/api/employees/{id}",
+    "legacyMethods": "DELETE",
+    "canonicalName": "api_employees_delete",
+    "canonicalPath": "/api/employees/{id}",
+    "canonicalMethods": "DELETE",
+    "changed": false
+  },
+  {
+    "legacyName": "api_employees_create",
+    "legacyPath": "/api/employees",
+    "legacyMethods": "POST",
+    "canonicalName": "api_employees_create",
+    "canonicalPath": "/api/employees",
+    "canonicalMethods": "POST",
+    "changed": false
+  },
+  {
+    "legacyName": "api_employees_update",
+    "legacyPath": "/api/employees/{id}",
+    "legacyMethods": "PUT|POST",
+    "canonicalName": "api_employees_update",
+    "canonicalPath": "/api/employees/{id}",
+    "canonicalMethods": "PUT|POST",
+    "changed": false
+  },
+  {
+    "legacyName": "api_employee_details",
+    "legacyPath": "/api/employee/{id}",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_employee_details",
+    "canonicalPath": "/api/employees/{id}",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_users_create",
+    "legacyPath": "/api/users",
+    "legacyMethods": "POST",
+    "canonicalName": "api_users_create",
+    "canonicalPath": "/api/users",
+    "canonicalMethods": "POST",
+    "changed": false
+  },
+  {
+    "legacyName": "api_users_list",
+    "legacyPath": "/api/users",
+    "legacyMethods": "GET",
+    "canonicalName": "api_users_list",
+    "canonicalPath": "/api/users",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_users_associations",
+    "legacyPath": "/api/users/associations",
+    "legacyMethods": "GET",
+    "canonicalName": "api_users_associations",
+    "canonicalPath": "/api/users/associations",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_users_update",
+    "legacyPath": "/api/users/{id}",
+    "legacyMethods": "PUT",
+    "canonicalName": "api_users_update",
+    "canonicalPath": "/api/users/{id}",
+    "canonicalMethods": "PUT",
+    "changed": false
+  },
+  {
+    "legacyName": "api_users_reset_password",
+    "legacyPath": "/api/users/{id}/reset-password",
+    "legacyMethods": "POST",
+    "canonicalName": "api_users_reset_password",
+    "canonicalPath": "/api/users/{id}/reset-password",
+    "canonicalMethods": "POST",
+    "changed": false
+  },
+  {
+    "legacyName": "api_users_delete",
+    "legacyPath": "/api/users/{id}",
+    "legacyMethods": "DELETE",
+    "canonicalName": "api_users_delete",
+    "canonicalPath": "/api/users/{id}",
+    "canonicalMethods": "DELETE",
+    "changed": false
+  },
+  {
+    "legacyName": "api_register",
+    "legacyPath": "/api/register",
+    "legacyMethods": "POST",
+    "canonicalName": "api_register",
+    "canonicalPath": "/api/register",
+    "canonicalMethods": "POST",
+    "changed": false
+  },
+  {
+    "legacyName": "api_me",
+    "legacyPath": "/api/me",
+    "legacyMethods": "GET",
+    "canonicalName": "api_me",
+    "canonicalPath": "/api/me",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_me_update",
+    "legacyPath": "/api/me",
+    "legacyMethods": "PUT|POST",
+    "canonicalName": "api_me_update",
+    "canonicalPath": "/api/me",
+    "canonicalMethods": "PUT|POST",
+    "changed": false
+  },
+  {
+    "legacyName": "api_me_change_password",
+    "legacyPath": "/api/me/change-password",
+    "legacyMethods": "PATCH",
+    "canonicalName": "resource_api_me_change_password",
+    "canonicalPath": "/api/me/password",
+    "canonicalMethods": "PATCH",
+    "changed": true
+  },
+  {
+    "legacyName": "api_token_validate",
+    "legacyPath": "/api/token/validate",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_token_validate",
+    "canonicalPath": "/api/auth/session",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_device_status",
+    "legacyPath": "/api/device/status",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_device_status",
+    "canonicalPath": "/api/auth/device",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_consommable_add",
+    "legacyPath": "/api/consumables",
+    "legacyMethods": "POST",
+    "canonicalName": "api_consommable_add",
+    "canonicalPath": "/api/consumables",
+    "canonicalMethods": "POST",
+    "changed": false
+  },
+  {
+    "legacyName": "api_consommable_edit",
+    "legacyPath": "/api/consumables/{id}",
+    "legacyMethods": "PUT",
+    "canonicalName": "api_consommable_edit",
+    "canonicalPath": "/api/consumables/{id}",
+    "canonicalMethods": "PUT",
+    "changed": false
+  },
+  {
+    "legacyName": "api_consommable_retrait",
+    "legacyPath": "/api/consumables/{id}/withdraw",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_consommable_retrait",
+    "canonicalPath": "/api/consumables/{id}/withdrawals",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_consommable_details",
+    "legacyPath": "/api/consumables/{id}",
+    "legacyMethods": "GET",
+    "canonicalName": "api_consommable_details",
+    "canonicalPath": "/api/consumables/{id}",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_consommable_add_stock",
+    "legacyPath": "/api/consumables/{id}/stock",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_consommable_add_stock",
+    "canonicalPath": "/api/consumables/{id}/stock-entries",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_consommable_delete",
+    "legacyPath": "/api/consumables/{id}",
+    "legacyMethods": "DELETE",
+    "canonicalName": "api_consommable_delete",
+    "canonicalPath": "/api/consumables/{id}",
+    "canonicalMethods": "DELETE",
+    "changed": false
+  },
+  {
+    "legacyName": "api_consommables",
+    "legacyPath": "/api/consumables",
+    "legacyMethods": "GET",
+    "canonicalName": "api_consommables",
+    "canonicalPath": "/api/consumables",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_stocks",
+    "legacyPath": "/api/stocks",
+    "legacyMethods": "GET",
+    "canonicalName": "api_stocks",
+    "canonicalPath": "/api/stocks",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_patients",
+    "legacyPath": "/api/patients",
+    "legacyMethods": "GET",
+    "canonicalName": "api_patients",
+    "canonicalPath": "/api/patients",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_patients_overview_stats",
+    "legacyPath": "/api/patients/overview-stats",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_patients_overview_stats",
+    "canonicalPath": "/api/patients/statistics",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patients_medecin_overview_stats",
+    "legacyPath": "/api/patients/medecin/overview-stats",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_patients_medecin_overview_stats",
+    "canonicalPath": "/api/patients/doctor/statistics",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patients_by_medecin",
+    "legacyPath": "/api/patients/medecin",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_patients_by_medecin",
+    "canonicalPath": "/api/patients/doctor",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patient_add_with_consultation",
+    "legacyPath": "/api/patient/add-with-consultation",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_patient_add_with_consultation",
+    "canonicalPath": "/api/patient-intakes",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patient_add",
+    "legacyPath": "/api/patient/add",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_patient_add",
+    "canonicalPath": "/api/patients",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patient_update",
+    "legacyPath": "/api/patient/{id}/update",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_patient_update",
+    "canonicalPath": "/api/patients/{id}",
+    "canonicalMethods": "PATCH",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patient_archive_file_add",
+    "legacyPath": "/api/patient/{id}/archive-file",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_patient_archive_file_add",
+    "canonicalPath": "/api/patients/{id}/archive-files",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patient_archive_file_remove",
+    "legacyPath": "/api/patient/{id}/archive-file",
+    "legacyMethods": "DELETE",
+    "canonicalName": "resource_api_patient_archive_file_remove",
+    "canonicalPath": "/api/patients/{id}/archive-files",
+    "canonicalMethods": "DELETE",
+    "changed": true
+  },
+  {
+    "legacyName": "api_consultation_check_active",
+    "legacyPath": "/api/patient/{id}/consultation-en-cours",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_consultation_check_active",
+    "canonicalPath": "/api/patients/{id}/active-consultation",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patients_search",
+    "legacyPath": "/api/patients/search",
+    "legacyMethods": "GET",
+    "canonicalName": "api_patients_search",
+    "canonicalPath": "/api/patients/search",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_patients_trash",
+    "legacyPath": "/api/patients/trash",
+    "legacyMethods": "GET",
+    "canonicalName": "api_patients_trash",
+    "canonicalPath": "/api/patients/trash",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_patient_soft_delete",
+    "legacyPath": "/api/patient/{id}",
+    "legacyMethods": "DELETE",
+    "canonicalName": "resource_api_patient_soft_delete",
+    "canonicalPath": "/api/patients/{id}",
+    "canonicalMethods": "DELETE",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patient_restore",
+    "legacyPath": "/api/patient/{id}/restore",
+    "legacyMethods": "PATCH",
+    "canonicalName": "resource_api_patient_restore",
+    "canonicalPath": "/api/patients/{id}/restore",
+    "canonicalMethods": "PATCH",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patient_details",
+    "legacyPath": "/api/patient/{id}",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_patient_details",
+    "canonicalPath": "/api/patients/{id}",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_consultation_create",
+    "legacyPath": "/api/patient/{patientId}/consultation/create",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_consultation_create",
+    "canonicalPath": "/api/patients/{patientId}/consultations",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patient_rdv_create",
+    "legacyPath": "/api/patient/{id}/rdv/create",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_patient_rdv_create",
+    "canonicalPath": "/api/patients/{id}/appointments",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patient_dossier_get",
+    "legacyPath": "/api/patient/{id}/dossier",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_patient_dossier_get",
+    "canonicalPath": "/api/patients/{id}/record",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patient_fiche_latest",
+    "legacyPath": "/api/patient/{id}/fiche/latest",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_patient_fiche_latest",
+    "canonicalPath": "/api/patients/{id}/medical-records/latest",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patient_fiches_medicales_create",
+    "legacyPath": "/api/patient/{id}/fiches-medicales",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_patient_fiches_medicales_create",
+    "canonicalPath": "/api/patients/{id}/medical-records",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patient_consultations",
+    "legacyPath": "/api/patient/{id}/consultations",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_patient_consultations",
+    "canonicalPath": "/api/patients/{id}/consultations",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patient_portal_user_get",
+    "legacyPath": "/api/patient/{id}/portal-user",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_patient_portal_user_get",
+    "canonicalPath": "/api/patients/{id}/portal-user",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patient_portal_user_create",
+    "legacyPath": "/api/patient/{id}/portal-user/create",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_patient_portal_user_create",
+    "canonicalPath": "/api/patients/{id}/portal-user",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patient_portal_user_reset_password",
+    "legacyPath": "/api/patient/{id}/portal-user/reset-password",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_patient_portal_user_reset_password",
+    "canonicalPath": "/api/patients/{id}/portal-user/reset-password",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patient_portal_user_toggle_active",
+    "legacyPath": "/api/patient/{id}/portal-user/active",
+    "legacyMethods": "PATCH",
+    "canonicalName": "resource_api_patient_portal_user_toggle_active",
+    "canonicalPath": "/api/patients/{id}/portal-user/active",
+    "canonicalMethods": "PATCH",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patient_dossier_update",
+    "legacyPath": "/api/patient/{id}/dossier/update",
+    "legacyMethods": "PUT",
+    "canonicalName": "resource_api_patient_dossier_update",
+    "canonicalPath": "/api/patients/{id}/record",
+    "canonicalMethods": "PUT",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patient_antecedent_add",
+    "legacyPath": "/api/patient/{id}/antecedents",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_patient_antecedent_add",
+    "canonicalPath": "/api/patients/{id}/medical-history",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patient_antecedent_delete",
+    "legacyPath": "/api/patient/{id}/antecedents/{antecedentId}",
+    "legacyMethods": "DELETE",
+    "canonicalName": "resource_api_patient_antecedent_delete",
+    "canonicalPath": "/api/patients/{id}/medical-history/{antecedentId}",
+    "canonicalMethods": "DELETE",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patient_allergy_add",
+    "legacyPath": "/api/patient/{id}/allergies",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_patient_allergy_add",
+    "canonicalPath": "/api/patients/{id}/allergies",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patient_allergy_delete",
+    "legacyPath": "/api/patient/{id}/allergies/{allergyId}",
+    "legacyMethods": "DELETE",
+    "canonicalName": "resource_api_patient_allergy_delete",
+    "canonicalPath": "/api/patients/{id}/allergies/{allergyId}",
+    "canonicalMethods": "DELETE",
+    "changed": true
+  },
+  {
+    "legacyName": "api_print_patient_dossier_data",
+    "legacyPath": "/api/prints/patient/{id}/dossier",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_print_patient_dossier_data",
+    "canonicalPath": "/api/prints/patient/{id}/record",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_print_patient_fiche_data",
+    "legacyPath": "/api/prints/patient/{patientId}/fiche/{ficheId}",
+    "legacyMethods": "GET",
+    "canonicalName": "api_print_patient_fiche_data",
+    "canonicalPath": "/api/prints/patient/{patientId}/fiche/{ficheId}",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_appreciation_public_list",
+    "legacyPath": "/api/appreciations/public",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_appreciation_public_list",
+    "canonicalPath": "/api/public/reviews",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_appreciation_public_export",
+    "legacyPath": "/api/appreciations/public/export",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_appreciation_public_export",
+    "canonicalPath": "/api/public/reviews/export",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_appreciation_anonymous_create",
+    "legacyPath": "/api/appreciations/anonymous",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_appreciation_anonymous_create",
+    "canonicalPath": "/api/public/review-submissions",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_appreciation_patient_create",
+    "legacyPath": "/api/portal-patient/me/appreciations",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_appreciation_patient_create",
+    "canonicalPath": "/api/patient-portal/me/reviews",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_appreciation_consultation_create",
+    "legacyPath": "/api/portal-patient/me/consultations/{consultationId}/appreciation",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_appreciation_consultation_create",
+    "canonicalPath": "/api/patient-portal/me/consultations/{consultationId}/review",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_appreciation_patient_list",
+    "legacyPath": "/api/portal-patient/me/appreciations",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_appreciation_patient_list",
+    "canonicalPath": "/api/patient-portal/me/reviews",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_appreciation_admin_list",
+    "legacyPath": "/api/administration/appreciations",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_appreciation_admin_list",
+    "canonicalPath": "/api/review-moderation",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_appreciation_admin_publish",
+    "legacyPath": "/api/administration/appreciations/{id}/publish",
+    "legacyMethods": "PATCH",
+    "canonicalName": "resource_api_appreciation_admin_publish",
+    "canonicalPath": "/api/review-moderation/{id}/publish",
+    "canonicalMethods": "PATCH",
+    "changed": true
+  },
+  {
+    "legacyName": "api_appreciation_admin_delete",
+    "legacyPath": "/api/administration/appreciations/{id}",
+    "legacyMethods": "DELETE",
+    "canonicalName": "resource_api_appreciation_admin_delete",
+    "canonicalPath": "/api/review-moderation/{id}",
+    "canonicalMethods": "DELETE",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patient_me_consultations",
+    "legacyPath": "/api/portal-patient/me/consultations",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_patient_me_consultations",
+    "canonicalPath": "/api/patient-portal/me/consultations",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patient_me_devis_factures",
+    "legacyPath": "/api/portal-patient/me/devis-factures",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_patient_me_devis_factures",
+    "canonicalPath": "/api/patient-portal/me/billing-documents",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patient_me_paiements",
+    "legacyPath": "/api/portal-patient/me/paiements",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_patient_me_paiements",
+    "canonicalPath": "/api/patient-portal/me/payments",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patient_me_paiement_recu",
+    "legacyPath": "/api/portal-patient/me/paiements/{id}/recu",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_patient_me_paiement_recu",
+    "canonicalPath": "/api/patient-portal/me/payments/{id}/receipt",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patient_me_rdvs",
+    "legacyPath": "/api/portal-patient/me/rdvs",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_patient_me_rdvs",
+    "canonicalPath": "/api/patient-portal/me/appointments",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patient_me_notifications",
+    "legacyPath": "/api/portal-patient/me/notifications",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_patient_me_notifications",
+    "canonicalPath": "/api/patient-portal/me/notifications",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patient_me_notifications_mercure",
+    "legacyPath": "/api/portal-patient/me/notifications/mercure",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_patient_me_notifications_mercure",
+    "canonicalPath": "/api/patient-portal/me/notifications/mercure",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patient_me_dashboard",
+    "legacyPath": "/api/portal-patient/me/dashboard",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_patient_me_dashboard",
+    "canonicalPath": "/api/patient-portal/me/dashboard",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patient_me_profil",
+    "legacyPath": "/api/portal-patient/me/profil",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_patient_me_profil",
+    "canonicalPath": "/api/patient-portal/me/profile",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patient_me_consultation_detail",
+    "legacyPath": "/api/portal-patient/me/consultations/{id}",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_patient_me_consultation_detail",
+    "canonicalPath": "/api/patient-portal/me/consultations/{id}",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patient_me_document_detail",
+    "legacyPath": "/api/portal-patient/me/devis-factures/{id}",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_patient_me_document_detail",
+    "canonicalPath": "/api/patient-portal/me/billing-documents/{id}",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_report_global_stats",
+    "legacyPath": "/api/report/global-stats",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_report_global_stats",
+    "canonicalPath": "/api/reports/global-stats",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_report_nonperiodic_employees_distribution",
+    "legacyPath": "/api/report/nonperiodic/employees-distribution",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_report_nonperiodic_employees_distribution",
+    "canonicalPath": "/api/reports/nonperiodic/employees-distribution",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_report_nonperiodic_low_stock",
+    "legacyPath": "/api/report/nonperiodic/low-stock-consumables",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_report_nonperiodic_low_stock",
+    "canonicalPath": "/api/reports/nonperiodic/low-stock-consumables",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_report_api_medecin_dashboard",
+    "legacyPath": "/api/report/medecin",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_report_api_medecin_dashboard",
+    "canonicalPath": "/api/reports/doctor",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_report_global_stats_patients",
+    "legacyPath": "/api/report/global/patients",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_report_global_stats_patients",
+    "canonicalPath": "/api/reports/global/patients",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_report_global_patient_referrals",
+    "legacyPath": "/api/report/global/patient-referrals",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_report_global_patient_referrals",
+    "canonicalPath": "/api/reports/global/patient-referrals",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_report_periodic_patients",
+    "legacyPath": "/api/report/periodic/patients",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_report_periodic_patients",
+    "canonicalPath": "/api/reports/periodic/patients",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_report_periodic_consultations",
+    "legacyPath": "/api/report/periodic/consultations",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_report_periodic_consultations",
+    "canonicalPath": "/api/reports/periodic/consultations",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_report_periodic_appointments",
+    "legacyPath": "/api/report/periodic/appointments",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_report_periodic_appointments",
+    "canonicalPath": "/api/reports/periodic/appointments",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_report_periodic_room_usage",
+    "legacyPath": "/api/report/periodic/room-usage",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_report_periodic_room_usage",
+    "canonicalPath": "/api/reports/periodic/room-usage",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_report_periodic_payment_balances",
+    "legacyPath": "/api/report/periodic/payment-balances",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_report_periodic_payment_balances",
+    "canonicalPath": "/api/reports/periodic/payment-balances",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_report_periodic_payment_frequency",
+    "legacyPath": "/api/report/periodic/payment-frequency",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_report_periodic_payment_frequency",
+    "canonicalPath": "/api/reports/periodic/payment-frequency",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_report_periodic_acts_stats",
+    "legacyPath": "/api/report/periodic/acts-stats",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_report_periodic_acts_stats",
+    "canonicalPath": "/api/reports/periodic/acts-stats",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_report_periodic_doctor_reports",
+    "legacyPath": "/api/report/periodic/doctor-reports",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_report_periodic_doctor_reports",
+    "canonicalPath": "/api/reports/periodic/doctor-reports",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_report_api_report_receptionniste",
+    "legacyPath": "/api/report/reception-stats",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_report_api_report_receptionniste",
+    "canonicalPath": "/api/reports/reception-stats",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_reports_data",
+    "legacyPath": "/api/reports/data",
+    "legacyMethods": "GET",
+    "canonicalName": "api_reports_data",
+    "canonicalPath": "/api/reports/data",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_conges_create",
+    "legacyPath": "/api/conges",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_conges_create",
+    "canonicalPath": "/api/employee-leaves",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_conges_list",
+    "legacyPath": "/api/conges",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_conges_list",
+    "canonicalPath": "/api/employee-leaves",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_conges_employees",
+    "legacyPath": "/api/conges/employees",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_conges_employees",
+    "canonicalPath": "/api/employee-leaves/employees",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_conges_update",
+    "legacyPath": "/api/conges/{id}",
+    "legacyMethods": "PUT",
+    "canonicalName": "resource_api_conges_update",
+    "canonicalPath": "/api/employee-leaves/{id}",
+    "canonicalMethods": "PUT",
+    "changed": true
+  },
+  {
+    "legacyName": "api_conges_delete",
+    "legacyPath": "/api/conges/{id}",
+    "legacyMethods": "DELETE",
+    "canonicalName": "resource_api_conges_delete",
+    "canonicalPath": "/api/employee-leaves/{id}",
+    "canonicalMethods": "DELETE",
+    "changed": true
+  },
+  {
+    "legacyName": "api_events_all",
+    "legacyPath": "/api/events",
+    "legacyMethods": "GET",
+    "canonicalName": "api_events_all",
+    "canonicalPath": "/api/events",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_event_create_booking",
+    "legacyPath": "/api/events",
+    "legacyMethods": "POST",
+    "canonicalName": "api_event_create_booking",
+    "canonicalPath": "/api/events",
+    "canonicalMethods": "POST",
+    "changed": false
+  },
+  {
+    "legacyName": "api_event_delete",
+    "legacyPath": "/api/events/{id}",
+    "legacyMethods": "DELETE",
+    "canonicalName": "api_event_delete",
+    "canonicalPath": "/api/events/{id}",
+    "canonicalMethods": "DELETE",
+    "changed": false
+  },
+  {
+    "legacyName": "api_event_validate",
+    "legacyPath": "/api/events/{id}/validate",
+    "legacyMethods": "POST",
+    "canonicalName": "api_event_validate",
+    "canonicalPath": "/api/events/{id}/validate",
+    "canonicalMethods": "POST",
+    "changed": false
+  },
+  {
+    "legacyName": "api_jours_list",
+    "legacyPath": "/api/holidays",
+    "legacyMethods": "GET",
+    "canonicalName": "api_jours_list",
+    "canonicalPath": "/api/holidays",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_add_ferie",
+    "legacyPath": "/api/holidays",
+    "legacyMethods": "POST",
+    "canonicalName": "api_add_ferie",
+    "canonicalPath": "/api/holidays",
+    "canonicalMethods": "POST",
+    "changed": false
+  },
+  {
+    "legacyName": "api_delete_ferie",
+    "legacyPath": "/api/holidays/{date}",
+    "legacyMethods": "DELETE",
+    "canonicalName": "api_delete_ferie",
+    "canonicalPath": "/api/holidays/{date}",
+    "canonicalMethods": "DELETE",
+    "changed": false
+  },
+  {
+    "legacyName": "api_update_fermetures",
+    "legacyPath": "/api/holidays/closures",
+    "legacyMethods": "PUT",
+    "canonicalName": "api_update_fermetures",
+    "canonicalPath": "/api/holidays/closures",
+    "canonicalMethods": "PUT",
+    "changed": false
+  },
+  {
+    "legacyName": "api_rdv_create",
+    "legacyPath": "/api/rdv/create",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_rdv_create",
+    "canonicalPath": "/api/appointments",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_rdv_action",
+    "legacyPath": "/api/rdv/{id}/{action}",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_rdv_action",
+    "canonicalPath": "/api/appointments/{id}/transitions/{action}",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_rdv_stats",
+    "legacyPath": "/api/rdv/stats",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_rdv_stats",
+    "canonicalPath": "/api/appointments/statistics",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_rdvs_stats_by_date",
+    "legacyPath": "/api/rdvs/stats/{date}",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_rdvs_stats_by_date",
+    "canonicalPath": "/api/appointments/statistics/dates/{date}",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_rdvs_by_date",
+    "legacyPath": "/api/rdvs/{date}",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_rdvs_by_date",
+    "canonicalPath": "/api/appointments/dates/{date}",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_rdvs_range",
+    "legacyPath": "/api/rdvs",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_rdvs_range",
+    "canonicalPath": "/api/appointments",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_pending_rdvs_range",
+    "legacyPath": "/api/rdvs_pending",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_pending_rdvs_range",
+    "canonicalPath": "/api/appointments/pending",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_rdvs_bymedecin",
+    "legacyPath": "/api/rdvs/{date}/medecin",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_rdvs_bymedecin",
+    "canonicalPath": "/api/me/appointments/dates/{date}",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_salles",
+    "legacyPath": "/api/salles",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_salles",
+    "canonicalPath": "/api/rooms",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": "api_salle_add",
+    "legacyPath": "/api/salles",
+    "legacyMethods": "POST",
+    "canonicalName": "resource_api_salle_add",
+    "canonicalPath": "/api/rooms",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_salle_edit",
+    "legacyPath": "/api/salles/{id}",
+    "legacyMethods": "PUT",
+    "canonicalName": "resource_api_salle_edit",
+    "canonicalPath": "/api/rooms/{id}",
+    "canonicalMethods": "PUT",
+    "changed": true
+  },
+  {
+    "legacyName": "api_salle_delete",
+    "legacyPath": "/api/salles/{salle}",
+    "legacyMethods": "DELETE",
+    "canonicalName": "resource_api_salle_delete",
+    "canonicalPath": "/api/rooms/{salle}",
+    "canonicalMethods": "DELETE",
+    "changed": true
+  },
+  {
+    "legacyName": "api_settings_general_get",
+    "legacyPath": "/api/settings/general",
+    "legacyMethods": "GET",
+    "canonicalName": "api_settings_general_get",
+    "canonicalPath": "/api/settings/general",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_settings_general_public_get",
+    "legacyPath": "/api/settings/general/public",
+    "legacyMethods": "GET",
+    "canonicalName": "api_settings_general_public_get",
+    "canonicalPath": "/api/settings/general/public",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_settings_general_save",
+    "legacyPath": "/api/settings/general",
+    "legacyMethods": "PUT",
+    "canonicalName": "api_settings_general_save",
+    "canonicalPath": "/api/settings/general",
+    "canonicalMethods": "PUT",
+    "changed": false
+  },
+  {
+    "legacyName": "api_settings_devices_list",
+    "legacyPath": "/api/settings/devices",
+    "legacyMethods": "GET",
+    "canonicalName": "api_settings_devices_list",
+    "canonicalPath": "/api/settings/devices",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_settings_devices_approve",
+    "legacyPath": "/api/settings/devices/{deviceId}/approve",
+    "legacyMethods": "POST",
+    "canonicalName": "api_settings_devices_approve",
+    "canonicalPath": "/api/settings/devices/{deviceId}/approve",
+    "canonicalMethods": "POST",
+    "changed": false
+  },
+  {
+    "legacyName": "api_settings_devices_reject",
+    "legacyPath": "/api/settings/devices/{deviceId}/reject",
+    "legacyMethods": "POST",
+    "canonicalName": "api_settings_devices_reject",
+    "canonicalPath": "/api/settings/devices/{deviceId}/reject",
+    "canonicalMethods": "POST",
+    "changed": false
+  },
+  {
+    "legacyName": "api_settings_devices_rename",
+    "legacyPath": "/api/settings/devices/{deviceId}/rename",
+    "legacyMethods": "PUT|PATCH",
+    "canonicalName": "resource_api_settings_devices_rename",
+    "canonicalPath": "/api/settings/devices/{deviceId}",
+    "canonicalMethods": "PATCH",
+    "changed": true
+  },
+  {
+    "legacyName": "api_settings_devices_delete",
+    "legacyPath": "/api/settings/devices/{deviceId}",
+    "legacyMethods": "DELETE",
+    "canonicalName": "api_settings_devices_delete",
+    "canonicalPath": "/api/settings/devices/{deviceId}",
+    "canonicalMethods": "DELETE",
+    "changed": false
+  },
+  {
+    "legacyName": "api_settings_general_patient_portal_create_missing",
+    "legacyPath": "/api/settings/general/patient-portal/create-missing",
+    "legacyMethods": "POST",
+    "canonicalName": "api_settings_general_patient_portal_create_missing",
+    "canonicalPath": "/api/settings/general/patient-portal/create-missing",
+    "canonicalMethods": "POST",
+    "changed": false
+  },
+  {
+    "legacyName": "api_settings_test_mode_status",
+    "legacyPath": "/api/settings/test-mode/status",
+    "legacyMethods": "GET",
+    "canonicalName": "api_settings_test_mode_status",
+    "canonicalPath": "/api/settings/test-mode/status",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_settings_test_mode_toggle",
+    "legacyPath": "/api/settings/test-mode/toggle",
+    "legacyMethods": "PUT",
+    "canonicalName": "api_settings_test_mode_toggle",
+    "canonicalPath": "/api/settings/test-mode/toggle",
+    "canonicalMethods": "PUT",
+    "changed": false
+  },
+  {
+    "legacyName": "api_settings_test_mode_clean",
+    "legacyPath": "/api/settings/test-mode/clean",
+    "legacyMethods": "POST",
+    "canonicalName": "api_settings_test_mode_clean",
+    "canonicalPath": "/api/settings/test-mode/clean",
+    "canonicalMethods": "POST",
+    "changed": false
+  },
+  {
+    "legacyName": "api_settings_database_export",
+    "legacyPath": "/api/settings/database/export",
+    "legacyMethods": "POST",
+    "canonicalName": "api_settings_database_export",
+    "canonicalPath": "/api/settings/database/export",
+    "canonicalMethods": "POST",
+    "changed": false
+  },
+  {
+    "legacyName": "api_settings_database_export_download",
+    "legacyPath": "/api/settings/database/export/download",
+    "legacyMethods": "GET",
+    "canonicalName": "api_settings_database_export_download",
+    "canonicalPath": "/api/settings/database/export/download",
+    "canonicalMethods": "GET",
+    "changed": false
+  },
+  {
+    "legacyName": "api_settings_database_reset",
+    "legacyPath": "/api/settings/database/reset",
+    "legacyMethods": "POST",
+    "canonicalName": "api_settings_database_reset",
+    "canonicalPath": "/api/settings/database/reset",
+    "canonicalMethods": "POST",
+    "changed": false
+  },
+  {
+    "legacyName": "api_login_check",
+    "legacyPath": "/api/login_check",
+    "legacyMethods": "POST",
+    "canonicalName": "api_auth_login",
+    "canonicalPath": "/api/auth/login",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_patient_login_check",
+    "legacyPath": "/api/login_patient_check",
+    "legacyMethods": "POST",
+    "canonicalName": "api_patient_auth_login",
+    "canonicalPath": "/api/patient-portal/auth/login",
+    "canonicalMethods": "POST",
+    "changed": true
+  },
+  {
+    "legacyName": "api_assurances_claim_detail",
+    "legacyPath": "/api/assurances/claims/{id}",
+    "legacyMethods": "GET",
+    "canonicalName": "resource_api_assurances_claim_detail",
+    "canonicalPath": "/api/insurance-claims/{id}",
+    "canonicalMethods": "GET",
+    "changed": true
+  },
+  {
+    "legacyName": null,
+    "legacyPath": null,
+    "legacyMethods": null,
+    "canonicalName": "api_auth_refresh",
+    "canonicalPath": "/api/auth/refresh",
+    "canonicalMethods": "POST",
+    "changed": false,
+    "introduced": true
+  },
+  {
+    "legacyName": null,
+    "legacyPath": null,
+    "legacyMethods": null,
+    "canonicalName": "api_auth_logout",
+    "canonicalPath": "/api/auth/logout",
+    "canonicalMethods": "POST",
+    "changed": false,
+    "introduced": true
+  },
+  {
+    "legacyName": null,
+    "legacyPath": null,
+    "legacyMethods": null,
+    "canonicalName": "api_patient_auth_refresh",
+    "canonicalPath": "/api/patient-portal/auth/refresh",
+    "canonicalMethods": "POST",
+    "changed": false,
+    "introduced": true
+  },
+  {
+    "legacyName": null,
+    "legacyPath": null,
+    "legacyMethods": null,
+    "canonicalName": "api_patient_auth_logout",
+    "canonicalPath": "/api/patient-portal/auth/logout",
+    "canonicalMethods": "POST",
+    "changed": false,
+    "introduced": true
+  },
+  {
+    "legacyName": null,
+    "legacyPath": null,
+    "legacyMethods": null,
+    "canonicalName": "api_token_refresh",
+    "canonicalPath": "/api/token/refresh",
+    "canonicalMethods": "POST",
+    "changed": false,
+    "introduced": true
+  }
+]

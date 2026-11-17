@@ -71,7 +71,7 @@ Poste réception ──► dentalsoft.local ──► htdocs/dentalsoft/
 ## Phase 0 — Préparation (machine avec Internet, une fois)
 
 ```powershell
-cd backend-reform
+cd api
 composer install --no-dev --optimize-autoloader
 php bin/console lexik:jwt:generate-keypair
 
@@ -86,7 +86,7 @@ Copier sur le PC cabinet :
 
 ```text
 DentalSoftDeploy/
-  backend-reform/          → sera déployé dans htdocs/dentalsoft-api/
+  api/          → sera déployé dans htdocs/dentalsoft-api/
   frontend/dist/           → contenu de htdocs/dentalsoft/
   docs/
   scripts/xampp/
@@ -122,7 +122,7 @@ Include conf/extra/httpd-ssl.conf
 ```text
 C:\xampp\htdocs\
   dentalsoft\                 ← copier le contenu de frontend/dist/
-  dentalsoft-api\             ← copier tout backend-reform/
+  dentalsoft-api\             ← copier tout api/
     public\                   ← point d'entrée Apache API
     var\
     config\

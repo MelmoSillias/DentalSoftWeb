@@ -1,0 +1,114 @@
+{
+  "dependencies": [
+    {
+      "source": "shared/api/Axios.js",
+      "target": "app/router/index.js"
+    },
+    {
+      "source": "shared/api/Axios.js",
+      "target": "domains/auth/stores/auth.js"
+    },
+    {
+      "source": "shared/api/http.js",
+      "target": "app/router/index.js"
+    },
+    {
+      "source": "shared/api/http.js",
+      "target": "domains/auth/stores/auth.js"
+    },
+    {
+      "source": "shared/composables/useAppearanceSettings.js",
+      "target": "app/layout/composables/layout.js"
+    },
+    {
+      "source": "shared/composables/useAppearanceSettings.js",
+      "target": "domains/settings/stores/uiSettings.js"
+    },
+    {
+      "source": "shared/composables/useGuidedTour.js",
+      "target": "app/tours/index.js"
+    },
+    {
+      "source": "shared/composables/useGuidedTour.js",
+      "target": "app/tours/registry/index.js"
+    },
+    {
+      "source": "shared/composables/useGuidedTour.js",
+      "target": "app/tours/shared/taskUtils.js"
+    },
+    {
+      "source": "shared/composables/useGuidedTour.js",
+      "target": "app/tours/shared/tourScrollControl.js"
+    },
+    {
+      "source": "shared/composables/useGuidedTour.js",
+      "target": "app/tours/tourGuideClient.js"
+    },
+    {
+      "source": "shared/composables/useGuidedTour.js",
+      "target": "domains/auth/stores/auth.js"
+    },
+    {
+      "source": "shared/composables/useInternetFeatures.js",
+      "target": "domains/settings/services/globalSettingsService.js"
+    },
+    {
+      "source": "shared/print/components/PrintA4Page.vue",
+      "target": "app/styles/print-layout.css"
+    },
+    {
+      "source": "shared/print/components/PrintPayrollSlipPage.vue",
+      "target": "domains/workforce/model/payrollUtils.js"
+    },
+    {
+      "source": "shared/print/components/PrintTicketPage.vue",
+      "target": "app/styles/print-layout.css"
+    },
+    {
+      "source": "shared/print/crossTableDayPrint.js",
+      "target": "domains/reporting/model/reportPrint.js"
+    },
+    {
+      "source": "shared/realtime/useBrowserNotifications.js",
+      "target": "app/router/index.js"
+    },
+    {
+      "source": "shared/realtime/useBrowserNotifications.js",
+      "target": "domains/communication/lib/notificationLinks.js"
+    },
+    {
+      "source": "shared/realtime/useMercureClient.js",
+      "target": "domains/auth/stores/auth.js"
+    },
+    {
+      "source": "shared/realtime/useMercureNotifications.js",
+      "target": "domains/auth/stores/auth.js"
+    },
+    {
+      "source": "shared/realtime/useMercureNotifications.js",
+      "target": "domains/communication/lib/notificationLinks.js"
+    },
+    {
+      "source": "shared/realtime/useMercureNotifications.js",
+      "target": "domains/communication/stores/notifications.js"
+    },
+    {
+      "source": "shared/ui/FloatingConfigurator.vue",
+      "target": "app/layout/AppConfigurator.vue"
+    },
+    {
+      "source": "shared/ui/FloatingConfigurator.vue",
+      "target": "app/layout/composables/layout.js"
+    },
+    {
+      "source": "shared/ui/old/RevenueStreamWidget.vue",
+      "target": "app/layout/composables/layout.js"
+    }
+  ],
+  "unresolved": [
+    {
+      "source": "domains/settings/views/FilesOptions.vue",
+      "target": "@/services/olders/fsService"
+    }
+  ]
+}

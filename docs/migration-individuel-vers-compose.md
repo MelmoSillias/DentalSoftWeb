@@ -67,7 +67,7 @@ Partir du [modèle d'environnement](../.env.dokploy.example), mais appliquer ces
 | `INSTANCE_ID` | Choisir un ID unique et stable, par exemple `cdos-prod-compose`. Ne pas reprendre celui d'une démo contenant déjà des données. Le changer ensuite sélectionne d'autres volumes. |
 | `CABINET` | Reprendre le branding existant, disponible dans les deux frontends. |
 | `ADMIN_URL`, `PATIENT_URL` | Origines HTTPS sans slash final ni chemin. Utiliser des domaines de validation pendant la répétition, puis les domaines définitifs lors de la bascule. |
-| `APP_SECRET` | **Conserver exactement l'ancien.** Le chiffrement des identifiants SMS en dépend dans [CryptoService](../backend-reform/src/Communication/Service/CryptoService.php). |
+| `APP_SECRET` | **Conserver exactement l'ancien.** Le chiffrement des identifiants SMS en dépend dans [CryptoService](../api/src/Communication/Service/CryptoService.php). |
 | Clés JWT + `JWT_PASSPHRASE` | Copier la paire réellement utilisée et reprendre sa passphrase. Ne pas laisser générer une nouvelle paire par inadvertance. |
 | `VAPID_*` | Conserver les clés et le sujet pour les abonnements Web Push existants. Les permissions navigateur restent liées au domaine. |
 | `MERCURE_JWT_SECRET` | Reprendre le secret du cabinet pour la bascule ; API et nouveau hub doivent correspondre. |
@@ -77,7 +77,7 @@ Partir du [modèle d'environnement](../.env.dokploy.example), mais appliquer ces
 | `RUN_MIGRATIONS` | Mettre `0` pendant l'import et l'examen des migrations. |
 | `ENABLE_EMBEDDED_WORKER` | Mettre `0` pendant la restauration et les validations sans envoi. |
 
-L'[entrypoint Compose](../backend-reform/docker/entrypoint.dokploy.sh) peut générer les clés JWT et lancer les migrations et les workers au démarrage. **Ne pas démarrer l'API avant d'avoir restauré les données et la paire JWT.** Si la stack a déjà démarré, arrêter l'API avant de restaurer les deux clés ensemble et les fichiers.
+L'[entrypoint Compose](../api/docker/entrypoint.dokploy.sh) peut générer les clés JWT et lancer les migrations et les workers au démarrage. **Ne pas démarrer l'API avant d'avoir restauré les données et la paire JWT.** Si la stack a déjà démarré, arrêter l'API avant de restaurer les deux clés ensemble et les fichiers.
 
 Une variable ajoutée dans l'environnement Dokploy n'est pas automatiquement transmise à tous les conteneurs : vérifier la section `environment` de chaque service. Le Compose actuel ne transmet notamment pas `MAILER_DSN`. Si la production utilise le mail ou d'autres variables absentes, compléter le Compose avant la bascule. Ne pas committer les valeurs des secrets.
 

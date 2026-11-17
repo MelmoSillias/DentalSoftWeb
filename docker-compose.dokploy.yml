@@ -40,7 +40,7 @@ services:
 
   api:
     build:
-      context: ./backend-reform
+      context: ./api
       dockerfile: Dockerfile.dokploy
       args:
         FRANKENPHP_IMAGE: ${FRANKENPHP_IMAGE:-dunglas/frankenphp:1.13.4-php8.2-bookworm}
@@ -114,6 +114,8 @@ services:
       args:
         FRONTEND_DIR: frontend
         CABINET: ${CABINET:-default}
+        PWA_RELEASE_METADATA: ${PWA_RELEASE_METADATA:-}
+        PWA_RELEASE_REVISION: ${PWA_RELEASE_REVISION:-}
     restart: unless-stopped
     mem_limit: ${FRONTEND_MEMORY_LIMIT:-128M}
     environment: *frontend-environment
@@ -136,6 +138,8 @@ services:
       args:
         FRONTEND_DIR: patient-frontend
         CABINET: ${CABINET:-default}
+        PWA_RELEASE_METADATA: ${PWA_RELEASE_METADATA:-}
+        PWA_RELEASE_REVISION: ${PWA_RELEASE_REVISION:-}
     restart: unless-stopped
     mem_limit: ${PATIENT_MEMORY_LIMIT:-128M}
     environment: *frontend-environment

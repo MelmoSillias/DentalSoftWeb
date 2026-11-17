@@ -1,0 +1,2410 @@
+{
+  "api_transaction_update": {
+    "path": "/api/transactions/{id}",
+    "method": "PUT|PATCH",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\TransactionController::update"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "api_services_cabinet_list": {
+    "path": "/api/services-cabinet",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\CabinetServiceController::listAll"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patient_services_cabinet_list": {
+    "path": "/api/patients/{id}/services-cabinet",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\CabinetServiceController::listForPatient"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "api_patient_services_cabinet_create": {
+    "path": "/api/patients/{id}/services-cabinet",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\CabinetServiceController::create"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "api_services_cabinet_get": {
+    "path": "/api/services-cabinet/{id}",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\CabinetServiceController::get"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "api_services_cabinet_update": {
+    "path": "/api/services-cabinet/{id}",
+    "method": "PUT|PATCH",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\CabinetServiceController::update"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "api_services_cabinet_cancel": {
+    "path": "/api/services-cabinet/{id}/cancel",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\CabinetServiceController::cancel"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "api_factures_cabinet_preview": {
+    "path": "/api/factures-cabinet/{id}",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\CabinetServiceController::preview"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "api_factures_cabinet_pay": {
+    "path": "/api/factures-cabinet/{id}/pay",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\CabinetServiceController::pay"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "api_print_facture_cabinet": {
+    "path": "/api/prints/factures-cabinet/{id}",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\CabinetServiceController::printFacture"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "api_factures_list": {
+    "path": "/api/factures",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\CaisseController::getFacturesAll"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_factures_classiques_list": {
+    "path": "/api/factures/classiques",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\CaisseController::getFacturesClassiques"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_factures_assurances_list": {
+    "path": "/api/factures/assurances",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\CaisseController::getFacturesAssurances"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_factures_unpaid": {
+    "path": "/api/factures/unpaid",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\CaisseController::getFacturesImpayees"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_factures_unpaid_by_patient": {
+    "path": "/api/factures/unpaid-by-patient/{patientId}",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\CaisseController::getFacturesImpayeesByPatient"
+    },
+    "requirements": {
+      "patientId": "\\d+"
+    }
+  },
+  "api_factures_payments": {
+    "path": "/api/factures/payments",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\CaisseController::getPaiementsFactures"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_factures_preview": {
+    "path": "/api/factures/{id}",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\CaisseController::previewFacture"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_factures_pay": {
+    "path": "/api/factures/{id}/pay",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\CaisseController::payerFacture"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_factures_payments_reset": {
+    "path": "/api/factures/{id}/payments/reset",
+    "method": "DELETE",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\CaisseController::resetFacturePayments"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_factures_assurance_payments_reset": {
+    "path": "/api/factures/assurance/{id}/payments/reset",
+    "method": "DELETE",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\CaisseController::resetFactureAssurancePayments"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_print_devis_data": {
+    "path": "/api/prints/devis/{id}",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\CaisseController::getDevisPrintData"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_print_factures_data": {
+    "path": "/api/prints/factures/{id}",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\CaisseController::getFacturePrintDataLegacy"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_print_invoice_data": {
+    "path": "/api/prints/invoices/{id}",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\CaisseController::getFacturePrintData"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_print_payments_data": {
+    "path": "/api/prints/payments",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\CaisseController::getPaymentsPrintData"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_print_receipt_data": {
+    "path": "/api/prints/receipts/{id}",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\CaisseController::getReceiptPrintData"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_print_ticket_data": {
+    "path": "/api/prints/tickets/{id}",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\CaisseController::getTicketPrintData"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_print_assurance_claim_data": {
+    "path": "/api/prints/assurances/claims/{id}",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\CaisseController::getFactureAssurancePrintData"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_assurances_list": {
+    "path": "/api/assurances",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\InsuranceController::listAssurances"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_assurances_create": {
+    "path": "/api/assurances",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\InsuranceController::createAssurance"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_assurances_toggle": {
+    "path": "/api/assurances/{code}/toggle",
+    "method": "PATCH",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\InsuranceController::toggleAssurance"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_assurances_update": {
+    "path": "/api/assurances/{code}",
+    "method": "PATCH",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\InsuranceController::updateAssurance"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_insurance_claims_list": {
+    "path": "/api/assurances/claims",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\InsuranceController::listClaims"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_insurance_claims_patient_pay": {
+    "path": "/api/assurances/claims/{id}/patient-pay",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\InsuranceController::payPatientShare"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "api_assurances_dashboard": {
+    "path": "/api/assurances/dashboard",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\LotFactureAssuranceController::dashboard"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_assurances_lots_list": {
+    "path": "/api/assurances/{code}/lots",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\LotFactureAssuranceController::listLots"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_assurances_lots_open": {
+    "path": "/api/assurances/{code}/lots",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\LotFactureAssuranceController::openLot"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_assurances_lots_detail": {
+    "path": "/api/assurances/lots/{id}",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\LotFactureAssuranceController::getLot"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_assurances_lots_update": {
+    "path": "/api/assurances/lots/{id}",
+    "method": "PATCH",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\LotFactureAssuranceController::updateLot"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_assurances_lots_send": {
+    "path": "/api/assurances/lots/{id}/send",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\LotFactureAssuranceController::sendLot"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_assurances_lots_reopen": {
+    "path": "/api/assurances/lots/{id}/reopen",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\LotFactureAssuranceController::reopenLot"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_assurances_lots_confirm": {
+    "path": "/api/assurances/lots/{id}/confirm",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\LotFactureAssuranceController::confirmLot"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_assurances_lots_unconfirm": {
+    "path": "/api/assurances/lots/{id}/unconfirm",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\LotFactureAssuranceController::unconfirmLot"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_assurances_lots_refund": {
+    "path": "/api/assurances/lots/{id}/refund",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\LotFactureAssuranceController::refundLot"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_assurances_lots_recover": {
+    "path": "/api/assurances/lots/{id}/recover",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\LotFactureAssuranceController::recoverLot"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_assurances_lots_refund_cancel": {
+    "path": "/api/assurances/lots/{id}/refunds/{transactionId}/cancel",
+    "method": "PATCH",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\LotFactureAssuranceController::cancelRefund"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_assurances_lots_recover_cancel": {
+    "path": "/api/assurances/lots/{id}/recover/cancel",
+    "method": "PATCH",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\LotFactureAssuranceController::cancelLotRecovery"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_assurances_lots_add_claim": {
+    "path": "/api/assurances/lots/{id}/claims",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\LotFactureAssuranceController::addClaimToLot"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_assurances_claims_move_lot": {
+    "path": "/api/assurances/claims/{factureId}/move-lot",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\LotFactureAssuranceController::moveClaimToLot"
+    },
+    "requirements": {
+      "factureId": "\\d+"
+    }
+  },
+  "api_assurances_lots_remove_claim": {
+    "path": "/api/assurances/lots/{id}/claims/{factureId}",
+    "method": "DELETE",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\LotFactureAssuranceController::removeClaimFromLot"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_modes_paiement_list": {
+    "path": "/api/payment-methods",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\PaymentMethodController::list"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_modes_paiement_create": {
+    "path": "/api/payment-methods",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\PaymentMethodController::create"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_modes_paiement_update": {
+    "path": "/api/payment-methods/{id}",
+    "method": "PUT",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\PaymentMethodController::update"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_modes_paiement_delete": {
+    "path": "/api/payment-methods/{id}",
+    "method": "DELETE",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\PaymentMethodController::delete"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_modes_paiement_toggle": {
+    "path": "/api/payment-methods/{id}/toggle",
+    "method": "PATCH",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\PaymentMethodController::toggle"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_finances_chart_data": {
+    "path": "/api/finances/chart-data",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\PaymentMethodController::getChartData"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_finances_cross_table": {
+    "path": "/api/finances/cross-table",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\PaymentMethodController::getCrossTable"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_finances_cross_table_day_overview": {
+    "path": "/api/finances/cross-table/day-overview",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\PaymentMethodController::getCrossTableDayOverview"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_finances_cross_table_period_overview": {
+    "path": "/api/finances/cross-table/period-overview",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\PaymentMethodController::getCrossTablePeriodOverview"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_finances_fixed_charges_list": {
+    "path": "/api/finances/fixed-charges",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\PaymentMethodController::listFixedCharges"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_finances_fixed_charges_create": {
+    "path": "/api/finances/fixed-charges",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\PaymentMethodController::createFixedCharge"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_finances_fixed_charges_update": {
+    "path": "/api/finances/fixed-charges/{id}",
+    "method": "PUT",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\PaymentMethodController::updateFixedCharge"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_finances_fixed_charges_delete": {
+    "path": "/api/finances/fixed-charges/{id}",
+    "method": "DELETE",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\PaymentMethodController::deleteFixedCharge"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_transactions_list": {
+    "path": "/api/transactions",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\TransactionController::list"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_transaction_create": {
+    "path": "/api/transaction",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\TransactionController::create"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_transaction_validate": {
+    "path": "/api/transactions/{id}/validate",
+    "method": "PATCH",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\TransactionController::validateTransaction"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_transaction_reject": {
+    "path": "/api/transactions/{id}/reject",
+    "method": "PATCH",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\TransactionController::rejectTransaction"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_transaction_delete": {
+    "path": "/api/transactions/{id}",
+    "method": "DELETE",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\TransactionController::deleteTransaction"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_transactions_intercompte": {
+    "path": "/api/transactions/intercompte",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\TransactionController::intercompte"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_consultation_set_fiche": {
+    "path": "/api/consultation/set_fiche/{ficheId}",
+    "method": "POST",
+    "defaults": {
+      "ficheId": null,
+      "_controller": "App\\CareDelivery\\Controller\\Api\\ConsultationController::setFiche"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "consultations_pending": {
+    "path": "/api/consultations/pending",
+    "method": "ANY",
+    "defaults": {
+      "_controller": "App\\CareDelivery\\Controller\\Api\\ConsultationController::pendingConsultations"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_consultations_closed": {
+    "path": "/api/consultations/closed",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\CareDelivery\\Controller\\Api\\ConsultationController::getClosedConsultations"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_consultations_day": {
+    "path": "/api/consultations/day",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\CareDelivery\\Controller\\Api\\ConsultationController::getConsultationsDay"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_focus_reception": {
+    "path": "/api/focus/reception",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\CareDelivery\\Controller\\Api\\ConsultationController::getReceptionFocusData"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_consultation_delete": {
+    "path": "/api/consultations/{id}",
+    "method": "DELETE",
+    "defaults": {
+      "_controller": "App\\CareDelivery\\Controller\\Api\\ConsultationController::deleteConsultation"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_consultation_ordonnances": {
+    "path": "/api/consultations/{consultation}/ordonnances",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\CareDelivery\\Controller\\Api\\ConsultationController::listOrdonnances"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_consultation_ordonnance_add": {
+    "path": "/api/consultations/{consultation}/ordonnances",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\CareDelivery\\Controller\\Api\\ConsultationController::addOrdonnance"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_ordonnance_get": {
+    "path": "/api/ordonnance/{id}",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\CareDelivery\\Controller\\Api\\ConsultationController::getOrdonnance"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_ordonnance_update": {
+    "path": "/api/ordonnance/{id}",
+    "method": "PUT",
+    "defaults": {
+      "_controller": "App\\CareDelivery\\Controller\\Api\\ConsultationController::updateOrdonnance"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_print_ordonnance_data": {
+    "path": "/api/prints/ordonnances/{id}",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\CareDelivery\\Controller\\Api\\ConsultationController::getOrdonnancePrintData"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_consultation_facture": {
+    "path": "/api/consultations/{consultation}/facture",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\CareDelivery\\Controller\\Api\\ConsultationController::getFactureLines"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_consultation_facture_update": {
+    "path": "/api/consultations/{consultation}/facture/update",
+    "method": "PUT",
+    "defaults": {
+      "_controller": "App\\CareDelivery\\Controller\\Api\\ConsultationController::updateFactureLines"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_consultation_details": {
+    "path": "/api/admin/consultation/{id}/details",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\CareDelivery\\Controller\\Api\\ConsultationController::getConsultationDetailsJson"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_consultation_details_public": {
+    "path": "/api/consultations/{id}/details",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\CareDelivery\\Controller\\Api\\ConsultationController::getConsultationDetailsPublic"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_consultation_verify_medecin_password": {
+    "path": "/api/consultations/{id}/verify-medecin-password",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\CareDelivery\\Controller\\Api\\ConsultationController::verifyMedecinPassword"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_fiche_consultation_json": {
+    "path": "/api/fiches/{ficheId}/consultations/{consultationId}/json",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\CareDelivery\\Controller\\Api\\FicheConsultationController::getJson"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_fiche_consultation_update_motif": {
+    "path": "/api/fiches/{ficheId}/motif",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\CareDelivery\\Controller\\Api\\FicheConsultationController::updateMotif"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_fiche_consultation_update_examens": {
+    "path": "/api/fiches/{ficheId}/examens",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\CareDelivery\\Controller\\Api\\FicheConsultationController::updateExamens"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_fiche_consultation_update_traitements": {
+    "path": "/api/fiches/{ficheId}/traitements",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\CareDelivery\\Controller\\Api\\FicheConsultationController::updateTraitements"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_fiche_consultation_update_devis": {
+    "path": "/api/fiches/{ficheId}/devis",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\CareDelivery\\Controller\\Api\\FicheConsultationController::updateDevis"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_fiche_consultation_update": {
+    "path": "/api/fiches/{ficheId}/consultations/{consultationId}",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\CareDelivery\\Controller\\Api\\FicheConsultationController::update"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_fiche_consultation_cloture": {
+    "path": "/api/fiches/{ficheId}/consultations/{consultationId}/cloture",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\CareDelivery\\Controller\\Api\\FicheConsultationController::close"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_fiche_medicale_json": {
+    "path": "/api/fiches-medicales/{ficheId}/json",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\ClinicalRecord\\Controller\\Api\\FicheMedicaleController::getJson"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_fiche_medicale_update_entretien": {
+    "path": "/api/fiches-medicales/{ficheId}/entretien",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\ClinicalRecord\\Controller\\Api\\FicheMedicaleController::updateEntretien"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_fiche_medicale_update_examens": {
+    "path": "/api/fiches-medicales/{ficheId}/examens",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\ClinicalRecord\\Controller\\Api\\FicheMedicaleController::updateExamens"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_fiche_medicale_update_bilans": {
+    "path": "/api/fiches-medicales/{ficheId}/bilans",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\ClinicalRecord\\Controller\\Api\\FicheMedicaleController::updateBilans"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_fiche_medicale_update_plan_traitement": {
+    "path": "/api/fiches-medicales/{ficheId}/plan-traitement",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\ClinicalRecord\\Controller\\Api\\FicheMedicaleController::updatePlanTraitement"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_fiche_medicale_update_documents": {
+    "path": "/api/fiches-medicales/{ficheId}/documents",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\ClinicalRecord\\Controller\\Api\\FicheMedicaleController::updateDocuments"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_fiche_medicale_update_devis": {
+    "path": "/api/fiches-medicales/{ficheId}/devis",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\ClinicalRecord\\Controller\\Api\\FicheMedicaleController::updateDevis"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_me_notifications": {
+    "path": "/api/me/notifications",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\NotificationController::list"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_me_notifications_mark_read": {
+    "path": "/api/me/notifications/mark-read",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\NotificationController::markRead"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_me_notifications_mark_all": {
+    "path": "/api/me/notifications/mark-all",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\NotificationController::markAll"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_admin_notifications_send": {
+    "path": "/api/admin/notifications/send",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\NotificationController::send"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_me_notifications_mercure": {
+    "path": "/api/me/notifications/mercure",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\NotificationController::mercure"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_me_push_config": {
+    "path": "/api/me/push/config",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\PushSubscriptionController::config"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_me_push_subscription_upsert": {
+    "path": "/api/me/push/subscription",
+    "method": "PUT",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\PushSubscriptionController::upsert"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_me_push_subscription_delete": {
+    "path": "/api/me/push/subscription",
+    "method": "DELETE",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\PushSubscriptionController::delete"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_me_realtime": {
+    "path": "/api/me/realtime",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\RealtimeController::subscription"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_vitrine_mailbox_get": {
+    "path": "/api/vitrine/mailbox",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\ShowcaseController::config"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_vitrine_mailbox_save": {
+    "path": "/api/vitrine/mailbox",
+    "method": "PUT",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\ShowcaseController::save"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_vitrine_messages": {
+    "path": "/api/vitrine/messages",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\ShowcaseController::messages"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_vitrine_sync": {
+    "path": "/api/vitrine/messages/sync",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\ShowcaseController::sync"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_vitrine_message_status": {
+    "path": "/api/vitrine/messages/{id}",
+    "method": "PATCH",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\ShowcaseController::status"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "api_vitrine_reply": {
+    "path": "/api/vitrine/messages/{id}/reply",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\ShowcaseController::reply"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "api_vitrine_portals": {
+    "path": "/api/vitrine/portals",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\ShowcaseController::portals"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_vitrine_portal_username": {
+    "path": "/api/vitrine/portals/{id}/username",
+    "method": "PATCH",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\ShowcaseController::username"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "api_vitrine_portal_reset": {
+    "path": "/api/vitrine/portals/{id}/reset-password",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\ShowcaseController::resetPassword"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "api_sms_settings_get": {
+    "path": "/api/sms/settings",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\SmsController::getSettings"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_sms_settings_save": {
+    "path": "/api/sms/settings",
+    "method": "PUT",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\SmsController::saveSettings"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_sms_test_connection": {
+    "path": "/api/sms/test-connection",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\SmsController::testConnection"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_sms_test_send": {
+    "path": "/api/sms/test-send",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\SmsController::testSend"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_sms_stats": {
+    "path": "/api/sms/stats",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\SmsController::stats"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_sms_provider_overview": {
+    "path": "/api/sms/provider-overview",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\SmsController::providerOverview"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_sms_webhook_afriksms": {
+    "path": "/api/sms/webhooks/afriksms",
+    "method": "GET|POST",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\SmsController::afrikSmsWebhook"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_sms_logs": {
+    "path": "/api/sms/logs",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\SmsController::logs"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_sms_queue_list": {
+    "path": "/api/sms/queue",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\SmsController::queue"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_sms_queue_details": {
+    "path": "/api/sms/queue/{id}/details",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\SmsController::queueDetails"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_sms_queue_update": {
+    "path": "/api/sms/queue/{id}",
+    "method": "PATCH",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\SmsController::updateQueueItem"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_sms_templates_list": {
+    "path": "/api/sms/templates",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\SmsController::listTemplates"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_sms_templates_save": {
+    "path": "/api/sms/templates",
+    "method": "PUT",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\SmsController::saveTemplates"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_sms_templates_preview": {
+    "path": "/api/sms/templates/preview",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\SmsController::previewTemplate"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_sms_send_manual": {
+    "path": "/api/sms/send/manual",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\SmsController::sendManual"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_sms_queue_process": {
+    "path": "/api/sms/queue/process",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\SmsController::processQueue"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_sms_appointment_send_reminder": {
+    "path": "/api/sms/appointments/{id}/send-reminder",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\SmsController::sendAppointmentReminder"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_sms_appointment_schedule_reminder": {
+    "path": "/api/sms/appointments/{id}/schedule-reminder",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\SmsController::scheduleReminder"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_sms_invoice_send": {
+    "path": "/api/sms/invoices/{id}/send",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\SmsController::sendInvoice"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_sms_receipt_send": {
+    "path": "/api/sms/receipts/{id}/send",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Communication\\Controller\\Api\\SmsController::sendReceipt"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_client_errors": {
+    "path": "/api/client-errors",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Config\\Controller\\Api\\ClientErrorController::report"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_health": {
+    "path": "/api/health",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Config\\Controller\\Api\\HealthController::health"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_health_mercure": {
+    "path": "/api/health/mercure",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Config\\Controller\\Api\\HealthController::mercure"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_health_current_time": {
+    "path": "/api/health/current-time",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Config\\Controller\\Api\\HealthController::currentTime"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_health_features": {
+    "path": "/api/health/features",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Config\\Controller\\Api\\HealthController::features"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_dashboard_data": {
+    "path": "/api/dashboard/{role}/{type}",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Focus\\Controller\\Api\\DashboardController::data"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "app_identityaccess_api_inps_overview": {
+    "path": "/api/inps",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\IdentityAccess\\Controller\\Api\\InpsController::overview"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "app_identityaccess_api_inps_remit": {
+    "path": "/api/inps/remittances",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\IdentityAccess\\Controller\\Api\\InpsController::remit"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "app_identityaccess_api_inps_cancel": {
+    "path": "/api/inps/remittances/{id}/cancel",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\IdentityAccess\\Controller\\Api\\InpsController::cancel"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "app_identityaccess_api_inps_closure": {
+    "path": "/api/inps/{year}/{quarter}/closure",
+    "method": "PUT",
+    "defaults": {
+      "_controller": "App\\IdentityAccess\\Controller\\Api\\InpsController::closure"
+    },
+    "requirements": {
+      "year": "\\d{4}",
+      "quarter": "[1-4]"
+    }
+  },
+  "api_medecins": {
+    "path": "/api/medecins",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\IdentityAccess\\Controller\\Api\\MedecinController::getAllMedecins"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_infirmiers": {
+    "path": "/api/infirmiers",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\IdentityAccess\\Controller\\Api\\MedecinController::getAllInfirmiers"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_payrolls_list": {
+    "path": "/api/payrolls",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\IdentityAccess\\Controller\\Api\\PayrollController::list"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_payrolls_employees": {
+    "path": "/api/payrolls/employees",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\IdentityAccess\\Controller\\Api\\PayrollController::employees"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_payrolls_daily": {
+    "path": "/api/payrolls/daily/{employeeId}",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\IdentityAccess\\Controller\\Api\\PayrollController::daily"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_payrolls_context": {
+    "path": "/api/payrolls/context/{employeeId}",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\IdentityAccess\\Controller\\Api\\PayrollController::context"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_payrolls_create": {
+    "path": "/api/payrolls",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\IdentityAccess\\Controller\\Api\\PayrollController::create"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_payrolls_payment_methods": {
+    "path": "/api/payrolls/payment-methods",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\IdentityAccess\\Controller\\Api\\PayrollController::paymentMethods"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_payrolls_print": {
+    "path": "/api/payrolls/{id}/print",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\IdentityAccess\\Controller\\Api\\PayrollController::printData"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_payrolls_show": {
+    "path": "/api/payrolls/{id}",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\IdentityAccess\\Controller\\Api\\PayrollController::show"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_payrolls_update": {
+    "path": "/api/payrolls/{id}",
+    "method": "PUT",
+    "defaults": {
+      "_controller": "App\\IdentityAccess\\Controller\\Api\\PayrollController::update"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_payrolls_delete": {
+    "path": "/api/payrolls/{id}",
+    "method": "DELETE",
+    "defaults": {
+      "_controller": "App\\IdentityAccess\\Controller\\Api\\PayrollController::delete"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_employees_list": {
+    "path": "/api/employees",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\IdentityAccess\\Controller\\Api\\RHController::listEmployees"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_employees_trash": {
+    "path": "/api/employees/trash",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\IdentityAccess\\Controller\\Api\\RHController::listDeletedEmployees"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_employees_restore": {
+    "path": "/api/employees/{id}/restore",
+    "method": "PATCH",
+    "defaults": {
+      "_controller": "App\\IdentityAccess\\Controller\\Api\\RHController::restoreEmployee"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "api_employees_delete": {
+    "path": "/api/employees/{id}",
+    "method": "DELETE",
+    "defaults": {
+      "_controller": "App\\IdentityAccess\\Controller\\Api\\RHController::softDeleteEmployee"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  },
+  "api_employees_create": {
+    "path": "/api/employees",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\IdentityAccess\\Controller\\Api\\RHController::createEmployee"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_employees_update": {
+    "path": "/api/employees/{id}",
+    "method": "PUT|POST",
+    "defaults": {
+      "_controller": "App\\IdentityAccess\\Controller\\Api\\RHController::updateEmployee"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_employee_details": {
+    "path": "/api/employee/{id}",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\IdentityAccess\\Controller\\Api\\RHController::getEmployeeDetails"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_users_create": {
+    "path": "/api/users",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\IdentityAccess\\Controller\\Api\\UserController::createUser"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_users_list": {
+    "path": "/api/users",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\IdentityAccess\\Controller\\Api\\UserController::listUsers"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_users_associations": {
+    "path": "/api/users/associations",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\IdentityAccess\\Controller\\Api\\UserController::listUserAssociations"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_users_update": {
+    "path": "/api/users/{id}",
+    "method": "PUT",
+    "defaults": {
+      "_controller": "App\\IdentityAccess\\Controller\\Api\\UserController::updateUser"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_users_reset_password": {
+    "path": "/api/users/{id}/reset-password",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\IdentityAccess\\Controller\\Api\\UserController::resetPassword"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_users_delete": {
+    "path": "/api/users/{id}",
+    "method": "DELETE",
+    "defaults": {
+      "_controller": "App\\IdentityAccess\\Controller\\Api\\UserController::deleteUser"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_register": {
+    "path": "/api/register",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\IdentityAccess\\Controller\\Security\\AuthController::register"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_me": {
+    "path": "/api/me",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\IdentityAccess\\Controller\\Security\\AuthController::me"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_me_update": {
+    "path": "/api/me",
+    "method": "PUT|POST",
+    "defaults": {
+      "_controller": "App\\IdentityAccess\\Controller\\Security\\AuthController::updateMe"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_me_change_password": {
+    "path": "/api/me/change-password",
+    "method": "PATCH",
+    "defaults": {
+      "_controller": "App\\IdentityAccess\\Controller\\Security\\AuthController::changePassword"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_token_validate": {
+    "path": "/api/token/validate",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\IdentityAccess\\Controller\\Security\\AuthController::validateToken"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_device_status": {
+    "path": "/api/device/status",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\IdentityAccess\\Controller\\Security\\AuthController::deviceStatus"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_consommable_add": {
+    "path": "/api/consumables",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Inventory\\Controller\\Api\\ConsommableController::add"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_consommable_edit": {
+    "path": "/api/consumables/{id}",
+    "method": "PUT",
+    "defaults": {
+      "_controller": "App\\Inventory\\Controller\\Api\\ConsommableController::edit"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_consommable_retrait": {
+    "path": "/api/consumables/{id}/withdraw",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Inventory\\Controller\\Api\\ConsommableController::withdraw"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_consommable_details": {
+    "path": "/api/consumables/{id}",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Inventory\\Controller\\Api\\ConsommableController::getDetails"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_consommable_add_stock": {
+    "path": "/api/consumables/{id}/stock",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Inventory\\Controller\\Api\\ConsommableController::addStock"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_consommable_delete": {
+    "path": "/api/consumables/{id}",
+    "method": "DELETE",
+    "defaults": {
+      "_controller": "App\\Inventory\\Controller\\Api\\ConsommableController::delete"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_consommables": {
+    "path": "/api/consumables",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Inventory\\Controller\\Api\\ConsommableController::list"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_stocks": {
+    "path": "/api/stocks",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Inventory\\Controller\\Api\\ConsommableController::fetchStocks"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patients": {
+    "path": "/api/patients",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\Api\\PatientController::getPatients"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patients_overview_stats": {
+    "path": "/api/patients/overview-stats",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\Api\\PatientController::getPatientsOverviewStats"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patients_medecin_overview_stats": {
+    "path": "/api/patients/medecin/overview-stats",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\Api\\PatientController::getPatientsOverviewStatsByMedecin"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patients_by_medecin": {
+    "path": "/api/patients/medecin",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\Api\\PatientController::getPatientsByMedecin"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patient_add_with_consultation": {
+    "path": "/api/patient/add-with-consultation",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\Api\\PatientController::addPatientWithConsultation"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patient_add": {
+    "path": "/api/patient/add",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\Api\\PatientController::addPatient"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patient_update": {
+    "path": "/api/patient/{id}/update",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\Api\\PatientController::updatePatient"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patient_archive_file_add": {
+    "path": "/api/patient/{id}/archive-file",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\Api\\PatientController::addArchiveFile"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patient_archive_file_remove": {
+    "path": "/api/patient/{id}/archive-file",
+    "method": "DELETE",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\Api\\PatientController::removeArchiveFile"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_consultation_check_active": {
+    "path": "/api/patient/{id}/consultation-en-cours",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\Api\\PatientController::checkConsultationEnCours"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patients_search": {
+    "path": "/api/patients/search",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\Api\\PatientController::searchPatients"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patients_trash": {
+    "path": "/api/patients/trash",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\Api\\PatientController::getPatientsTrash"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patient_soft_delete": {
+    "path": "/api/patient/{id}",
+    "method": "DELETE",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\Api\\PatientController::softDeletePatient"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patient_restore": {
+    "path": "/api/patient/{id}/restore",
+    "method": "PATCH",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\Api\\PatientController::restorePatient"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patient_details": {
+    "path": "/api/patient/{id}",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\Api\\PatientController::getPatientDetails"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_consultation_create": {
+    "path": "/api/patient/{patientId}/consultation/create",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\Api\\PatientController::createConsultation"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patient_rdv_create": {
+    "path": "/api/patient/{id}/rdv/create",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\Api\\PatientController::createRdv"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patient_dossier_get": {
+    "path": "/api/patient/{id}/dossier",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\Api\\PatientController::getDossier"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patient_fiche_latest": {
+    "path": "/api/patient/{id}/fiche/latest",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\Api\\PatientController::getLatestFiche"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patient_fiches_medicales_create": {
+    "path": "/api/patient/{id}/fiches-medicales",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\Api\\PatientController::createFicheMedicale"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patient_consultations": {
+    "path": "/api/patient/{id}/consultations",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\Api\\PatientController::getPatientConsultations"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patient_portal_user_get": {
+    "path": "/api/patient/{id}/portal-user",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\Api\\PatientController::getPortalUser"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patient_portal_user_create": {
+    "path": "/api/patient/{id}/portal-user/create",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\Api\\PatientController::createPortalUser"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patient_portal_user_reset_password": {
+    "path": "/api/patient/{id}/portal-user/reset-password",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\Api\\PatientController::resetPortalUserPassword"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patient_portal_user_toggle_active": {
+    "path": "/api/patient/{id}/portal-user/active",
+    "method": "PATCH",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\Api\\PatientController::togglePortalUserActive"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patient_dossier_update": {
+    "path": "/api/patient/{id}/dossier/update",
+    "method": "PUT",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\Api\\PatientController::updateDossier"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patient_antecedent_add": {
+    "path": "/api/patient/{id}/antecedents",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\Api\\PatientController::addAntecedent"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patient_antecedent_delete": {
+    "path": "/api/patient/{id}/antecedents/{antecedentId}",
+    "method": "DELETE",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\Api\\PatientController::deleteAntecedent"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patient_allergy_add": {
+    "path": "/api/patient/{id}/allergies",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\Api\\PatientController::addAllergy"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patient_allergy_delete": {
+    "path": "/api/patient/{id}/allergies/{allergyId}",
+    "method": "DELETE",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\Api\\PatientController::deleteAllergy"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_print_patient_dossier_data": {
+    "path": "/api/prints/patient/{id}/dossier",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\Api\\PatientController::getPrintDossierData"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_print_patient_fiche_data": {
+    "path": "/api/prints/patient/{patientId}/fiche/{ficheId}",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\Api\\PatientController::getPrintFicheData"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_appreciation_public_list": {
+    "path": "/api/appreciations/public",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\ApiPortalPatient\\AppreciationController::listPublicAppreciations"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_appreciation_public_export": {
+    "path": "/api/appreciations/public/export",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\ApiPortalPatient\\AppreciationController::listPublicAppreciations"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_appreciation_anonymous_create": {
+    "path": "/api/appreciations/anonymous",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\ApiPortalPatient\\AppreciationController::createAnonymous"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_appreciation_patient_create": {
+    "path": "/api/portal-patient/me/appreciations",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\ApiPortalPatient\\AppreciationController::createPatientAppreciation"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_appreciation_consultation_create": {
+    "path": "/api/portal-patient/me/consultations/{consultationId}/appreciation",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\ApiPortalPatient\\AppreciationController::createConsultationAppreciation"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_appreciation_patient_list": {
+    "path": "/api/portal-patient/me/appreciations",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\ApiPortalPatient\\AppreciationController::listPatientAppreciations"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_appreciation_admin_list": {
+    "path": "/api/administration/appreciations",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\ApiPortalPatient\\AppreciationController::listAdminAppreciations"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_appreciation_admin_publish": {
+    "path": "/api/administration/appreciations/{id}/publish",
+    "method": "PATCH",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\ApiPortalPatient\\AppreciationController::setAdminAppreciationPublished"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_appreciation_admin_delete": {
+    "path": "/api/administration/appreciations/{id}",
+    "method": "DELETE",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\ApiPortalPatient\\AppreciationController::deleteAdminAppreciation"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patient_me_consultations": {
+    "path": "/api/portal-patient/me/consultations",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\ApiPortalPatient\\PatientPortalController::consultations"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patient_me_devis_factures": {
+    "path": "/api/portal-patient/me/devis-factures",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\ApiPortalPatient\\PatientPortalController::devisFactures"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patient_me_paiements": {
+    "path": "/api/portal-patient/me/paiements",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\ApiPortalPatient\\PatientPortalController::paiements"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patient_me_paiement_recu": {
+    "path": "/api/portal-patient/me/paiements/{id}/recu",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\ApiPortalPatient\\PatientPortalController::recu"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patient_me_rdvs": {
+    "path": "/api/portal-patient/me/rdvs",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\ApiPortalPatient\\PatientPortalController::rdvs"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patient_me_notifications": {
+    "path": "/api/portal-patient/me/notifications",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\ApiPortalPatient\\PatientPortalController::notifications"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patient_me_notifications_mercure": {
+    "path": "/api/portal-patient/me/notifications/mercure",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\ApiPortalPatient\\PatientPortalController::notificationsMercure"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patient_me_dashboard": {
+    "path": "/api/portal-patient/me/dashboard",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\ApiPortalPatient\\PatientPortalController::dashboard"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patient_me_profil": {
+    "path": "/api/portal-patient/me/profil",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\ApiPortalPatient\\PatientPortalController::profil"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patient_me_consultation_detail": {
+    "path": "/api/portal-patient/me/consultations/{id}",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\ApiPortalPatient\\PatientPortalController::consultationDetail"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_patient_me_document_detail": {
+    "path": "/api/portal-patient/me/devis-factures/{id}",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Patient\\Controller\\ApiPortalPatient\\PatientPortalController::documentDetail"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_report_global_stats": {
+    "path": "/api/report/global-stats",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Reporting\\Controller\\Api\\Report\\GlobalController::globalStats"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_report_nonperiodic_employees_distribution": {
+    "path": "/api/report/nonperiodic/employees-distribution",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Reporting\\Controller\\Api\\Report\\GlobalController::employeesDistribution"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_report_nonperiodic_low_stock": {
+    "path": "/api/report/nonperiodic/low-stock-consumables",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Reporting\\Controller\\Api\\Report\\GlobalController::lowStockConsumables"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_report_api_medecin_dashboard": {
+    "path": "/api/report/medecin",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Reporting\\Controller\\Api\\Report\\MedecinController::medecinDashboard"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_report_global_stats_patients": {
+    "path": "/api/report/global/patients",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Reporting\\Controller\\Api\\Report\\PatientsController::globalPatients"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_report_global_patient_referrals": {
+    "path": "/api/report/global/patient-referrals",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Reporting\\Controller\\Api\\Report\\PatientsController::globalPatientReferrals"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_report_periodic_patients": {
+    "path": "/api/report/periodic/patients",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Reporting\\Controller\\Api\\Report\\PatientsController::periodicPatients"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_report_periodic_consultations": {
+    "path": "/api/report/periodic/consultations",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Reporting\\Controller\\Api\\Report\\PeriodicController::periodicConsultations"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_report_periodic_appointments": {
+    "path": "/api/report/periodic/appointments",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Reporting\\Controller\\Api\\Report\\PeriodicController::periodicAppointments"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_report_periodic_room_usage": {
+    "path": "/api/report/periodic/room-usage",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Reporting\\Controller\\Api\\Report\\PeriodicController::periodicRoomUsage"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_report_periodic_payment_balances": {
+    "path": "/api/report/periodic/payment-balances",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Reporting\\Controller\\Api\\Report\\PeriodicController::periodicPaymentBalances"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_report_periodic_payment_frequency": {
+    "path": "/api/report/periodic/payment-frequency",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Reporting\\Controller\\Api\\Report\\PeriodicController::periodicPaymentFrequency"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_report_periodic_acts_stats": {
+    "path": "/api/report/periodic/acts-stats",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Reporting\\Controller\\Api\\Report\\PeriodicController::periodicActsStats"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_report_periodic_doctor_reports": {
+    "path": "/api/report/periodic/doctor-reports",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Reporting\\Controller\\Api\\Report\\PeriodicController::periodicDoctorReports"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_report_api_report_receptionniste": {
+    "path": "/api/report/reception-stats",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Reporting\\Controller\\Api\\Report\\ReceptionController::getReceptionDashboard"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_reports_data": {
+    "path": "/api/reports/data",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Reporting\\Controller\\Api\\ReportController::getReportsData"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_conges_create": {
+    "path": "/api/conges",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Scheduling\\Controller\\Api\\CongeController::create"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_conges_list": {
+    "path": "/api/conges",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Scheduling\\Controller\\Api\\CongeController::list"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_conges_employees": {
+    "path": "/api/conges/employees",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Scheduling\\Controller\\Api\\CongeController::employeesWithConges"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_conges_update": {
+    "path": "/api/conges/{id}",
+    "method": "PUT",
+    "defaults": {
+      "_controller": "App\\Scheduling\\Controller\\Api\\CongeController::update"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_conges_delete": {
+    "path": "/api/conges/{id}",
+    "method": "DELETE",
+    "defaults": {
+      "_controller": "App\\Scheduling\\Controller\\Api\\CongeController::delete"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_events_all": {
+    "path": "/api/events",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Scheduling\\Controller\\Api\\EventController::listEvents"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_event_create_booking": {
+    "path": "/api/events",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Scheduling\\Controller\\Api\\EventController::createBooking"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_event_delete": {
+    "path": "/api/events/{id}",
+    "method": "DELETE",
+    "defaults": {
+      "_controller": "App\\Scheduling\\Controller\\Api\\EventController::deleteBooking"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_event_validate": {
+    "path": "/api/events/{id}/validate",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Scheduling\\Controller\\Api\\EventController::validateBooking"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_jours_list": {
+    "path": "/api/holidays",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Scheduling\\Controller\\Api\\HolidayController::list"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_add_ferie": {
+    "path": "/api/holidays",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Scheduling\\Controller\\Api\\HolidayController::addHoliday"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_delete_ferie": {
+    "path": "/api/holidays/{date}",
+    "method": "DELETE",
+    "defaults": {
+      "_controller": "App\\Scheduling\\Controller\\Api\\HolidayController::deleteHoliday"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_update_fermetures": {
+    "path": "/api/holidays/closures",
+    "method": "PUT",
+    "defaults": {
+      "_controller": "App\\Scheduling\\Controller\\Api\\HolidayController::updateClosures"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_rdv_create": {
+    "path": "/api/rdv/create",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Scheduling\\Controller\\Api\\RdvController::createRdv"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_rdv_action": {
+    "path": "/api/rdv/{id}/{action}",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Scheduling\\Controller\\Api\\RdvController::handleRdvAction"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_rdv_stats": {
+    "path": "/api/rdv/stats",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Scheduling\\Controller\\Api\\RdvController::rdvStats"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_rdvs_stats_by_date": {
+    "path": "/api/rdvs/stats/{date}",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Scheduling\\Controller\\Api\\RdvController::rdvStatsByDate"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_rdvs_by_date": {
+    "path": "/api/rdvs/{date}",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Scheduling\\Controller\\Api\\RdvController::listRdvsByDate"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_rdvs_range": {
+    "path": "/api/rdvs",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Scheduling\\Controller\\Api\\RdvController::listRdvsRange"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_pending_rdvs_range": {
+    "path": "/api/rdvs_pending",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Scheduling\\Controller\\Api\\RdvController::listPendingRdvsRange"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_rdvs_bymedecin": {
+    "path": "/api/rdvs/{date}/medecin",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Scheduling\\Controller\\Api\\RdvController::listRdvsForCurrentMedecin"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_salles": {
+    "path": "/api/salles",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Scheduling\\Controller\\Api\\SalleController::getSalles"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_salle_add": {
+    "path": "/api/salles",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Scheduling\\Controller\\Api\\SalleController::addSalle"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_salle_edit": {
+    "path": "/api/salles/{id}",
+    "method": "PUT",
+    "defaults": {
+      "_controller": "App\\Scheduling\\Controller\\Api\\SalleController::editSalle"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_salle_delete": {
+    "path": "/api/salles/{salle}",
+    "method": "DELETE",
+    "defaults": {
+      "_controller": "App\\Scheduling\\Controller\\Api\\SalleController::deleteSalle"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_settings_general_get": {
+    "path": "/api/settings/general",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Settings\\Controller\\Api\\GlobalSettingsController::getGeneralSettings"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_settings_general_public_get": {
+    "path": "/api/settings/general/public",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Settings\\Controller\\Api\\GlobalSettingsController::getPublicGeneralSettings"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_settings_general_save": {
+    "path": "/api/settings/general",
+    "method": "PUT",
+    "defaults": {
+      "_controller": "App\\Settings\\Controller\\Api\\GlobalSettingsController::saveGeneralSettings"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_settings_devices_list": {
+    "path": "/api/settings/devices",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Settings\\Controller\\Api\\GlobalSettingsController::listDevices"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_settings_devices_approve": {
+    "path": "/api/settings/devices/{deviceId}/approve",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Settings\\Controller\\Api\\GlobalSettingsController::approveDevice"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_settings_devices_reject": {
+    "path": "/api/settings/devices/{deviceId}/reject",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Settings\\Controller\\Api\\GlobalSettingsController::rejectDevice"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_settings_devices_rename": {
+    "path": "/api/settings/devices/{deviceId}/rename",
+    "method": "PUT|PATCH",
+    "defaults": {
+      "_controller": "App\\Settings\\Controller\\Api\\GlobalSettingsController::renameDevice"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_settings_devices_delete": {
+    "path": "/api/settings/devices/{deviceId}",
+    "method": "DELETE",
+    "defaults": {
+      "_controller": "App\\Settings\\Controller\\Api\\GlobalSettingsController::deleteDevice"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_settings_general_patient_portal_create_missing": {
+    "path": "/api/settings/general/patient-portal/create-missing",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Settings\\Controller\\Api\\GlobalSettingsController::createMissingPatientPortalAccounts"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_settings_test_mode_status": {
+    "path": "/api/settings/test-mode/status",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Settings\\Controller\\Api\\GlobalSettingsController::getTestModeStatus"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_settings_test_mode_toggle": {
+    "path": "/api/settings/test-mode/toggle",
+    "method": "PUT",
+    "defaults": {
+      "_controller": "App\\Settings\\Controller\\Api\\GlobalSettingsController::toggleTestMode"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_settings_test_mode_clean": {
+    "path": "/api/settings/test-mode/clean",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Settings\\Controller\\Api\\GlobalSettingsController::cleanTestMode"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_settings_database_export": {
+    "path": "/api/settings/database/export",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Settings\\Controller\\Api\\GlobalSettingsController::exportDatabase"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_settings_database_export_download": {
+    "path": "/api/settings/database/export/download",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Settings\\Controller\\Api\\GlobalSettingsController::downloadDatabaseExport"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_settings_database_reset": {
+    "path": "/api/settings/database/reset",
+    "method": "POST",
+    "defaults": {
+      "_controller": "App\\Settings\\Controller\\Api\\GlobalSettingsController::resetDatabase"
+    },
+    "requirements": "NO CUSTOM"
+  },
+  "api_login_check": {
+    "path": "/api/login_check",
+    "method": "POST",
+    "defaults": [],
+    "requirements": "NO CUSTOM"
+  },
+  "api_patient_login_check": {
+    "path": "/api/login_patient_check",
+    "method": "POST",
+    "defaults": [],
+    "requirements": "NO CUSTOM"
+  },
+  "api_assurances_claim_detail": {
+    "path": "/api/assurances/claims/{id}",
+    "method": "GET",
+    "defaults": {
+      "_controller": "App\\Billing\\Controller\\Api\\LotFactureAssuranceController::getClaimDetail"
+    },
+    "requirements": {
+      "id": "\\d+"
+    }
+  }
+}

@@ -1,0 +1,1454 @@
+[
+  {
+    "rel": "IdentityAccess/EventSubscriber/AuthenticationResponseSubscriber.php",
+    "next": "IdentityAccess/Infrastructure/EventSubscriber/AuthenticationResponseSubscriber.php",
+    "oldClass": "App\\IdentityAccess\\EventSubscriber\\AuthenticationResponseSubscriber",
+    "newClass": "App\\IdentityAccess\\Infrastructure\\EventSubscriber\\AuthenticationResponseSubscriber"
+  },
+  {
+    "rel": "Communication/EventSubscriber/NotificationAutoReadSubscriber.php",
+    "next": "Communication/Infrastructure/EventSubscriber/NotificationAutoReadSubscriber.php",
+    "oldClass": "App\\Communication\\EventSubscriber\\NotificationAutoReadSubscriber",
+    "newClass": "App\\Communication\\Infrastructure\\EventSubscriber\\NotificationAutoReadSubscriber"
+  },
+  {
+    "rel": "IdentityAccess/EventSubscriber/UserSessionActivitySubscriber.php",
+    "next": "IdentityAccess/Infrastructure/EventSubscriber/UserSessionActivitySubscriber.php",
+    "oldClass": "App\\IdentityAccess\\EventSubscriber\\UserSessionActivitySubscriber",
+    "newClass": "App\\IdentityAccess\\Infrastructure\\EventSubscriber\\UserSessionActivitySubscriber"
+  },
+  {
+    "rel": "Patient/Controller/ApiPortalPatient/PatientPortalController.php",
+    "next": "Patient/Presentation/Api/Controller/Portal/PatientPortalController.php",
+    "oldClass": "App\\Patient\\Controller\\ApiPortalPatient\\PatientPortalController",
+    "newClass": "App\\Patient\\Presentation\\Api\\Controller\\Portal\\PatientPortalController"
+  },
+  {
+    "rel": "Shared/EventSubscriber/DoctrineEntityManagerResetSubscriber.php",
+    "next": "SharedKernel/Infrastructure/EventSubscriber/DoctrineEntityManagerResetSubscriber.php",
+    "oldClass": "App\\Shared\\EventSubscriber\\DoctrineEntityManagerResetSubscriber",
+    "newClass": "App\\SharedKernel\\Infrastructure\\EventSubscriber\\DoctrineEntityManagerResetSubscriber"
+  },
+  {
+    "rel": "Communication/MessageHandler/ProcessSmsQueueMessageHandler.php",
+    "next": "Communication/Application/MessageHandler/ProcessSmsQueueMessageHandler.php",
+    "oldClass": "App\\Communication\\MessageHandler\\ProcessSmsQueueMessageHandler",
+    "newClass": "App\\Communication\\Application\\MessageHandler\\ProcessSmsQueueMessageHandler"
+  },
+  {
+    "rel": "Patient/Controller/ApiPortalPatient/AppreciationController.php",
+    "next": "Patient/Presentation/Api/Controller/Portal/AppreciationController.php",
+    "oldClass": "App\\Patient\\Controller\\ApiPortalPatient\\AppreciationController",
+    "newClass": "App\\Patient\\Presentation\\Api\\Controller\\Portal\\AppreciationController"
+  },
+  {
+    "rel": "CareDelivery/Controller/Api/FicheConsultationController.php",
+    "next": "CareDelivery/Presentation/Api/Controller/FicheConsultationController.php",
+    "oldClass": "App\\CareDelivery\\Controller\\Api\\FicheConsultationController",
+    "newClass": "App\\CareDelivery\\Presentation\\Api\\Controller\\FicheConsultationController"
+  },
+  {
+    "rel": "Communication/Controller/Api/PushSubscriptionController.php",
+    "next": "Communication/Presentation/Api/Controller/PushSubscriptionController.php",
+    "oldClass": "App\\Communication\\Controller\\Api\\PushSubscriptionController",
+    "newClass": "App\\Communication\\Presentation\\Api\\Controller\\PushSubscriptionController"
+  },
+  {
+    "rel": "IdentityAccess/EventSubscriber/ApiDeviceGuardSubscriber.php",
+    "next": "IdentityAccess/Infrastructure/EventSubscriber/ApiDeviceGuardSubscriber.php",
+    "oldClass": "App\\IdentityAccess\\EventSubscriber\\ApiDeviceGuardSubscriber",
+    "newClass": "App\\IdentityAccess\\Infrastructure\\EventSubscriber\\ApiDeviceGuardSubscriber"
+  },
+  {
+    "rel": "IdentityAccess/Repository/UserDeviceAccessLogRepository.php",
+    "next": "IdentityAccess/Infrastructure/Persistence/Doctrine/UserDeviceAccessLogRepository.php",
+    "oldClass": "App\\IdentityAccess\\Repository\\UserDeviceAccessLogRepository",
+    "newClass": "App\\IdentityAccess\\Infrastructure\\Persistence\\Doctrine\\UserDeviceAccessLogRepository"
+  },
+  {
+    "rel": "Billing/Service/Workflow/ClassicInvoiceWorkflowService.php",
+    "next": "Billing/Application/Service/Workflow/ClassicInvoiceWorkflowService.php",
+    "oldClass": "App\\Billing\\Service\\Workflow\\ClassicInvoiceWorkflowService",
+    "newClass": "App\\Billing\\Application\\Service\\Workflow\\ClassicInvoiceWorkflowService"
+  },
+  {
+    "rel": "Billing/Service/Workflow/InsuredInvoiceWorkflowService.php",
+    "next": "Billing/Application/Service/Workflow/InsuredInvoiceWorkflowService.php",
+    "oldClass": "App\\Billing\\Service\\Workflow\\InsuredInvoiceWorkflowService",
+    "newClass": "App\\Billing\\Application\\Service\\Workflow\\InsuredInvoiceWorkflowService"
+  },
+  {
+    "rel": "Communication/EventSubscriber/VitrinePrivacySubscriber.php",
+    "next": "Communication/Infrastructure/EventSubscriber/VitrinePrivacySubscriber.php",
+    "oldClass": "App\\Communication\\EventSubscriber\\VitrinePrivacySubscriber",
+    "newClass": "App\\Communication\\Infrastructure\\EventSubscriber\\VitrinePrivacySubscriber"
+  },
+  {
+    "rel": "Communication/MessageHandler/SendWebPushMessageHandler.php",
+    "next": "Communication/Application/MessageHandler/SendWebPushMessageHandler.php",
+    "oldClass": "App\\Communication\\MessageHandler\\SendWebPushMessageHandler",
+    "newClass": "App\\Communication\\Application\\MessageHandler\\SendWebPushMessageHandler"
+  },
+  {
+    "rel": "Communication/Repository/WebPushSubscriptionRepository.php",
+    "next": "Communication/Infrastructure/Persistence/Doctrine/WebPushSubscriptionRepository.php",
+    "oldClass": "App\\Communication\\Repository\\WebPushSubscriptionRepository",
+    "newClass": "App\\Communication\\Infrastructure\\Persistence\\Doctrine\\WebPushSubscriptionRepository"
+  },
+  {
+    "rel": "ClinicalRecord/Controller/Api/FicheMedicaleController.php",
+    "next": "ClinicalRecord/Presentation/Api/Controller/FicheMedicaleController.php",
+    "oldClass": "App\\ClinicalRecord\\Controller\\Api\\FicheMedicaleController",
+    "newClass": "App\\ClinicalRecord\\Presentation\\Api\\Controller\\FicheMedicaleController"
+  },
+  {
+    "rel": "DependencyInjection/Compiler/MercureHubHttpClientPass.php",
+    "next": "DependencyInjection/Compiler/MercureHubHttpClientPass.php",
+    "oldClass": "App\\DependencyInjection\\Compiler\\MercureHubHttpClientPass",
+    "newClass": "App\\DependencyInjection\\Compiler\\MercureHubHttpClientPass"
+  },
+  {
+    "rel": "Billing/Controller/Api/LotFactureAssuranceController.php",
+    "next": "Billing/Presentation/Api/Controller/LotFactureAssuranceController.php",
+    "oldClass": "App\\Billing\\Controller\\Api\\LotFactureAssuranceController",
+    "newClass": "App\\Billing\\Presentation\\Api\\Controller\\LotFactureAssuranceController"
+  },
+  {
+    "rel": "CareDelivery/Service/ConsultationNotificationService.php",
+    "next": "CareDelivery/Application/Service/ConsultationNotificationService.php",
+    "oldClass": "App\\CareDelivery\\Service\\ConsultationNotificationService",
+    "newClass": "App\\CareDelivery\\Application\\Service\\ConsultationNotificationService"
+  },
+  {
+    "rel": "Communication/EventSubscriber/NotificationSubscriber.php",
+    "next": "Communication/Infrastructure/EventSubscriber/NotificationSubscriber.php",
+    "oldClass": "App\\Communication\\EventSubscriber\\NotificationSubscriber",
+    "newClass": "App\\Communication\\Infrastructure\\EventSubscriber\\NotificationSubscriber"
+  },
+  {
+    "rel": "Communication/Repository/SmsProviderConfigRepository.php",
+    "next": "Communication/Infrastructure/Persistence/Doctrine/SmsProviderConfigRepository.php",
+    "oldClass": "App\\Communication\\Repository\\SmsProviderConfigRepository",
+    "newClass": "App\\Communication\\Infrastructure\\Persistence\\Doctrine\\SmsProviderConfigRepository"
+  },
+  {
+    "rel": "Patient/Repository/PatientAssuranceProfileRepository.php",
+    "next": "Patient/Infrastructure/Persistence/Doctrine/PatientAssuranceProfileRepository.php",
+    "oldClass": "App\\Patient\\Repository\\PatientAssuranceProfileRepository",
+    "newClass": "App\\Patient\\Infrastructure\\Persistence\\Doctrine\\PatientAssuranceProfileRepository"
+  },
+  {
+    "rel": "Shared/EventSubscriber/MutationIdempotencySubscriber.php",
+    "next": "SharedKernel/Infrastructure/EventSubscriber/MutationIdempotencySubscriber.php",
+    "oldClass": "App\\Shared\\EventSubscriber\\MutationIdempotencySubscriber",
+    "newClass": "App\\SharedKernel\\Infrastructure\\EventSubscriber\\MutationIdempotencySubscriber"
+  },
+  {
+    "rel": "ClinicalRecord/Repository/DocumentMedicalRepository.php",
+    "next": "ClinicalRecord/Infrastructure/Persistence/Doctrine/DocumentMedicalRepository.php",
+    "oldClass": "App\\ClinicalRecord\\Repository\\DocumentMedicalRepository",
+    "newClass": "App\\ClinicalRecord\\Infrastructure\\Persistence\\Doctrine\\DocumentMedicalRepository"
+  },
+  {
+    "rel": "Communication/Controller/Api/NotificationController.php",
+    "next": "Communication/Presentation/Api/Controller/NotificationController.php",
+    "oldClass": "App\\Communication\\Controller\\Api\\NotificationController",
+    "newClass": "App\\Communication\\Presentation\\Api\\Controller\\NotificationController"
+  },
+  {
+    "rel": "Communication/Service/NotificationRealtimePublisher.php",
+    "next": "Communication/Application/Service/NotificationRealtimePublisher.php",
+    "oldClass": "App\\Communication\\Service\\NotificationRealtimePublisher",
+    "newClass": "App\\Communication\\Application\\Service\\NotificationRealtimePublisher"
+  },
+  {
+    "rel": "Communication/Service/NotificationRecipientResolver.php",
+    "next": "Communication/Application/Service/NotificationRecipientResolver.php",
+    "oldClass": "App\\Communication\\Service\\NotificationRecipientResolver",
+    "newClass": "App\\Communication\\Application\\Service\\NotificationRecipientResolver"
+  },
+  {
+    "rel": "Reporting/Controller/Api/Report/ReceptionController.php",
+    "next": "Reporting/Presentation/Api/Controller/Report/ReceptionController.php",
+    "oldClass": "App\\Reporting\\Controller\\Api\\Report\\ReceptionController",
+    "newClass": "App\\Reporting\\Presentation\\Api\\Controller\\Report\\ReceptionController"
+  },
+  {
+    "rel": "CareDelivery/Controller/Api/ConsultationController.php",
+    "next": "CareDelivery/Presentation/Api/Controller/ConsultationController.php",
+    "oldClass": "App\\CareDelivery\\Controller\\Api\\ConsultationController",
+    "newClass": "App\\CareDelivery\\Presentation\\Api\\Controller\\ConsultationController"
+  },
+  {
+    "rel": "ClinicalRecord/Repository/ExamenDentaireRepository.php",
+    "next": "ClinicalRecord/Infrastructure/Persistence/Doctrine/ExamenDentaireRepository.php",
+    "oldClass": "App\\ClinicalRecord\\Repository\\ExamenDentaireRepository",
+    "newClass": "App\\ClinicalRecord\\Infrastructure\\Persistence\\Doctrine\\ExamenDentaireRepository"
+  },
+  {
+    "rel": "Communication/Command/CleanOldNotificationsCommand.php",
+    "next": "Communication/Infrastructure/Console/CleanOldNotificationsCommand.php",
+    "oldClass": "App\\Communication\\Command\\CleanOldNotificationsCommand",
+    "newClass": "App\\Communication\\Infrastructure\\Console\\CleanOldNotificationsCommand"
+  },
+  {
+    "rel": "Communication/Service/WebPushSubscriptionValidator.php",
+    "next": "Communication/Application/Service/WebPushSubscriptionValidator.php",
+    "oldClass": "App\\Communication\\Service\\WebPushSubscriptionValidator",
+    "newClass": "App\\Communication\\Application\\Service\\WebPushSubscriptionValidator"
+  },
+  {
+    "rel": "IdentityAccess/Command/MigrateGlobalDevicesCommand.php",
+    "next": "IdentityAccess/Infrastructure/Console/MigrateGlobalDevicesCommand.php",
+    "oldClass": "App\\IdentityAccess\\Command\\MigrateGlobalDevicesCommand",
+    "newClass": "App\\IdentityAccess\\Infrastructure\\Console\\MigrateGlobalDevicesCommand"
+  },
+  {
+    "rel": "Reporting/Controller/Api/Report/PatientsController.php",
+    "next": "Reporting/Presentation/Api/Controller/Report/PatientsController.php",
+    "oldClass": "App\\Reporting\\Controller\\Api\\Report\\PatientsController",
+    "newClass": "App\\Reporting\\Presentation\\Api\\Controller\\Report\\PatientsController"
+  },
+  {
+    "rel": "Reporting/Controller/Api/Report/PeriodicController.php",
+    "next": "Reporting/Presentation/Api/Controller/Report/PeriodicController.php",
+    "oldClass": "App\\Reporting\\Controller\\Api\\Report\\PeriodicController",
+    "newClass": "App\\Reporting\\Presentation\\Api\\Controller\\Report\\PeriodicController"
+  },
+  {
+    "rel": "CareDelivery/Repository/OrdonnanceLigneRepository.php",
+    "next": "CareDelivery/Infrastructure/Persistence/Doctrine/OrdonnanceLigneRepository.php",
+    "oldClass": "App\\CareDelivery\\Repository\\OrdonnanceLigneRepository",
+    "newClass": "App\\CareDelivery\\Infrastructure\\Persistence\\Doctrine\\OrdonnanceLigneRepository"
+  },
+  {
+    "rel": "ClinicalRecord/Command/EnsurePatientFichesCommand.php",
+    "next": "ClinicalRecord/Infrastructure/Console/EnsurePatientFichesCommand.php",
+    "oldClass": "App\\ClinicalRecord\\Command\\EnsurePatientFichesCommand",
+    "newClass": "App\\ClinicalRecord\\Infrastructure\\Console\\EnsurePatientFichesCommand"
+  },
+  {
+    "rel": "ClinicalRecord/Repository/FicheMedicaleRepository.php",
+    "next": "ClinicalRecord/Infrastructure/Persistence/Doctrine/FicheMedicaleRepository.php",
+    "oldClass": "App\\ClinicalRecord\\Repository\\FicheMedicaleRepository",
+    "newClass": "App\\ClinicalRecord\\Infrastructure\\Persistence\\Doctrine\\FicheMedicaleRepository"
+  },
+  {
+    "rel": "Communication/Command/NotificationsCleanupCommand.php",
+    "next": "Communication/Infrastructure/Console/NotificationsCleanupCommand.php",
+    "oldClass": "App\\Communication\\Command\\NotificationsCleanupCommand",
+    "newClass": "App\\Communication\\Infrastructure\\Console\\NotificationsCleanupCommand"
+  },
+  {
+    "rel": "Communication/Service/MercureAuthorizationService.php",
+    "next": "Communication/Application/Service/MercureAuthorizationService.php",
+    "oldClass": "App\\Communication\\Service\\MercureAuthorizationService",
+    "newClass": "App\\Communication\\Application\\Service\\MercureAuthorizationService"
+  },
+  {
+    "rel": "IdentityAccess/Controller/Security/AuthController.php",
+    "next": "IdentityAccess/Presentation/Api/Controller/AuthController.php",
+    "oldClass": "App\\IdentityAccess\\Controller\\Security\\AuthController",
+    "newClass": "App\\IdentityAccess\\Presentation\\Api\\Controller\\AuthController"
+  },
+  {
+    "rel": "IdentityAccess/Repository/SalaryPaymentRepository.php",
+    "next": "IdentityAccess/Infrastructure/Persistence/Doctrine/SalaryPaymentRepository.php",
+    "oldClass": "App\\IdentityAccess\\Repository\\SalaryPaymentRepository",
+    "newClass": "App\\IdentityAccess\\Infrastructure\\Persistence\\Doctrine\\SalaryPaymentRepository"
+  },
+  {
+    "rel": "Reporting/Controller/Api/Report/MedecinController.php",
+    "next": "Reporting/Presentation/Api/Controller/Report/MedecinController.php",
+    "oldClass": "App\\Reporting\\Controller\\Api\\Report\\MedecinController",
+    "newClass": "App\\Reporting\\Presentation\\Api\\Controller\\Report\\MedecinController"
+  },
+  {
+    "rel": "Billing/Repository/LotFactureAssuranceRepository.php",
+    "next": "Billing/Infrastructure/Persistence/Doctrine/LotFactureAssuranceRepository.php",
+    "oldClass": "App\\Billing\\Repository\\LotFactureAssuranceRepository",
+    "newClass": "App\\Billing\\Infrastructure\\Persistence\\Doctrine\\LotFactureAssuranceRepository"
+  },
+  {
+    "rel": "Communication/Command/SyncShowcaseMailboxCommand.php",
+    "next": "Communication/Infrastructure/Console/SyncShowcaseMailboxCommand.php",
+    "oldClass": "App\\Communication\\Command\\SyncShowcaseMailboxCommand",
+    "newClass": "App\\Communication\\Infrastructure\\Console\\SyncShowcaseMailboxCommand"
+  },
+  {
+    "rel": "Communication/Exception/WebPushDeliveryException.php",
+    "next": "Communication/Domain/Exception/WebPushDeliveryException.php",
+    "oldClass": "App\\Communication\\Exception\\WebPushDeliveryException",
+    "newClass": "App\\Communication\\Domain\\Exception\\WebPushDeliveryException"
+  },
+  {
+    "rel": "Communication/Mercure/NotificationTopicGenerator.php",
+    "next": "Communication/Infrastructure/Mercure/NotificationTopicGenerator.php",
+    "oldClass": "App\\Communication\\Mercure\\NotificationTopicGenerator",
+    "newClass": "App\\Communication\\Infrastructure\\Mercure\\NotificationTopicGenerator"
+  },
+  {
+    "rel": "Communication/Service/WebPushSubscriptionManager.php",
+    "next": "Communication/Application/Service/WebPushSubscriptionManager.php",
+    "oldClass": "App\\Communication\\Service\\WebPushSubscriptionManager",
+    "newClass": "App\\Communication\\Application\\Service\\WebPushSubscriptionManager"
+  },
+  {
+    "rel": "Reporting/Controller/Api/Report/GlobalController.php",
+    "next": "Reporting/Presentation/Api/Controller/Report/GlobalController.php",
+    "oldClass": "App\\Reporting\\Controller\\Api\\Report\\GlobalController",
+    "newClass": "App\\Reporting\\Presentation\\Api\\Controller\\Report\\GlobalController"
+  },
+  {
+    "rel": "Settings/Controller/Api/GlobalSettingsController.php",
+    "next": "Settings/Presentation/Api/Controller/GlobalSettingsController.php",
+    "oldClass": "App\\Settings\\Controller\\Api\\GlobalSettingsController",
+    "newClass": "App\\Settings\\Presentation\\Api\\Controller\\GlobalSettingsController"
+  },
+  {
+    "rel": "Billing/Controller/Api/CabinetServiceController.php",
+    "next": "Billing/Presentation/Api/Controller/CabinetServiceController.php",
+    "oldClass": "App\\Billing\\Controller\\Api\\CabinetServiceController",
+    "newClass": "App\\Billing\\Presentation\\Api\\Controller\\CabinetServiceController"
+  },
+  {
+    "rel": "Communication/Command/TestMercurePublishCommand.php",
+    "next": "Communication/Infrastructure/Console/TestMercurePublishCommand.php",
+    "oldClass": "App\\Communication\\Command\\TestMercurePublishCommand",
+    "newClass": "App\\Communication\\Infrastructure\\Console\\TestMercurePublishCommand"
+  },
+  {
+    "rel": "Communication/Controller/Api/RealtimeController.php",
+    "next": "Communication/Presentation/Api/Controller/RealtimeController.php",
+    "oldClass": "App\\Communication\\Controller\\Api\\RealtimeController",
+    "newClass": "App\\Communication\\Presentation\\Api\\Controller\\RealtimeController"
+  },
+  {
+    "rel": "Communication/Controller/Api/ShowcaseController.php",
+    "next": "Communication/Presentation/Api/Controller/ShowcaseController.php",
+    "oldClass": "App\\Communication\\Controller\\Api\\ShowcaseController",
+    "newClass": "App\\Communication\\Presentation\\Api\\Controller\\ShowcaseController"
+  },
+  {
+    "rel": "Communication/Controller/NotificationController.php",
+    "next": "Communication/Presentation/Web/Controller/NotificationController.php",
+    "oldClass": "App\\Communication\\Controller\\NotificationController",
+    "newClass": "App\\Communication\\Presentation\\Web\\Controller\\NotificationController"
+  },
+  {
+    "rel": "Communication/Repository/NotificationRepository.php",
+    "next": "Communication/Infrastructure/Persistence/Doctrine/NotificationRepository.php",
+    "oldClass": "App\\Communication\\Repository\\NotificationRepository",
+    "newClass": "App\\Communication\\Infrastructure\\Persistence\\Doctrine\\NotificationRepository"
+  },
+  {
+    "rel": "IdentityAccess/Controller/Api/MedecinController.php",
+    "next": "IdentityAccess/Presentation/Api/Controller/MedecinController.php",
+    "oldClass": "App\\IdentityAccess\\Controller\\Api\\MedecinController",
+    "newClass": "App\\IdentityAccess\\Presentation\\Api\\Controller\\MedecinController"
+  },
+  {
+    "rel": "IdentityAccess/Controller/Api/PayrollController.php",
+    "next": "IdentityAccess/Presentation/Api/Controller/PayrollController.php",
+    "oldClass": "App\\IdentityAccess\\Controller\\Api\\PayrollController",
+    "newClass": "App\\IdentityAccess\\Presentation\\Api\\Controller\\PayrollController"
+  },
+  {
+    "rel": "Billing/Controller/Api/PaymentMethodController.php",
+    "next": "Billing/Presentation/Api/Controller/PaymentMethodController.php",
+    "oldClass": "App\\Billing\\Controller\\Api\\PaymentMethodController",
+    "newClass": "App\\Billing\\Presentation\\Api\\Controller\\PaymentMethodController"
+  },
+  {
+    "rel": "CareDelivery/Repository/ConsultationRepository.php",
+    "next": "CareDelivery/Infrastructure/Persistence/Doctrine/ConsultationRepository.php",
+    "oldClass": "App\\CareDelivery\\Repository\\ConsultationRepository",
+    "newClass": "App\\CareDelivery\\Infrastructure\\Persistence\\Doctrine\\ConsultationRepository"
+  },
+  {
+    "rel": "ClinicalRecord/Entity/FicheEntretienMedicament.php",
+    "next": "ClinicalRecord/Domain/Entity/FicheEntretienMedicament.php",
+    "oldClass": "App\\ClinicalRecord\\Entity\\FicheEntretienMedicament",
+    "newClass": "App\\ClinicalRecord\\Domain\\Entity\\FicheEntretienMedicament"
+  },
+  {
+    "rel": "Communication/Command/GenerateVapidKeysCommand.php",
+    "next": "Communication/Infrastructure/Console/GenerateVapidKeysCommand.php",
+    "oldClass": "App\\Communication\\Command\\GenerateVapidKeysCommand",
+    "newClass": "App\\Communication\\Infrastructure\\Console\\GenerateVapidKeysCommand"
+  },
+  {
+    "rel": "Communication/Repository/SmsTemplateRepository.php",
+    "next": "Communication/Infrastructure/Persistence/Doctrine/SmsTemplateRepository.php",
+    "oldClass": "App\\Communication\\Repository\\SmsTemplateRepository",
+    "newClass": "App\\Communication\\Infrastructure\\Persistence\\Doctrine\\SmsTemplateRepository"
+  },
+  {
+    "rel": "Communication/Security/MailboxCredentialCipher.php",
+    "next": "Communication/Infrastructure/Security/MailboxCredentialCipher.php",
+    "oldClass": "App\\Communication\\Security\\MailboxCredentialCipher",
+    "newClass": "App\\Communication\\Infrastructure\\Security\\MailboxCredentialCipher"
+  },
+  {
+    "rel": "IdentityAccess/Repository/UserDeviceRepository.php",
+    "next": "IdentityAccess/Infrastructure/Persistence/Doctrine/UserDeviceRepository.php",
+    "oldClass": "App\\IdentityAccess\\Repository\\UserDeviceRepository",
+    "newClass": "App\\IdentityAccess\\Infrastructure\\Persistence\\Doctrine\\UserDeviceRepository"
+  },
+  {
+    "rel": "Inventory/Controller/Api/ConsommableController.php",
+    "next": "Inventory/Presentation/Api/Controller/ConsommableController.php",
+    "oldClass": "App\\Inventory\\Controller\\Api\\ConsommableController",
+    "newClass": "App\\Inventory\\Presentation\\Api\\Controller\\ConsommableController"
+  },
+  {
+    "rel": "Billing/Repository/FactureAssuranceRepository.php",
+    "next": "Billing/Infrastructure/Persistence/Doctrine/FactureAssuranceRepository.php",
+    "oldClass": "App\\Billing\\Repository\\FactureAssuranceRepository",
+    "newClass": "App\\Billing\\Infrastructure\\Persistence\\Doctrine\\FactureAssuranceRepository"
+  },
+  {
+    "rel": "CareDelivery/Repository/ActeMedicalRepository.php",
+    "next": "CareDelivery/Infrastructure/Persistence/Doctrine/ActeMedicalRepository.php",
+    "oldClass": "App\\CareDelivery\\Repository\\ActeMedicalRepository",
+    "newClass": "App\\CareDelivery\\Infrastructure\\Persistence\\Doctrine\\ActeMedicalRepository"
+  },
+  {
+    "rel": "ClinicalRecord/Entity/FicheEntretienAffection.php",
+    "next": "ClinicalRecord/Domain/Entity/FicheEntretienAffection.php",
+    "oldClass": "App\\ClinicalRecord\\Entity\\FicheEntretienAffection",
+    "newClass": "App\\ClinicalRecord\\Domain\\Entity\\FicheEntretienAffection"
+  },
+  {
+    "rel": "Communication/Command/DispatchSmsQueueCommand.php",
+    "next": "Communication/Infrastructure/Console/DispatchSmsQueueCommand.php",
+    "oldClass": "App\\Communication\\Command\\DispatchSmsQueueCommand",
+    "newClass": "App\\Communication\\Infrastructure\\Console\\DispatchSmsQueueCommand"
+  },
+  {
+    "rel": "Communication/Service/NotificationLinkBuilder.php",
+    "next": "Communication/Application/Service/NotificationLinkBuilder.php",
+    "oldClass": "App\\Communication\\Service\\NotificationLinkBuilder",
+    "newClass": "App\\Communication\\Application\\Service\\NotificationLinkBuilder"
+  },
+  {
+    "rel": "Billing/Controller/Api/TransactionController.php",
+    "next": "Billing/Presentation/Api/Controller/TransactionController.php",
+    "oldClass": "App\\Billing\\Controller\\Api\\TransactionController",
+    "newClass": "App\\Billing\\Presentation\\Api\\Controller\\TransactionController"
+  },
+  {
+    "rel": "Billing/Service/CabinetServiceBillingService.php",
+    "next": "Billing/Application/Service/CabinetServiceBillingService.php",
+    "oldClass": "App\\Billing\\Service\\CabinetServiceBillingService",
+    "newClass": "App\\Billing\\Application\\Service\\CabinetServiceBillingService"
+  },
+  {
+    "rel": "CareDelivery/Repository/OrdonnanceRepository.php",
+    "next": "CareDelivery/Infrastructure/Persistence/Doctrine/OrdonnanceRepository.php",
+    "oldClass": "App\\CareDelivery\\Repository\\OrdonnanceRepository",
+    "newClass": "App\\CareDelivery\\Infrastructure\\Persistence\\Doctrine\\OrdonnanceRepository"
+  },
+  {
+    "rel": "CareDelivery/Repository/TraitementRepository.php",
+    "next": "CareDelivery/Infrastructure/Persistence/Doctrine/TraitementRepository.php",
+    "oldClass": "App\\CareDelivery\\Repository\\TraitementRepository",
+    "newClass": "App\\CareDelivery\\Infrastructure\\Persistence\\Doctrine\\TraitementRepository"
+  },
+  {
+    "rel": "ClinicalRecord/Entity/FicheEntretienHabitude.php",
+    "next": "ClinicalRecord/Domain/Entity/FicheEntretienHabitude.php",
+    "oldClass": "App\\ClinicalRecord\\Entity\\FicheEntretienHabitude",
+    "newClass": "App\\ClinicalRecord\\Domain\\Entity\\FicheEntretienHabitude"
+  },
+  {
+    "rel": "ClinicalRecord/Entity/FicheEntretienQuestion.php",
+    "next": "ClinicalRecord/Domain/Entity/FicheEntretienQuestion.php",
+    "oldClass": "App\\ClinicalRecord\\Entity\\FicheEntretienQuestion",
+    "newClass": "App\\ClinicalRecord\\Domain\\Entity\\FicheEntretienQuestion"
+  },
+  {
+    "rel": "Communication/Command/ProcessSmsQueueCommand.php",
+    "next": "Communication/Infrastructure/Console/ProcessSmsQueueCommand.php",
+    "oldClass": "App\\Communication\\Command\\ProcessSmsQueueCommand",
+    "newClass": "App\\Communication\\Infrastructure\\Console\\ProcessSmsQueueCommand"
+  },
+  {
+    "rel": "Communication/Message/ProcessSmsQueueMessage.php",
+    "next": "Communication/Application/Message/ProcessSmsQueueMessage.php",
+    "oldClass": "App\\Communication\\Message\\ProcessSmsQueueMessage",
+    "newClass": "App\\Communication\\Application\\Message\\ProcessSmsQueueMessage"
+  },
+  {
+    "rel": "IdentityAccess/Controller/Api/InpsController.php",
+    "next": "IdentityAccess/Presentation/Api/Controller/InpsController.php",
+    "oldClass": "App\\IdentityAccess\\Controller\\Api\\InpsController",
+    "newClass": "App\\IdentityAccess\\Presentation\\Api\\Controller\\InpsController"
+  },
+  {
+    "rel": "IdentityAccess/Controller/Api/UserController.php",
+    "next": "IdentityAccess/Presentation/Api/Controller/UserController.php",
+    "oldClass": "App\\IdentityAccess\\Controller\\Api\\UserController",
+    "newClass": "App\\IdentityAccess\\Presentation\\Api\\Controller\\UserController"
+  },
+  {
+    "rel": "IdentityAccess/Service/UserManagementService.php",
+    "next": "IdentityAccess/Application/Service/UserManagementService.php",
+    "oldClass": "App\\IdentityAccess\\Service\\UserManagementService",
+    "newClass": "App\\IdentityAccess\\Application\\Service\\UserManagementService"
+  },
+  {
+    "rel": "Shared/Doctrine/EnsureDoctrineProxiesCommand.php",
+    "next": "SharedKernel/Infrastructure/Doctrine/EnsureDoctrineProxiesCommand.php",
+    "oldClass": "App\\Shared\\Doctrine\\EnsureDoctrineProxiesCommand",
+    "newClass": "App\\SharedKernel\\Infrastructure\\Doctrine\\EnsureDoctrineProxiesCommand"
+  },
+  {
+    "rel": "Billing/Repository/FactureCabinetRepository.php",
+    "next": "Billing/Infrastructure/Persistence/Doctrine/FactureCabinetRepository.php",
+    "oldClass": "App\\Billing\\Repository\\FactureCabinetRepository",
+    "newClass": "App\\Billing\\Infrastructure\\Persistence\\Doctrine\\FactureCabinetRepository"
+  },
+  {
+    "rel": "Billing/Repository/ModeDePaiementRepository.php",
+    "next": "Billing/Infrastructure/Persistence/Doctrine/ModeDePaiementRepository.php",
+    "oldClass": "App\\Billing\\Repository\\ModeDePaiementRepository",
+    "newClass": "App\\Billing\\Infrastructure\\Persistence\\Doctrine\\ModeDePaiementRepository"
+  },
+  {
+    "rel": "Billing/Repository/ServiceCabinetRepository.php",
+    "next": "Billing/Infrastructure/Persistence/Doctrine/ServiceCabinetRepository.php",
+    "oldClass": "App\\Billing\\Repository\\ServiceCabinetRepository",
+    "newClass": "App\\Billing\\Infrastructure\\Persistence\\Doctrine\\ServiceCabinetRepository"
+  },
+  {
+    "rel": "ClinicalRecord/Service/FicheMedicaleService.php",
+    "next": "ClinicalRecord/Application/Service/FicheMedicaleService.php",
+    "oldClass": "App\\ClinicalRecord\\Service\\FicheMedicaleService",
+    "newClass": "App\\ClinicalRecord\\Application\\Service\\FicheMedicaleService"
+  },
+  {
+    "rel": "Communication/Mercure/MercureCircuitBreaker.php",
+    "next": "Communication/Infrastructure/Mercure/MercureCircuitBreaker.php",
+    "oldClass": "App\\Communication\\Mercure\\MercureCircuitBreaker",
+    "newClass": "App\\Communication\\Infrastructure\\Mercure\\MercureCircuitBreaker"
+  },
+  {
+    "rel": "Communication/Repository/SmsQueueRepository.php",
+    "next": "Communication/Infrastructure/Persistence/Doctrine/SmsQueueRepository.php",
+    "oldClass": "App\\Communication\\Repository\\SmsQueueRepository",
+    "newClass": "App\\Communication\\Infrastructure\\Persistence\\Doctrine\\SmsQueueRepository"
+  },
+  {
+    "rel": "Config/Controller/Api/ClientErrorController.php",
+    "next": "System/Presentation/Api/Controller/ClientErrorController.php",
+    "oldClass": "App\\Config\\Controller\\Api\\ClientErrorController",
+    "newClass": "App\\System\\Presentation\\Api\\Controller\\ClientErrorController"
+  },
+  {
+    "rel": "IdentityAccess/Repository/EmployeRepository.php",
+    "next": "IdentityAccess/Infrastructure/Persistence/Doctrine/EmployeRepository.php",
+    "oldClass": "App\\IdentityAccess\\Repository\\EmployeRepository",
+    "newClass": "App\\IdentityAccess\\Infrastructure\\Persistence\\Doctrine\\EmployeRepository"
+  },
+  {
+    "rel": "IdentityAccess/Security/LoginFailureHandler.php",
+    "next": "IdentityAccess/Infrastructure/Security/LoginFailureHandler.php",
+    "oldClass": "App\\IdentityAccess\\Security\\LoginFailureHandler",
+    "newClass": "App\\IdentityAccess\\Infrastructure\\Security\\LoginFailureHandler"
+  },
+  {
+    "rel": "Patient/Repository/ContactUrgenceRepository.php",
+    "next": "Patient/Infrastructure/Persistence/Doctrine/ContactUrgenceRepository.php",
+    "oldClass": "App\\Patient\\Repository\\ContactUrgenceRepository",
+    "newClass": "App\\Patient\\Infrastructure\\Persistence\\Doctrine\\ContactUrgenceRepository"
+  },
+  {
+    "rel": "Scheduling/Controller/Api/HolidayController.php",
+    "next": "Scheduling/Presentation/Api/Controller/HolidayController.php",
+    "oldClass": "App\\Scheduling\\Controller\\Api\\HolidayController",
+    "newClass": "App\\Scheduling\\Presentation\\Api\\Controller\\HolidayController"
+  },
+  {
+    "rel": "Settings/Service/DatabaseMaintenanceService.php",
+    "next": "Settings/Application/Service/DatabaseMaintenanceService.php",
+    "oldClass": "App\\Settings\\Service\\DatabaseMaintenanceService",
+    "newClass": "App\\Settings\\Application\\Service\\DatabaseMaintenanceService"
+  },
+  {
+    "rel": "Billing/Controller/Api/InsuranceController.php",
+    "next": "Billing/Presentation/Api/Controller/InsuranceController.php",
+    "oldClass": "App\\Billing\\Controller\\Api\\InsuranceController",
+    "newClass": "App\\Billing\\Presentation\\Api\\Controller\\InsuranceController"
+  },
+  {
+    "rel": "Billing/Service/IntegratedInsuranceCatalog.php",
+    "next": "Billing/Application/Service/IntegratedInsuranceCatalog.php",
+    "oldClass": "App\\Billing\\Service\\IntegratedInsuranceCatalog",
+    "newClass": "App\\Billing\\Application\\Service\\IntegratedInsuranceCatalog"
+  },
+  {
+    "rel": "Billing/Service/LotFactureAssuranceService.php",
+    "next": "Billing/Application/Service/LotFactureAssuranceService.php",
+    "oldClass": "App\\Billing\\Service\\LotFactureAssuranceService",
+    "newClass": "App\\Billing\\Application\\Service\\LotFactureAssuranceService"
+  },
+  {
+    "rel": "Communication/Controller/Api/SmsController.php",
+    "next": "Communication/Presentation/Api/Controller/SmsController.php",
+    "oldClass": "App\\Communication\\Controller\\Api\\SmsController",
+    "newClass": "App\\Communication\\Presentation\\Api\\Controller\\SmsController"
+  },
+  {
+    "rel": "Communication/Service/MercureHealthService.php",
+    "next": "Communication/Application/Service/MercureHealthService.php",
+    "oldClass": "App\\Communication\\Service\\MercureHealthService",
+    "newClass": "App\\Communication\\Application\\Service\\MercureHealthService"
+  },
+  {
+    "rel": "IdentityAccess/Controller/Api/RHController.php",
+    "next": "IdentityAccess/Presentation/Api/Controller/RHController.php",
+    "oldClass": "App\\IdentityAccess\\Controller\\Api\\RHController",
+    "newClass": "App\\IdentityAccess\\Presentation\\Api\\Controller\\RHController"
+  },
+  {
+    "rel": "IdentityAccess/Security/UserEnabledChecker.php",
+    "next": "IdentityAccess/Infrastructure/Security/UserEnabledChecker.php",
+    "oldClass": "App\\IdentityAccess\\Security\\UserEnabledChecker",
+    "newClass": "App\\IdentityAccess\\Infrastructure\\Security\\UserEnabledChecker"
+  },
+  {
+    "rel": "Inventory/Repository/ConsommableRepository.php",
+    "next": "Inventory/Infrastructure/Persistence/Doctrine/ConsommableRepository.php",
+    "oldClass": "App\\Inventory\\Repository\\ConsommableRepository",
+    "newClass": "App\\Inventory\\Infrastructure\\Persistence\\Doctrine\\ConsommableRepository"
+  },
+  {
+    "rel": "Billing/Repository/ContenuDevisRepository.php",
+    "next": "Billing/Infrastructure/Persistence/Doctrine/ContenuDevisRepository.php",
+    "oldClass": "App\\Billing\\Repository\\ContenuDevisRepository",
+    "newClass": "App\\Billing\\Infrastructure\\Persistence\\Doctrine\\ContenuDevisRepository"
+  },
+  {
+    "rel": "Billing/Service/CashdeskEntryPointService.php",
+    "next": "Billing/Application/Service/CashdeskEntryPointService.php",
+    "oldClass": "App\\Billing\\Service\\CashdeskEntryPointService",
+    "newClass": "App\\Billing\\Application\\Service\\CashdeskEntryPointService"
+  },
+  {
+    "rel": "ClinicalRecord/Entity/FichePlanTraitement.php",
+    "next": "ClinicalRecord/Domain/Entity/FichePlanTraitement.php",
+    "oldClass": "App\\ClinicalRecord\\Entity\\FichePlanTraitement",
+    "newClass": "App\\ClinicalRecord\\Domain\\Entity\\FichePlanTraitement"
+  },
+  {
+    "rel": "Communication/Contract/SmsClientInterface.php",
+    "next": "Communication/Application/Port/SmsClientInterface.php",
+    "oldClass": "App\\Communication\\Contract\\SmsClientInterface",
+    "newClass": "App\\Communication\\Application\\Port\\SmsClientInterface"
+  },
+  {
+    "rel": "Communication/Mercure/ResilientMercureHub.php",
+    "next": "Communication/Infrastructure/Mercure/ResilientMercureHub.php",
+    "oldClass": "App\\Communication\\Mercure\\ResilientMercureHub",
+    "newClass": "App\\Communication\\Infrastructure\\Mercure\\ResilientMercureHub"
+  },
+  {
+    "rel": "Communication/Repository/SmsLogRepository.php",
+    "next": "Communication/Infrastructure/Persistence/Doctrine/SmsLogRepository.php",
+    "oldClass": "App\\Communication\\Repository\\SmsLogRepository",
+    "newClass": "App\\Communication\\Infrastructure\\Persistence\\Doctrine\\SmsLogRepository"
+  },
+  {
+    "rel": "Communication/Service/NotificationService.php",
+    "next": "Communication/Application/Service/NotificationService.php",
+    "oldClass": "App\\Communication\\Service\\NotificationService",
+    "newClass": "App\\Communication\\Application\\Service\\NotificationService"
+  },
+  {
+    "rel": "IdentityAccess/Entity/UserDeviceAccessLog.php",
+    "next": "IdentityAccess/Domain/Entity/UserDeviceAccessLog.php",
+    "oldClass": "App\\IdentityAccess\\Entity\\UserDeviceAccessLog",
+    "newClass": "App\\IdentityAccess\\Domain\\Entity\\UserDeviceAccessLog"
+  },
+  {
+    "rel": "Patient/Repository/AppreciationRepository.php",
+    "next": "Patient/Infrastructure/Persistence/Doctrine/AppreciationRepository.php",
+    "oldClass": "App\\Patient\\Repository\\AppreciationRepository",
+    "newClass": "App\\Patient\\Infrastructure\\Persistence\\Doctrine\\AppreciationRepository"
+  },
+  {
+    "rel": "Reporting/Controller/Api/ReportController.php",
+    "next": "Reporting/Presentation/Api/Controller/ReportController.php",
+    "oldClass": "App\\Reporting\\Controller\\Api\\ReportController",
+    "newClass": "App\\Reporting\\Presentation\\Api\\Controller\\ReportController"
+  },
+  {
+    "rel": "Scheduling/Controller/Api/CongeController.php",
+    "next": "Scheduling/Presentation/Api/Controller/CongeController.php",
+    "oldClass": "App\\Scheduling\\Controller\\Api\\CongeController",
+    "newClass": "App\\Scheduling\\Presentation\\Api\\Controller\\CongeController"
+  },
+  {
+    "rel": "Scheduling/Controller/Api/EventController.php",
+    "next": "Scheduling/Presentation/Api/Controller/EventController.php",
+    "oldClass": "App\\Scheduling\\Controller\\Api\\EventController",
+    "newClass": "App\\Scheduling\\Presentation\\Api\\Controller\\EventController"
+  },
+  {
+    "rel": "Scheduling/Controller/Api/SalleController.php",
+    "next": "Scheduling/Presentation/Api/Controller/SalleController.php",
+    "oldClass": "App\\Scheduling\\Controller\\Api\\SalleController",
+    "newClass": "App\\Scheduling\\Presentation\\Api\\Controller\\SalleController"
+  },
+  {
+    "rel": "Scheduling/Service/RdvNotificationService.php",
+    "next": "Scheduling/Application/Service/RdvNotificationService.php",
+    "oldClass": "App\\Scheduling\\Service\\RdvNotificationService",
+    "newClass": "App\\Scheduling\\Application\\Service\\RdvNotificationService"
+  },
+  {
+    "rel": "Billing/Repository/TransactionRepository.php",
+    "next": "Billing/Infrastructure/Persistence/Doctrine/TransactionRepository.php",
+    "oldClass": "App\\Billing\\Repository\\TransactionRepository",
+    "newClass": "App\\Billing\\Infrastructure\\Persistence\\Doctrine\\TransactionRepository"
+  },
+  {
+    "rel": "CareDelivery/Service/ConsultationService.php",
+    "next": "CareDelivery/Application/Service/ConsultationService.php",
+    "oldClass": "App\\CareDelivery\\Service\\ConsultationService",
+    "newClass": "App\\CareDelivery\\Application\\Service\\ConsultationService"
+  },
+  {
+    "rel": "Communication/Entity/WebPushSubscription.php",
+    "next": "Communication/Domain/Entity/WebPushSubscription.php",
+    "oldClass": "App\\Communication\\Entity\\WebPushSubscription",
+    "newClass": "App\\Communication\\Domain\\Entity\\WebPushSubscription"
+  },
+  {
+    "rel": "Communication/Message/SendWebPushMessage.php",
+    "next": "Communication/Application/Message/SendWebPushMessage.php",
+    "oldClass": "App\\Communication\\Message\\SendWebPushMessage",
+    "newClass": "App\\Communication\\Application\\Message\\SendWebPushMessage"
+  },
+  {
+    "rel": "Communication/Security/MailboxHostPolicy.php",
+    "next": "Communication/Infrastructure/Security/MailboxHostPolicy.php",
+    "oldClass": "App\\Communication\\Security\\MailboxHostPolicy",
+    "newClass": "App\\Communication\\Infrastructure\\Security\\MailboxHostPolicy"
+  },
+  {
+    "rel": "Communication/Service/SmsTemplateService.php",
+    "next": "Communication/Application/Service/SmsTemplateService.php",
+    "oldClass": "App\\Communication\\Service\\SmsTemplateService",
+    "newClass": "App\\Communication\\Application\\Service\\SmsTemplateService"
+  },
+  {
+    "rel": "Focus/Controller/Api/DashboardController.php",
+    "next": "Focus/Presentation/Api/Controller/DashboardController.php",
+    "oldClass": "App\\Focus\\Controller\\Api\\DashboardController",
+    "newClass": "App\\Focus\\Presentation\\Api\\Controller\\DashboardController"
+  },
+  {
+    "rel": "IdentityAccess/Repository/UserRepository.php",
+    "next": "IdentityAccess/Infrastructure/Persistence/Doctrine/UserRepository.php",
+    "oldClass": "App\\IdentityAccess\\Repository\\UserRepository",
+    "newClass": "App\\IdentityAccess\\Infrastructure\\Persistence\\Doctrine\\UserRepository"
+  },
+  {
+    "rel": "IdentityAccess/Security/LoginUserChecker.php",
+    "next": "IdentityAccess/Infrastructure/Security/LoginUserChecker.php",
+    "oldClass": "App\\IdentityAccess\\Security\\LoginUserChecker",
+    "newClass": "App\\IdentityAccess\\Infrastructure\\Security\\LoginUserChecker"
+  },
+  {
+    "rel": "IdentityAccess/Service/UserDeviceService.php",
+    "next": "IdentityAccess/Application/Service/UserDeviceService.php",
+    "oldClass": "App\\IdentityAccess\\Service\\UserDeviceService",
+    "newClass": "App\\IdentityAccess\\Application\\Service\\UserDeviceService"
+  },
+  {
+    "rel": "Patient/Controller/Api/PatientController.php",
+    "next": "Patient/Presentation/Api/Controller/PatientController.php",
+    "oldClass": "App\\Patient\\Controller\\Api\\PatientController",
+    "newClass": "App\\Patient\\Presentation\\Api\\Controller\\PatientController"
+  },
+  {
+    "rel": "Settings/Repository/AppSettingRepository.php",
+    "next": "Settings/Infrastructure/Persistence/Doctrine/AppSettingRepository.php",
+    "oldClass": "App\\Settings\\Repository\\AppSettingRepository",
+    "newClass": "App\\Settings\\Infrastructure\\Persistence\\Doctrine\\AppSettingRepository"
+  },
+  {
+    "rel": "Billing/Controller/Api/CaisseController.php",
+    "next": "Billing/Presentation/Api/Controller/CaisseController.php",
+    "oldClass": "App\\Billing\\Controller\\Api\\CaisseController",
+    "newClass": "App\\Billing\\Presentation\\Api\\Controller\\CaisseController"
+  },
+  {
+    "rel": "Billing/Repository/ChargeFixeRepository.php",
+    "next": "Billing/Infrastructure/Persistence/Doctrine/ChargeFixeRepository.php",
+    "oldClass": "App\\Billing\\Repository\\ChargeFixeRepository",
+    "newClass": "App\\Billing\\Infrastructure\\Persistence\\Doctrine\\ChargeFixeRepository"
+  },
+  {
+    "rel": "Communication/Service/SmsClientResolver.php",
+    "next": "Communication/Application/Service/SmsClientResolver.php",
+    "oldClass": "App\\Communication\\Service\\SmsClientResolver",
+    "newClass": "App\\Communication\\Application\\Service\\SmsClientResolver"
+  },
+  {
+    "rel": "Config/Service/ClientErrorReportService.php",
+    "next": "System/Application/Service/ClientErrorReportService.php",
+    "oldClass": "App\\Config\\Service\\ClientErrorReportService",
+    "newClass": "App\\System\\Application\\Service\\ClientErrorReportService"
+  },
+  {
+    "rel": "Dto/Focus/FocusReceptionConsultationDto.php",
+    "next": "Focus/Application/Dto/FocusReceptionConsultationDto.php",
+    "oldClass": "App\\Dto\\Focus\\FocusReceptionConsultationDto",
+    "newClass": "App\\Focus\\Application\\Dto\\FocusReceptionConsultationDto"
+  },
+  {
+    "rel": "Patient/Repository/AntecedentRepository.php",
+    "next": "Patient/Infrastructure/Persistence/Doctrine/AntecedentRepository.php",
+    "oldClass": "App\\Patient\\Repository\\AntecedentRepository",
+    "newClass": "App\\Patient\\Infrastructure\\Persistence\\Doctrine\\AntecedentRepository"
+  },
+  {
+    "rel": "Scheduling/Controller/Api/RdvController.php",
+    "next": "Scheduling/Presentation/Api/Controller/RdvController.php",
+    "oldClass": "App\\Scheduling\\Controller\\Api\\RdvController",
+    "newClass": "App\\Scheduling\\Presentation\\Api\\Controller\\RdvController"
+  },
+  {
+    "rel": "Scheduling/Repository/BookingRepository.php",
+    "next": "Scheduling/Infrastructure/Persistence/Doctrine/BookingRepository.php",
+    "oldClass": "App\\Scheduling\\Repository\\BookingRepository",
+    "newClass": "App\\Scheduling\\Infrastructure\\Persistence\\Doctrine\\BookingRepository"
+  },
+  {
+    "rel": "Billing/Repository/AssuranceRepository.php",
+    "next": "Billing/Infrastructure/Persistence/Doctrine/AssuranceRepository.php",
+    "oldClass": "App\\Billing\\Repository\\AssuranceRepository",
+    "newClass": "App\\Billing\\Infrastructure\\Persistence\\Doctrine\\AssuranceRepository"
+  },
+  {
+    "rel": "Communication/Entity/SmsProviderConfig.php",
+    "next": "Communication/Domain/Entity/SmsProviderConfig.php",
+    "oldClass": "App\\Communication\\Entity\\SmsProviderConfig",
+    "newClass": "App\\Communication\\Domain\\Entity\\SmsProviderConfig"
+  },
+  {
+    "rel": "Communication/Mercure/RealtimeEnvelope.php",
+    "next": "Communication/Infrastructure/Mercure/RealtimeEnvelope.php",
+    "oldClass": "App\\Communication\\Mercure\\RealtimeEnvelope",
+    "newClass": "App\\Communication\\Infrastructure\\Mercure\\RealtimeEnvelope"
+  },
+  {
+    "rel": "Communication/Service/SmsConfigService.php",
+    "next": "Communication/Application/Service/SmsConfigService.php",
+    "oldClass": "App\\Communication\\Service\\SmsConfigService",
+    "newClass": "App\\Communication\\Application\\Service\\SmsConfigService"
+  },
+  {
+    "rel": "Config/Controller/Api/HealthController.php",
+    "next": "System/Presentation/Api/Controller/HealthController.php",
+    "oldClass": "App\\Config\\Controller\\Api\\HealthController",
+    "newClass": "App\\System\\Presentation\\Api\\Controller\\HealthController"
+  },
+  {
+    "rel": "Dto/Focus/FocusReceptionInvoiceLineDto.php",
+    "next": "Focus/Application/Dto/FocusReceptionInvoiceLineDto.php",
+    "oldClass": "App\\Dto\\Focus\\FocusReceptionInvoiceLineDto",
+    "newClass": "App\\Focus\\Application\\Dto\\FocusReceptionInvoiceLineDto"
+  },
+  {
+    "rel": "IdentityAccess/Service/EmployeeService.php",
+    "next": "IdentityAccess/Application/Service/EmployeeService.php",
+    "oldClass": "App\\IdentityAccess\\Service\\EmployeeService",
+    "newClass": "App\\IdentityAccess\\Application\\Service\\EmployeeService"
+  },
+  {
+    "rel": "Patient/Entity/PatientAssuranceProfile.php",
+    "next": "Patient/Domain/Entity/PatientAssuranceProfile.php",
+    "oldClass": "App\\Patient\\Entity\\PatientAssuranceProfile",
+    "newClass": "App\\Patient\\Domain\\Entity\\PatientAssuranceProfile"
+  },
+  {
+    "rel": "Settings/Service/GlobalSettingsService.php",
+    "next": "Settings/Application/Service/GlobalSettingsService.php",
+    "oldClass": "App\\Settings\\Service\\GlobalSettingsService",
+    "newClass": "App\\Settings\\Application\\Service\\GlobalSettingsService"
+  },
+  {
+    "rel": "Billing/Repository/PaiementRepository.php",
+    "next": "Billing/Infrastructure/Persistence/Doctrine/PaiementRepository.php",
+    "oldClass": "App\\Billing\\Repository\\PaiementRepository",
+    "newClass": "App\\Billing\\Infrastructure\\Persistence\\Doctrine\\PaiementRepository"
+  },
+  {
+    "rel": "Billing/Service/InsuranceClaimService.php",
+    "next": "Billing/Application/Service/InsuranceClaimService.php",
+    "oldClass": "App\\Billing\\Service\\InsuranceClaimService",
+    "newClass": "App\\Billing\\Application\\Service\\InsuranceClaimService"
+  },
+  {
+    "rel": "ClinicalRecord/Entity/FicheExamenItem.php",
+    "next": "ClinicalRecord/Domain/Entity/FicheExamenItem.php",
+    "oldClass": "App\\ClinicalRecord\\Entity\\FicheExamenItem",
+    "newClass": "App\\ClinicalRecord\\Domain\\Entity\\FicheExamenItem"
+  },
+  {
+    "rel": "ClinicalRecord/Entity/FicheExamenLabo.php",
+    "next": "ClinicalRecord/Domain/Entity/FicheExamenLabo.php",
+    "oldClass": "App\\ClinicalRecord\\Entity\\FicheExamenLabo",
+    "newClass": "App\\ClinicalRecord\\Domain\\Entity\\FicheExamenLabo"
+  },
+  {
+    "rel": "Communication/Service/OrangeSmsClient.php",
+    "next": "Communication/Infrastructure/Integration/OrangeSmsClient.php",
+    "oldClass": "App\\Communication\\Service\\OrangeSmsClient",
+    "newClass": "App\\Communication\\Infrastructure\\Integration\\OrangeSmsClient"
+  },
+  {
+    "rel": "Communication/Service/ShowcaseMailbox.php",
+    "next": "Communication/Application/Service/ShowcaseMailbox.php",
+    "oldClass": "App\\Communication\\Service\\ShowcaseMailbox",
+    "newClass": "App\\Communication\\Application\\Service\\ShowcaseMailbox"
+  },
+  {
+    "rel": "IdentityAccess/Service/PayrollService.php",
+    "next": "IdentityAccess/Application/Service/PayrollService.php",
+    "oldClass": "App\\IdentityAccess\\Service\\PayrollService",
+    "newClass": "App\\IdentityAccess\\Application\\Service\\PayrollService"
+  },
+  {
+    "rel": "Scheduling/Repository/CongeRepository.php",
+    "next": "Scheduling/Infrastructure/Persistence/Doctrine/CongeRepository.php",
+    "oldClass": "App\\Scheduling\\Repository\\CongeRepository",
+    "newClass": "App\\Scheduling\\Infrastructure\\Persistence\\Doctrine\\CongeRepository"
+  },
+  {
+    "rel": "Scheduling/Repository/SalleRepository.php",
+    "next": "Scheduling/Infrastructure/Persistence/Doctrine/SalleRepository.php",
+    "oldClass": "App\\Scheduling\\Repository\\SalleRepository",
+    "newClass": "App\\Scheduling\\Infrastructure\\Persistence\\Doctrine\\SalleRepository"
+  },
+  {
+    "rel": "Settings/Service/InternetFeaturesGate.php",
+    "next": "Settings/Application/Service/InternetFeaturesGate.php",
+    "oldClass": "App\\Settings\\Service\\InternetFeaturesGate",
+    "newClass": "App\\Settings\\Application\\Service\\InternetFeaturesGate"
+  },
+  {
+    "rel": "Billing/Repository/FactureRepository.php",
+    "next": "Billing/Infrastructure/Persistence/Doctrine/FactureRepository.php",
+    "oldClass": "App\\Billing\\Repository\\FactureRepository",
+    "newClass": "App\\Billing\\Infrastructure\\Persistence\\Doctrine\\FactureRepository"
+  },
+  {
+    "rel": "ClinicalRecord/Entity/FicheEntretien.php",
+    "next": "ClinicalRecord/Domain/Entity/FicheEntretien.php",
+    "oldClass": "App\\ClinicalRecord\\Entity\\FicheEntretien",
+    "newClass": "App\\ClinicalRecord\\Domain\\Entity\\FicheEntretien"
+  },
+  {
+    "rel": "Communication/Entity/ShowcaseMessage.php",
+    "next": "Communication/Domain/Entity/ShowcaseMessage.php",
+    "oldClass": "App\\Communication\\Entity\\ShowcaseMessage",
+    "newClass": "App\\Communication\\Domain\\Entity\\ShowcaseMessage"
+  },
+  {
+    "rel": "Communication/Service/AfrikSmsClient.php",
+    "next": "Communication/Application/Service/AfrikSmsClient.php",
+    "oldClass": "App\\Communication\\Service\\AfrikSmsClient",
+    "newClass": "App\\Communication\\Application\\Service\\AfrikSmsClient"
+  },
+  {
+    "rel": "Focus/Service/FocusRealtimePublisher.php",
+    "next": "Focus/Application/Service/FocusRealtimePublisher.php",
+    "oldClass": "App\\Focus\\Service\\FocusRealtimePublisher",
+    "newClass": "App\\Focus\\Application\\Service\\FocusRealtimePublisher"
+  },
+  {
+    "rel": "IdentityAccess/Entity/InpsRemittance.php",
+    "next": "IdentityAccess/Domain/Entity/InpsRemittance.php",
+    "oldClass": "App\\IdentityAccess\\Entity\\InpsRemittance",
+    "newClass": "App\\IdentityAccess\\Domain\\Entity\\InpsRemittance"
+  },
+  {
+    "rel": "Inventory/Repository/StockRepository.php",
+    "next": "Inventory/Infrastructure/Persistence/Doctrine/StockRepository.php",
+    "oldClass": "App\\Inventory\\Repository\\StockRepository",
+    "newClass": "App\\Inventory\\Infrastructure\\Persistence\\Doctrine\\StockRepository"
+  },
+  {
+    "rel": "Inventory/Service/ConsommableService.php",
+    "next": "Inventory/Application/Service/ConsommableService.php",
+    "oldClass": "App\\Inventory\\Service\\ConsommableService",
+    "newClass": "App\\Inventory\\Application\\Service\\ConsommableService"
+  },
+  {
+    "rel": "Patient/Repository/AllergyRepository.php",
+    "next": "Patient/Infrastructure/Persistence/Doctrine/AllergyRepository.php",
+    "oldClass": "App\\Patient\\Repository\\AllergyRepository",
+    "newClass": "App\\Patient\\Infrastructure\\Persistence\\Doctrine\\AllergyRepository"
+  },
+  {
+    "rel": "Patient/Repository/PatientRepository.php",
+    "next": "Patient/Infrastructure/Persistence/Doctrine/PatientRepository.php",
+    "oldClass": "App\\Patient\\Repository\\PatientRepository",
+    "newClass": "App\\Patient\\Infrastructure\\Persistence\\Doctrine\\PatientRepository"
+  },
+  {
+    "rel": "Patient/Service/PatientPortalService.php",
+    "next": "Patient/Application/Service/PatientPortalService.php",
+    "oldClass": "App\\Patient\\Service\\PatientPortalService",
+    "newClass": "App\\Patient\\Application\\Service\\PatientPortalService"
+  },
+  {
+    "rel": "CareDelivery/Entity/OrdonnanceLigne.php",
+    "next": "CareDelivery/Domain/Entity/OrdonnanceLigne.php",
+    "oldClass": "App\\CareDelivery\\Entity\\OrdonnanceLigne",
+    "newClass": "App\\CareDelivery\\Domain\\Entity\\OrdonnanceLigne"
+  },
+  {
+    "rel": "ClinicalRecord/Entity/FicheDocument.php",
+    "next": "ClinicalRecord/Domain/Entity/FicheDocument.php",
+    "oldClass": "App\\ClinicalRecord\\Entity\\FicheDocument",
+    "newClass": "App\\ClinicalRecord\\Domain\\Entity\\FicheDocument"
+  },
+  {
+    "rel": "ClinicalRecord/Entity/FicheMedicale.php",
+    "next": "ClinicalRecord/Domain/Entity/FicheMedicale.php",
+    "oldClass": "App\\ClinicalRecord\\Entity\\FicheMedicale",
+    "newClass": "App\\ClinicalRecord\\Domain\\Entity\\FicheMedicale"
+  },
+  {
+    "rel": "Communication/Security/VitrineVoter.php",
+    "next": "Communication/Infrastructure/Security/VitrineVoter.php",
+    "oldClass": "App\\Communication\\Security\\VitrineVoter",
+    "newClass": "App\\Communication\\Infrastructure\\Security\\VitrineVoter"
+  },
+  {
+    "rel": "Communication/Service/CryptoService.php",
+    "next": "Communication/Infrastructure/Integration/CryptoService.php",
+    "oldClass": "App\\Communication\\Service\\CryptoService",
+    "newClass": "App\\Communication\\Infrastructure\\Integration\\CryptoService"
+  },
+  {
+    "rel": "Communication/Service/WebPushSender.php",
+    "next": "Communication/Infrastructure/Integration/WebPushSender.php",
+    "oldClass": "App\\Communication\\Service\\WebPushSender",
+    "newClass": "App\\Communication\\Infrastructure\\Integration\\WebPushSender"
+  },
+  {
+    "rel": "IdentityAccess/Entity/SalaryPayment.php",
+    "next": "IdentityAccess/Domain/Entity/SalaryPayment.php",
+    "oldClass": "App\\IdentityAccess\\Entity\\SalaryPayment",
+    "newClass": "App\\IdentityAccess\\Domain\\Entity\\SalaryPayment"
+  },
+  {
+    "rel": "Patient/Service/AppreciationService.php",
+    "next": "Patient/Application/Service/AppreciationService.php",
+    "oldClass": "App\\Patient\\Service\\AppreciationService",
+    "newClass": "App\\Patient\\Application\\Service\\AppreciationService"
+  },
+  {
+    "rel": "Scheduling/Repository/RdvRepository.php",
+    "next": "Scheduling/Infrastructure/Persistence/Doctrine/RdvRepository.php",
+    "oldClass": "App\\Scheduling\\Repository\\RdvRepository",
+    "newClass": "App\\Scheduling\\Infrastructure\\Persistence\\Doctrine\\RdvRepository"
+  },
+  {
+    "rel": "Billing/Dto/CashdeskFactureListDto.php",
+    "next": "Billing/Application/Dto/CashdeskFactureListDto.php",
+    "oldClass": "App\\Billing\\Dto\\CashdeskFactureListDto",
+    "newClass": "App\\Billing\\Application\\Dto\\CashdeskFactureListDto"
+  },
+  {
+    "rel": "Billing/Entity/LotFactureAssurance.php",
+    "next": "Billing/Domain/Entity/LotFactureAssurance.php",
+    "oldClass": "App\\Billing\\Entity\\LotFactureAssurance",
+    "newClass": "App\\Billing\\Domain\\Entity\\LotFactureAssurance"
+  },
+  {
+    "rel": "Billing/Repository/DevisRepository.php",
+    "next": "Billing/Infrastructure/Persistence/Doctrine/DevisRepository.php",
+    "oldClass": "App\\Billing\\Repository\\DevisRepository",
+    "newClass": "App\\Billing\\Infrastructure\\Persistence\\Doctrine\\DevisRepository"
+  },
+  {
+    "rel": "Dto/Focus/FocusReceptionBillingDto.php",
+    "next": "Focus/Application/Dto/FocusReceptionBillingDto.php",
+    "oldClass": "App\\Dto\\Focus\\FocusReceptionBillingDto",
+    "newClass": "App\\Focus\\Application\\Dto\\FocusReceptionBillingDto"
+  },
+  {
+    "rel": "Dto/Focus/FocusReceptionPatientDto.php",
+    "next": "Focus/Application/Dto/FocusReceptionPatientDto.php",
+    "oldClass": "App\\Dto\\Focus\\FocusReceptionPatientDto",
+    "newClass": "App\\Focus\\Application\\Dto\\FocusReceptionPatientDto"
+  },
+  {
+    "rel": "Dto/Focus/FocusReceptionPayloadDto.php",
+    "next": "Focus/Application/Dto/FocusReceptionPayloadDto.php",
+    "oldClass": "App\\Dto\\Focus\\FocusReceptionPayloadDto",
+    "newClass": "App\\Focus\\Application\\Dto\\FocusReceptionPayloadDto"
+  },
+  {
+    "rel": "Dto/Focus/FocusReceptionPaymentDto.php",
+    "next": "Focus/Application/Dto/FocusReceptionPaymentDto.php",
+    "oldClass": "App\\Dto\\Focus\\FocusReceptionPaymentDto",
+    "newClass": "App\\Focus\\Application\\Dto\\FocusReceptionPaymentDto"
+  },
+  {
+    "rel": "IdentityAccess/Service/AuthService.php",
+    "next": "IdentityAccess/Application/Service/AuthService.php",
+    "oldClass": "App\\IdentityAccess\\Service\\AuthService",
+    "newClass": "App\\IdentityAccess\\Application\\Service\\AuthService"
+  },
+  {
+    "rel": "IdentityAccess/Service/InpsService.php",
+    "next": "IdentityAccess/Application/Service/InpsService.php",
+    "oldClass": "App\\IdentityAccess\\Service\\InpsService",
+    "newClass": "App\\IdentityAccess\\Application\\Service\\InpsService"
+  },
+  {
+    "rel": "Billing/Dto/InsuranceClaimLineDto.php",
+    "next": "Billing/Application/Dto/InsuranceClaimLineDto.php",
+    "oldClass": "App\\Billing\\Dto\\InsuranceClaimLineDto",
+    "newClass": "App\\Billing\\Application\\Dto\\InsuranceClaimLineDto"
+  },
+  {
+    "rel": "ClinicalRecord/Entity/FicheExamen.php",
+    "next": "ClinicalRecord/Domain/Entity/FicheExamen.php",
+    "oldClass": "App\\ClinicalRecord\\Entity\\FicheExamen",
+    "newClass": "App\\ClinicalRecord\\Domain\\Entity\\FicheExamen"
+  },
+  {
+    "rel": "Communication/Entity/Notification.php",
+    "next": "Communication/Domain/Entity/Notification.php",
+    "oldClass": "App\\Communication\\Entity\\Notification",
+    "newClass": "App\\Communication\\Domain\\Entity\\Notification"
+  },
+  {
+    "rel": "IdentityAccess/Entity/InpsQuarter.php",
+    "next": "IdentityAccess/Domain/Entity/InpsQuarter.php",
+    "oldClass": "App\\IdentityAccess\\Entity\\InpsQuarter",
+    "newClass": "App\\IdentityAccess\\Domain\\Entity\\InpsQuarter"
+  },
+  {
+    "rel": "CareDelivery/Entity/Consultation.php",
+    "next": "CareDelivery/Domain/Entity/Consultation.php",
+    "oldClass": "App\\CareDelivery\\Entity\\Consultation",
+    "newClass": "App\\CareDelivery\\Domain\\Entity\\Consultation"
+  },
+  {
+    "rel": "ClinicalRecord/Entity/FicheBilan.php",
+    "next": "ClinicalRecord/Domain/Entity/FicheBilan.php",
+    "oldClass": "App\\ClinicalRecord\\Entity\\FicheBilan",
+    "newClass": "App\\ClinicalRecord\\Domain\\Entity\\FicheBilan"
+  },
+  {
+    "rel": "Communication/Entity/SmsTemplate.php",
+    "next": "Communication/Domain/Entity/SmsTemplate.php",
+    "oldClass": "App\\Communication\\Entity\\SmsTemplate",
+    "newClass": "App\\Communication\\Domain\\Entity\\SmsTemplate"
+  },
+  {
+    "rel": "Communication/Service/SmsService.php",
+    "next": "Communication/Application/Service/SmsService.php",
+    "oldClass": "App\\Communication\\Service\\SmsService",
+    "newClass": "App\\Communication\\Application\\Service\\SmsService"
+  },
+  {
+    "rel": "IdentityAccess/Entity/UserDevice.php",
+    "next": "IdentityAccess/Domain/Entity/UserDevice.php",
+    "oldClass": "App\\IdentityAccess\\Entity\\UserDevice",
+    "newClass": "App\\IdentityAccess\\Domain\\Entity\\UserDevice"
+  },
+  {
+    "rel": "Scheduling/Service/AgendaService.php",
+    "next": "Scheduling/Application/Service/AgendaService.php",
+    "oldClass": "App\\Scheduling\\Service\\AgendaService",
+    "newClass": "App\\Scheduling\\Application\\Service\\AgendaService"
+  },
+  {
+    "rel": "Billing/Entity/FactureAssurance.php",
+    "next": "Billing/Domain/Entity/FactureAssurance.php",
+    "oldClass": "App\\Billing\\Entity\\FactureAssurance",
+    "newClass": "App\\Billing\\Domain\\Entity\\FactureAssurance"
+  },
+  {
+    "rel": "CareDelivery/Entity/ActeMedical.php",
+    "next": "CareDelivery/Domain/Entity/ActeMedical.php",
+    "oldClass": "App\\CareDelivery\\Entity\\ActeMedical",
+    "newClass": "App\\CareDelivery\\Domain\\Entity\\ActeMedical"
+  },
+  {
+    "rel": "IdentityAccess/StaffRoleCatalog.php",
+    "next": "IdentityAccess/Domain/StaffRoleCatalog.php",
+    "oldClass": "App\\IdentityAccess\\StaffRoleCatalog",
+    "newClass": "App\\IdentityAccess\\Domain\\StaffRoleCatalog"
+  },
+  {
+    "rel": "Reporting/Service/ReportService.php",
+    "next": "Reporting/Application/Service/ReportService.php",
+    "oldClass": "App\\Reporting\\Service\\ReportService",
+    "newClass": "App\\Reporting\\Application\\Service\\ReportService"
+  },
+  {
+    "rel": "Scheduling/Service/CongeService.php",
+    "next": "Scheduling/Application/Service/CongeService.php",
+    "oldClass": "App\\Scheduling\\Service\\CongeService",
+    "newClass": "App\\Scheduling\\Application\\Service\\CongeService"
+  },
+  {
+    "rel": "Scheduling/Service/SalleService.php",
+    "next": "Scheduling/Application/Service/SalleService.php",
+    "oldClass": "App\\Scheduling\\Service\\SalleService",
+    "newClass": "App\\Scheduling\\Application\\Service\\SalleService"
+  },
+  {
+    "rel": "Billing/Service/FinanceService.php",
+    "next": "Billing/Application/Service/FinanceService.php",
+    "oldClass": "App\\Billing\\Service\\FinanceService",
+    "newClass": "App\\Billing\\Application\\Service\\FinanceService"
+  },
+  {
+    "rel": "CareDelivery/Entity/Ordonnance.php",
+    "next": "CareDelivery/Domain/Entity/Ordonnance.php",
+    "oldClass": "App\\CareDelivery\\Entity\\Ordonnance",
+    "newClass": "App\\CareDelivery\\Domain\\Entity\\Ordonnance"
+  },
+  {
+    "rel": "CareDelivery/Entity/Traitement.php",
+    "next": "CareDelivery/Domain/Entity/Traitement.php",
+    "oldClass": "App\\CareDelivery\\Entity\\Traitement",
+    "newClass": "App\\CareDelivery\\Domain\\Entity\\Traitement"
+  },
+  {
+    "rel": "Focus/Service/DashboardService.php",
+    "next": "Focus/Application/Service/DashboardService.php",
+    "oldClass": "App\\Focus\\Service\\DashboardService",
+    "newClass": "App\\Focus\\Application\\Service\\DashboardService"
+  },
+  {
+    "rel": "Patient/Service/PatientService.php",
+    "next": "Patient/Application/Service/PatientService.php",
+    "oldClass": "App\\Patient\\Service\\PatientService",
+    "newClass": "App\\Patient\\Application\\Service\\PatientService"
+  },
+  {
+    "rel": "Shared/Event/EntityActionEvent.php",
+    "next": "SharedKernel/Domain/Event/EntityActionEvent.php",
+    "oldClass": "App\\Shared\\Event\\EntityActionEvent",
+    "newClass": "App\\SharedKernel\\Domain\\Event\\EntityActionEvent"
+  },
+  {
+    "rel": "Billing/Entity/FactureCabinet.php",
+    "next": "Billing/Domain/Entity/FactureCabinet.php",
+    "oldClass": "App\\Billing\\Entity\\FactureCabinet",
+    "newClass": "App\\Billing\\Domain\\Entity\\FactureCabinet"
+  },
+  {
+    "rel": "Billing/Entity/ModeDePaiement.php",
+    "next": "Billing/Domain/Entity/ModeDePaiement.php",
+    "oldClass": "App\\Billing\\Entity\\ModeDePaiement",
+    "newClass": "App\\Billing\\Domain\\Entity\\ModeDePaiement"
+  },
+  {
+    "rel": "Billing/Entity/ServiceCabinet.php",
+    "next": "Billing/Domain/Entity/ServiceCabinet.php",
+    "oldClass": "App\\Billing\\Entity\\ServiceCabinet",
+    "newClass": "App\\Billing\\Domain\\Entity\\ServiceCabinet"
+  },
+  {
+    "rel": "Communication/Entity/SmsQueue.php",
+    "next": "Communication/Domain/Entity/SmsQueue.php",
+    "oldClass": "App\\Communication\\Entity\\SmsQueue",
+    "newClass": "App\\Communication\\Domain\\Entity\\SmsQueue"
+  },
+  {
+    "rel": "IdentityAccess/Entity/Employe.php",
+    "next": "IdentityAccess/Domain/Entity/Employe.php",
+    "oldClass": "App\\IdentityAccess\\Entity\\Employe",
+    "newClass": "App\\IdentityAccess\\Domain\\Entity\\Employe"
+  },
+  {
+    "rel": "Patient/Entity/ContactUrgence.php",
+    "next": "Patient/Domain/Entity/ContactUrgence.php",
+    "oldClass": "App\\Patient\\Entity\\ContactUrgence",
+    "newClass": "App\\Patient\\Domain\\Entity\\ContactUrgence"
+  },
+  {
+    "rel": "Scheduling/Service/RdvService.php",
+    "next": "Scheduling/Application/Service/RdvService.php",
+    "oldClass": "App\\Scheduling\\Service\\RdvService",
+    "newClass": "App\\Scheduling\\Application\\Service\\RdvService"
+  },
+  {
+    "rel": "Inventory/Entity/Consommable.php",
+    "next": "Inventory/Domain/Entity/Consommable.php",
+    "oldClass": "App\\Inventory\\Entity\\Consommable",
+    "newClass": "App\\Inventory\\Domain\\Entity\\Consommable"
+  },
+  {
+    "rel": "Billing/Entity/ContenuDevis.php",
+    "next": "Billing/Domain/Entity/ContenuDevis.php",
+    "oldClass": "App\\Billing\\Entity\\ContenuDevis",
+    "newClass": "App\\Billing\\Domain\\Entity\\ContenuDevis"
+  },
+  {
+    "rel": "Communication/Entity/SmsLog.php",
+    "next": "Communication/Domain/Entity/SmsLog.php",
+    "oldClass": "App\\Communication\\Entity\\SmsLog",
+    "newClass": "App\\Communication\\Domain\\Entity\\SmsLog"
+  },
+  {
+    "rel": "Patient/Entity/Appreciation.php",
+    "next": "Patient/Domain/Entity/Appreciation.php",
+    "oldClass": "App\\Patient\\Entity\\Appreciation",
+    "newClass": "App\\Patient\\Domain\\Entity\\Appreciation"
+  },
+  {
+    "rel": "Billing/Entity/Transaction.php",
+    "next": "Billing/Domain/Entity/Transaction.php",
+    "oldClass": "App\\Billing\\Entity\\Transaction",
+    "newClass": "App\\Billing\\Domain\\Entity\\Transaction"
+  },
+  {
+    "rel": "IdentityAccess/Entity/User.php",
+    "next": "IdentityAccess/Domain/Entity/User.php",
+    "oldClass": "App\\IdentityAccess\\Entity\\User",
+    "newClass": "App\\IdentityAccess\\Domain\\Entity\\User"
+  },
+  {
+    "rel": "Settings/Entity/AppSetting.php",
+    "next": "Settings/Domain/Entity/AppSetting.php",
+    "oldClass": "App\\Settings\\Entity\\AppSetting",
+    "newClass": "App\\Settings\\Domain\\Entity\\AppSetting"
+  },
+  {
+    "rel": "Shared/Doctrine/GuardedSql.php",
+    "next": "SharedKernel/Infrastructure/Doctrine/GuardedSql.php",
+    "oldClass": "App\\Shared\\Doctrine\\GuardedSql",
+    "newClass": "App\\SharedKernel\\Infrastructure\\Doctrine\\GuardedSql"
+  },
+  {
+    "rel": "Billing/Entity/ChargeFixe.php",
+    "next": "Billing/Domain/Entity/ChargeFixe.php",
+    "oldClass": "App\\Billing\\Entity\\ChargeFixe",
+    "newClass": "App\\Billing\\Domain\\Entity\\ChargeFixe"
+  },
+  {
+    "rel": "Enum/NotificationPriority.php",
+    "next": "Communication/Domain/Enum/NotificationPriority.php",
+    "oldClass": "App\\Enum\\NotificationPriority",
+    "newClass": "App\\Communication\\Domain\\Enum\\NotificationPriority"
+  },
+  {
+    "rel": "Patient/Entity/Antecedent.php",
+    "next": "Patient/Domain/Entity/Antecedent.php",
+    "oldClass": "App\\Patient\\Entity\\Antecedent",
+    "newClass": "App\\Patient\\Domain\\Entity\\Antecedent"
+  },
+  {
+    "rel": "Scheduling/Entity/Booking.php",
+    "next": "Scheduling/Domain/Entity/Booking.php",
+    "oldClass": "App\\Scheduling\\Entity\\Booking",
+    "newClass": "App\\Scheduling\\Domain\\Entity\\Booking"
+  },
+  {
+    "rel": "Billing/Entity/Assurance.php",
+    "next": "Billing/Domain/Entity/Assurance.php",
+    "oldClass": "App\\Billing\\Entity\\Assurance",
+    "newClass": "App\\Billing\\Domain\\Entity\\Assurance"
+  },
+  {
+    "rel": "DataFixtures/AppFixtures.php",
+    "next": "DataFixtures/AppFixtures.php",
+    "oldClass": "App\\DataFixtures\\AppFixtures",
+    "newClass": "App\\DataFixtures\\AppFixtures"
+  },
+  {
+    "rel": "Billing/Entity/Paiement.php",
+    "next": "Billing/Domain/Entity/Paiement.php",
+    "oldClass": "App\\Billing\\Entity\\Paiement",
+    "newClass": "App\\Billing\\Domain\\Entity\\Paiement"
+  },
+  {
+    "rel": "Enum/NotificationStatus.php",
+    "next": "Communication/Domain/Enum/NotificationStatus.php",
+    "oldClass": "App\\Enum\\NotificationStatus",
+    "newClass": "App\\Communication\\Domain\\Enum\\NotificationStatus"
+  },
+  {
+    "rel": "Scheduling/Entity/Conge.php",
+    "next": "Scheduling/Domain/Entity/Conge.php",
+    "oldClass": "App\\Scheduling\\Entity\\Conge",
+    "newClass": "App\\Scheduling\\Domain\\Entity\\Conge"
+  },
+  {
+    "rel": "Scheduling/Entity/Salle.php",
+    "next": "Scheduling/Domain/Entity/Salle.php",
+    "oldClass": "App\\Scheduling\\Entity\\Salle",
+    "newClass": "App\\Scheduling\\Domain\\Entity\\Salle"
+  },
+  {
+    "rel": "Billing/Entity/Facture.php",
+    "next": "Billing/Domain/Entity/Facture.php",
+    "oldClass": "App\\Billing\\Entity\\Facture",
+    "newClass": "App\\Billing\\Domain\\Entity\\Facture"
+  },
+  {
+    "rel": "Inventory/Entity/Stock.php",
+    "next": "Inventory/Domain/Entity/Stock.php",
+    "oldClass": "App\\Inventory\\Entity\\Stock",
+    "newClass": "App\\Inventory\\Domain\\Entity\\Stock"
+  },
+  {
+    "rel": "Patient/Entity/Allergy.php",
+    "next": "Patient/Domain/Entity/Allergy.php",
+    "oldClass": "App\\Patient\\Entity\\Allergy",
+    "newClass": "App\\Patient\\Domain\\Entity\\Allergy"
+  },
+  {
+    "rel": "Patient/Entity/Patient.php",
+    "next": "Patient/Domain/Entity/Patient.php",
+    "oldClass": "App\\Patient\\Entity\\Patient",
+    "newClass": "App\\Patient\\Domain\\Entity\\Patient"
+  },
+  {
+    "rel": "Scheduling/Entity/Rdv.php",
+    "next": "Scheduling/Domain/Entity/Rdv.php",
+    "oldClass": "App\\Scheduling\\Entity\\Rdv",
+    "newClass": "App\\Scheduling\\Domain\\Entity\\Rdv"
+  },
+  {
+    "rel": "Billing/Entity/Devis.php",
+    "next": "Billing/Domain/Entity/Devis.php",
+    "oldClass": "App\\Billing\\Entity\\Devis",
+    "newClass": "App\\Billing\\Domain\\Entity\\Devis"
+  },
+  {
+    "rel": "DataFixtures/User.php",
+    "next": "DataFixtures/User.php",
+    "oldClass": "App\\DataFixtures\\User",
+    "newClass": "App\\DataFixtures\\User"
+  },
+  {
+    "rel": "Config/sexeEnum.php",
+    "next": "Patient/Domain/Enum/sexeEnum.php",
+    "oldClass": "App\\Config\\sexeEnum",
+    "newClass": "App\\Patient\\Domain\\Enum\\sexeEnum"
+  },
+  {
+    "rel": "Kernel.php",
+    "next": "Kernel.php",
+    "oldClass": "App\\Kernel",
+    "newClass": "App\\Kernel"
+  }
+]

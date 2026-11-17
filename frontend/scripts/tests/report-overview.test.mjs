@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { overviewCards, overviewFinancials } from '../../src/utils/reportOverview.js';
+import { overviewCards, overviewFinancials } from '../../src/domains/reporting/model/reportOverview.js';
 
 test('an insured cabinet service contributes both shares without double billing', () => {
     const totals = overviewFinancials({}, { facture: 10000, partPatient: 2000, partAssurance: 8000, encaisse: 500, encaissePrestationsPeriode: 500, reste: 1500 });
@@ -12,8 +12,10 @@ test('an insured cabinet service contributes both shares without double billing'
 });
 
 test('payments of older activities are separated from payments of current activities', () => {
-    const totals = overviewFinancials({ totalApport: 50000, totalPartAssurance: 30000, totalPaidCash: 15000, totalCollectedCurrentActivities: 10000, totalCollectedPriorActivities: 5000, totalPatientRemaining: 10000 },
-        { facture: 10000, partAssurance: 8000, encaisse: 1000, encaissePrestationsPeriode: 500, encaisseHorsPeriode: 500, reste: 1500 });
+    const totals = overviewFinancials(
+        { totalApport: 50000, totalPartAssurance: 30000, totalPaidCash: 15000, totalCollectedCurrentActivities: 10000, totalCollectedPriorActivities: 5000, totalPatientRemaining: 10000 },
+        { facture: 10000, partAssurance: 8000, encaisse: 1000, encaissePrestationsPeriode: 500, encaisseHorsPeriode: 500, reste: 1500 }
+    );
     assert.equal(totals.billedTotal, 60000);
     assert.equal(totals.normalBilledTotal, 22000);
     assert.equal(totals.insuranceBilledTotal, 38000);
@@ -26,20 +28,44 @@ test('payments of older activities are separated from payments of current activi
 
 test('overview starts with billing and collections, excluding insurer refunds', () => {
     const cards = overviewCards({ collectedTotal: 2000, insuranceRefundsCollected: 8000 });
-    assert.deepEqual(cards.slice(0, 2).map((card) => card.key), ['billing', 'collections']);
+    assert.deepEqual(
+        cards.slice(0, 2).map((card) => card.key),
+        ['billing', 'collections']
+    );
     const collections = cards[1];
     assert.equal(collections.value, '2\u202f000 FCFA');
-    assert.equal(collections.subStats.find((row) => row.label === 'Paiements patients').value, '2\u202f000 FCFA');
-    assert.equal(collections.subStats.some((row) => row.label === 'Remboursements assurance'), false);
+    assert.equal(collections.subStats.find((row) => row.label === 'Total encaissé').value, '2\u202f000 FCFA');
+    assert.equal(
+        collections.subStats.some((row) => row.label === 'Remboursements assurance'),
+        false
+    );
     assert.equal(cards.find((card) => card.key === 'insurance').value, '8\u202f000 FCFA');
     assert.equal(overviewCards({ collectedTotal: 0, insuranceRefundsCollected: 8000 })[1].value, '0 FCFA');
     assert.equal(new Set(cards.map((card) => card.key)).size, cards.length);
 });
 
+test('collection details split care and cabinet payments without counting insurer refunds', () => {
+    const totals = overviewFinancials(
+        { totalPaidCash: 15000, totalCollectedCurrentActivities: 10000, totalCollectedPriorActivities: 5000, totalPatientRemaining: 10000 },
+        { encaisse: 1000, encaissePrestationsPeriode: 500, encaisseHorsPeriode: 500, reste: 1500 }
+    );
+    const collections = overviewCards({ ...totals, insuranceRefundsCollected: 8000, servicesCabinet: { encaissePrestationsPeriode: 500, encaisseHorsPeriode: 500, reste: 1500 } })[1];
+    const rows = Object.fromEntries(collections.subStats.map(({ label, value }) => [label, value]));
+    assert.equal(collections.value, '16\u202f000 FCFA');
+    assert.deepEqual(rows, {
+        'Total encaissé': '16\u202f000 FCFA',
+        'Soins · période': '10\u202f000 FCFA',
+        'Reliquats encaissés sur soins': '5\u202f000 FCFA',
+        'Prestations du cabinet · période': '500 FCFA',
+        'Reliquats encaissés sur prestations du cabinet': '500 FCFA',
+        'Impayés patients · période': '11\u202f500 FCFA',
+        '↳ Dont soins': '10\u202f000 FCFA',
+        '↳ Dont prestations du cabinet': '1\u202f500 FCFA'
+    });
+});
+
 test('billing details retain counts and amounts without adding insurer shares twice', () => {
-    const totals = overviewFinancials({ totalApport: 30000, totalPartAssurance: 8000,
-        billingBreakdown: { normalCount: 2, normalAmount: 20000, insuredCount: 1, insuredAmount: 10000 } },
-        { facture: 10000, partAssurance: 8000 });
+    const totals = overviewFinancials({ totalApport: 30000, totalPartAssurance: 8000, billingBreakdown: { normalCount: 2, normalAmount: 20000, insuredCount: 1, insuredAmount: 10000 } }, { facture: 10000, partAssurance: 8000 });
     const billing = overviewCards({ ...totals, servicesCabinet: { count: 1, facture: 10000, insuredCount: 1, insuredAmount: 10000 } })[0];
     assert.equal(totals.billedTotal, 40000);
     assert.equal(totals.normalBilledTotal + totals.insuranceBilledTotal, 40000);

@@ -1,0 +1,25 @@
+canonical_resources:
+    resource: routes/resources.yaml
+
+controllers:
+    resource:
+        path: ../src/
+        namespace: App
+    type: attribute
+
+# config/routes.yaml
+api_login_check:
+    path: /api/login_check
+    methods: [POST]
+
+api_patient_login_check:
+    path: /api/login_patient_check
+    methods: [POST]
+
+api_auth_login:
+    path: /api/auth/login
+    methods: [POST]
+
+api_patient_auth_login:
+    path: /api/patient-portal/auth/login
+    methods: [POST]

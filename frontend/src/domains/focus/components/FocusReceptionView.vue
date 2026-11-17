@@ -1,0 +1,1613 @@
+<script setup>
+import { cabinetServiceInsuranceLabel } from '@/domains/billing/model/cabinetServiceInsurance.js';
+import PrintDevisBody from '@/shared/print/components/PrintDevisBody.vue';
+import PrintReceiptBody from '@/shared/print/components/PrintReceiptBody.vue';
+import PrintTicketBody from '@/shared/print/components/PrintTicketBody.vue';
+import { usePrinter } from '@/shared/print/usePrinter.js';
+import { fetchInvoicePrintData, fetchReceiptPrintData, fetchTicketPrintData } from '@/shared/print/printService.js';
+import { searchPatients } from '@/domains/patient/services/patients.js';
+import CabinetServiceDialog from '@/domains/patient/components/CabinetServiceDialog.vue';
+import CabinetServicePayDialog from '@/domains/care-delivery/components/CabinetServicePayDialog.vue';
+import { fetchCabinetServices, fetchCabinetService } from '@/domains/billing/services/cabinetServices.js';
+import { fetchFactures, fetchPayments } from '@/domains/billing/services/caisseService.js';
+import { isCabinetServiceFacture, isInsuranceFactureRow } from '@/domains/billing/model/factureRow.js';
+import SelectButton from 'primevue/selectbutton';
+import Tag from 'primevue/tag';
+import ContextMenu from 'primevue/contextmenu';
+import AppDialog from '@/app/components/layout/AppDialog.vue';
+import ToggleSwitch from 'primevue/toggleswitch';
+import { computed, onMounted, ref, toRefs, useAttrs, watch } from 'vue';
+
+defineOptions({ inheritAttrs: false });
+
+const attrs = useAttrs();
+
+const props = defineProps({
+    consultations: {
+        type: Array,
+        default: () => []
+    },
+    recentPatients: {
+        type: Array,
+        default: () => []
+    },
+    billingByConsultation: {
+        type: Object,
+        default: () => ({})
+    },
+    unpaidByPatientId: {
+        type: Object,
+        default: () => ({})
+    },
+    loading: {
+        type: Boolean,
+        default: false
+    },
+    consultationToolbarLoading: {
+        type: Boolean,
+        default: false
+    },
+    consultationLoadingByPatient: {
+        type: Object,
+        default: () => ({})
+    },
+    allowReceptionQuickClose: {
+        type: Boolean,
+        default: true
+    },
+    allowReceptionInvoiceModification: {
+        type: Boolean,
+        default: false
+    },
+    isAdmin: {
+        type: Boolean,
+        default: false
+    },
+    isMedecin: {
+        type: Boolean,
+        default: false
+    },
+    selectedConsultationId: {
+        type: [Number, String, null],
+        default: null
+    }
+});
+
+const emit = defineEmits([
+    'refresh',
+    'select-consultation',
+    'open-create-patient',
+    'open-create-consultation',
+    'open-create-consultation-for-patient',
+    'open-edit-patient',
+    'open-create-rdv-for-patient',
+    'open-patient-dossier',
+    'open-caisse-pay',
+    'open-caisse-validate',
+    'open-caisse-modify',
+    'open-caisse-preview',
+    'send-invoice-sms',
+    'select-medical-workspace',
+    'open-details',
+    'open-facture',
+    'open-quick-dialog',
+    'cancel-consultation'
+]);
+
+const searchMode = ref(false);
+const patientSearchQuery = ref('');
+const patientSearchResults = ref([]);
+const patientSearchLoading = ref(false);
+let searchDebounceTimer = null;
+
+const toggleSearchMode = () => {
+    searchMode.value = !searchMode.value;
+    if (!searchMode.value) {
+        patientSearchQuery.value = '';
+        patientSearchResults.value = [];
+    }
+};
+
+const performPatientSearch = async () => {
+    const q = patientSearchQuery.value.trim();
+    if (!q || q.length < 2) {
+        patientSearchResults.value = [];
+        return;
+    }
+    patientSearchLoading.value = true;
+    try {
+        patientSearchResults.value = await searchPatients(q, token, 15);
+    } catch (_) {
+        patientSearchResults.value = [];
+    } finally {
+        patientSearchLoading.value = false;
+    }
+};
+
+const onPatientSearchInput = () => {
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(performPatientSearch, 350);
+};
+
+const { consultations, selectedConsultationId } = toRefs(props);
+const token = localStorage.getItem('token');
+const { printComponent } = usePrinter();
+
+const showCompletedSecretary = defineModel('showCompletedSecretary', {
+    type: Boolean,
+    default: false
+});
+
+const newestFirstSecretary = ref(false);
+const showRevenueStatsModal = ref(false);
+const centerView = ref('queue');
+const centerViewOptions = [
+    { label: "File d'attente", value: 'queue' },
+    { label: 'Prestations du cabinet', value: 'services' }
+];
+const dailyInvoices = ref([]);
+const dailyPayments = ref([]);
+const financialStatsLoading = ref(false);
+const financialStatsLoaded = ref(false);
+const financialStatsError = ref('');
+const todayDate = () => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+};
+let financialRefreshPending = false;
+const loadDailyFinancialData = async () => {
+    if (financialStatsLoading.value) {
+        financialRefreshPending = true;
+        return;
+    }
+    financialStatsLoading.value = true;
+    financialStatsError.value = '';
+    try {
+        const date = todayDate();
+        const [invoices, payments] = await Promise.all([fetchFactures({ start: date, end: date }, token), fetchPayments({ start: date, end: date }, token)]);
+        dailyInvoices.value = Array.isArray(invoices) ? invoices : invoices?.data || [];
+        dailyPayments.value = Array.isArray(payments) ? payments : payments?.data || [];
+        financialStatsLoaded.value = true;
+    } catch (_) {
+        financialStatsError.value = 'Impossible d’actualiser les statistiques financières du jour.';
+    } finally {
+        financialStatsLoading.value = false;
+        if (financialRefreshPending) {
+            financialRefreshPending = false;
+            loadDailyFinancialData();
+        }
+    }
+};
+watch(() => props.billingByConsultation, loadDailyFinancialData);
+watch(showRevenueStatsModal, (visible) => {
+    if (visible) loadDailyFinancialData();
+});
+const cabinetServices = ref([]);
+const selectedCabinetService = ref(null);
+const cabinetServicesLoading = ref(false);
+const cabinetServicePayVisible = ref(false);
+const serviceRemaining = (service) => Math.max(0, Number(service?.facture?.reste ?? service?.facture?.montantPatient ?? service?.montant) || 0);
+const servicePaymentStatus = (service) => {
+    if (service?.statut === 'annule') return { label: 'Annulée', severity: 'secondary' };
+    if (service?.facture?.isRegle || (service?.facture && serviceRemaining(service) === 0)) {
+        return { label: service.coveredByInsurance ? 'Part patient réglée' : 'Payée', severity: 'success' };
+    }
+    if (Number(service?.facture?.partPatientPayee) > 0) return { label: 'Partiellement payée', severity: 'warn' };
+    return { label: 'Impayée', severity: 'danger' };
+};
+/** Mobile panel: patients | queue | details (xl+ shows all three) */
+const mobilePanel = ref('queue');
+
+const isMobileFocusLayout = () => typeof window !== 'undefined' && window.matchMedia('(max-width: 1279.98px)').matches;
+
+const parseDateTime = (value) => {
+    if (!value) return null;
+    if (value instanceof Date) return value;
+    if (/^\d{2}\/\d{2}\/\d{4}\s\d{2}:\d{2}$/.test(String(value))) {
+        const [datePart, timePart] = String(value).split(' ');
+        const [day, month, year] = datePart.split('/').map(Number);
+        const [hours, minutes] = timePart.split(':').map(Number);
+        return new Date(year, month - 1, day, hours, minutes, 0, 0);
+    }
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const formatTime = (value) => {
+    const parsed = parseDateTime(value);
+    return parsed ? parsed.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '--:--';
+};
+
+const formatDateTime = (value) => {
+    const parsed = parseDateTime(value);
+    return parsed ? parsed.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '--';
+};
+
+const formatFcfa = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
+const servicePatientLabel = (service) => service?.patientName || service?.patient?.fullname || `${service?.patient?.prenom || ''} ${service?.patient?.nom || ''}`.trim() || 'Patient';
+const loadCabinetServices = async () => {
+    cabinetServicesLoading.value = true;
+    try {
+        const date = todayDate();
+        cabinetServices.value = (await fetchCabinetServices({ start: date, end: date }, token)) || [];
+        if (selectedCabinetService.value) {
+            selectedCabinetService.value = cabinetServices.value.find((service) => service.id === selectedCabinetService.value.id) || null;
+        }
+    } catch (_) {
+        cabinetServices.value = [];
+    } finally {
+        cabinetServicesLoading.value = false;
+    }
+};
+const selectCabinetService = async (service) => {
+    selectedCabinetService.value = service;
+    mobilePanel.value = 'details';
+    if (!service?.id) return;
+    try {
+        const details = await fetchCabinetService(service.id, token);
+        if (selectedCabinetService.value?.id === service.id) selectedCabinetService.value = details || service;
+    } catch (_) {
+        /* Keep the list row details available if the full record cannot be loaded. */
+    }
+};
+onMounted(() => {
+    loadCabinetServices();
+    loadDailyFinancialData();
+});
+const onCabinetServiceCreated = () => {
+    loadCabinetServices();
+    loadDailyFinancialData();
+};
+
+const patientImpayeesAmount = (patientOrConsultation) => {
+    if (!patientOrConsultation) return 0;
+    const direct = Number(patientOrConsultation.impayees ?? patientOrConsultation.patientImpayees ?? patientOrConsultation.reliquat ?? 0);
+    if (direct > 0) return direct;
+    const nested = patientOrConsultation.patient;
+    if (nested && typeof nested === 'object') {
+        return Number(nested.impayees ?? nested.reliquat ?? 0) || 0;
+    }
+    return 0;
+};
+
+const hasPatientReliquat = (patientOrConsultation) => patientImpayeesAmount(patientOrConsultation) > 0;
+
+const reliquatTooltip = (patientOrConsultation) => {
+    const amount = patientImpayeesAmount(patientOrConsultation);
+    return amount > 0 ? `Reliquat : ${formatFcfa(amount)}` : '';
+};
+
+const contextMenu = ref(null);
+const contextMenuPatient = ref(null);
+const cabinetServiceVisible = ref(false);
+const cabinetServicePatient = ref(null);
+const openCabinetService = (patient) => {
+    cabinetServicePatient.value = patient;
+    cabinetServiceVisible.value = true;
+};
+const patientContextMenuItems = computed(() => [
+    {
+        label: 'Nouvelle consultation',
+        icon: 'fas fa-stethoscope',
+        command: () => {
+            if (contextMenuPatient.value) {
+                emit('open-create-consultation-for-patient', contextMenuPatient.value);
+            }
+        }
+    },
+    {
+        label: 'Enregistrer une prestation du cabinet',
+        icon: 'pi pi-building',
+        command: () => openCabinetService(contextMenuPatient.value)
+    },
+    {
+        label: 'Nouveau RDV',
+        icon: 'fas fa-calendar',
+        command: () => {
+            if (contextMenuPatient.value) {
+                emit('open-create-rdv-for-patient', contextMenuPatient.value);
+            }
+        }
+    },
+    {
+        label: 'Ouvrir dossier',
+        icon: 'fas fa-folder-open',
+        command: () => {
+            if (contextMenuPatient.value) {
+                emit('open-patient-dossier', contextMenuPatient.value);
+            }
+        }
+    },
+    {
+        label: 'Modifier',
+        icon: 'fas fa-pencil-alt',
+        command: () => {
+            if (contextMenuPatient.value) {
+                emit('open-edit-patient', contextMenuPatient.value);
+            }
+        }
+    }
+]);
+
+const openPatientContextMenu = (event, patient) => {
+    contextMenuPatient.value = patient;
+    contextMenu.value?.show(event);
+};
+
+const isSameCalendarDay = (left, right) => {
+    const leftDate = parseDateTime(left);
+    const rightDate = parseDateTime(right);
+    if (!leftDate || !rightDate) return false;
+    return leftDate.getFullYear() === rightDate.getFullYear() && leftDate.getMonth() === rightDate.getMonth() && leftDate.getDate() === rightDate.getDate();
+};
+
+const _monthRange = () => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return {
+        start: start.toISOString().slice(0, 10),
+        end: end.toISOString().slice(0, 10)
+    };
+};
+
+const patientLabel = (consultation) => {
+    if (!consultation) return 'Patient';
+    if (typeof consultation.patientName === 'string' && consultation.patientName.trim()) return consultation.patientName;
+    if (typeof consultation.patient === 'string' && consultation.patient.trim()) return consultation.patient;
+    const patient = consultation.patient || {};
+    return `${patient.prenom ?? ''} ${patient.nom ?? ''}`.trim() || patient.nom || 'Patient';
+};
+
+const patientCreatedAt = (patient) => patient?.createdAt || patient?.created_at || patient?.dateInscription || patient?.date_inscription || patient?.dateCreation || patient?.date_creation || null;
+
+const patientDisplayName = (patient) => {
+    const source = patient?.patient || patient || {};
+    const fullName = `${source.prenom ?? ''} ${source.nom ?? ''}`.trim();
+    return fullName || source.fullname || 'Patient';
+};
+
+const medecinLabel = (consultation) => {
+    const medecin = consultation?.medecin;
+    if (!medecin) return 'Non assigne';
+    if (typeof medecin === 'string') return medecin;
+    return medecin.label || medecin.fullName || medecin.name || `${medecin.prenom ?? ''} ${medecin.nom ?? ''}`.trim() || 'Non assigne';
+};
+
+const formatFactureState = (consultation) => {
+    if (consultation?.factState === null || typeof consultation?.factState === 'undefined') {
+        return { label: 'Aucune facture', severity: 'contrast' };
+    }
+    if (Number(consultation.factState) === 0) {
+        return { label: 'Facture ouverte', severity: 'warn' };
+    }
+    return { label: 'Facture reglee', severity: 'success' };
+};
+
+const _patientHistoryState = (consultation) => {
+    if (consultation?.hasFiche || consultation?.lastFicheId || consultation?.ficheId) {
+        return { label: 'Ancien patient', severity: 'info' };
+    }
+    return { label: 'Nouveau patient', severity: 'contrast' };
+};
+
+const _consultationState = (consultation) => {
+    if (Number(consultation?.state) === 1) {
+        return { label: 'Terminee', severity: 'success' };
+    }
+
+    return consultation?.id === selectedConsultationId.value ? { label: 'Selectionnee', severity: 'info' } : { label: 'En attente', severity: 'warn' };
+};
+
+const _queueItemClass = (consultation) => {
+    if (Number(consultation.state) === 1) {
+        return 'border-green-400/70 bg-green-50/70 dark:bg-green-950/20';
+    }
+    if (consultation.id === selectedConsultationId.value) {
+        return 'border-primary-500 ring-2 ring-primary-400/60 ring-offset-2 ring-offset-surface-0 shadow-xl shadow-primary-500/20 bg-primary-50 dark:bg-primary-950/20 dark:ring-offset-surface-900';
+    }
+    return 'border-surface-200/70 bg-surface-0/90 dark:border-surface-700/70 dark:bg-surface-800/80';
+};
+
+const secretaryRows = computed(() => {
+    const source = [...consultations.value].sort((left, right) => {
+        const leftTime = parseDateTime(left.createdAt)?.getTime() || 0;
+        const rightTime = parseDateTime(right.createdAt)?.getTime() || 0;
+        return newestFirstSecretary.value ? rightTime - leftTime : leftTime - rightTime;
+    });
+
+    if (showCompletedSecretary.value) {
+        return source;
+    }
+
+    return source.filter((item) => Number(item.state) !== 1);
+});
+
+const currentConsultation = computed(() => secretaryRows.value.find((item) => item.id === selectedConsultationId.value) || null);
+
+const _latestPayment = computed(() => selectedInvoicePayments.value[0] || null);
+const newPatients = computed(() => props.recentPatients || []);
+const _showRightPlaceholderSkeleton = computed(() => props.loading && !currentConsultation.value);
+
+const currentBilling = computed(() => {
+    if (!currentConsultation.value?.id) return null;
+    return props.billingByConsultation?.[currentConsultation.value.id] || null;
+});
+
+const selectedPatientId = computed(() => {
+    const consultation = currentConsultation.value;
+    if (!consultation) return null;
+    return Number(consultation.patientId ?? consultation.patient?.id ?? 0) || null;
+});
+
+const selectedPatientUnpaidInvoices = computed(() => {
+    const patientId = selectedPatientId.value;
+    if (!patientId) return [];
+    const rows = props.unpaidByPatientId?.[patientId] ?? props.unpaidByPatientId?.[String(patientId)] ?? [];
+    return Array.isArray(rows) ? rows : [];
+});
+
+/** Factures impayées antérieures (hors consultation / facture sélectionnée). */
+const selectedPriorUnpaidInvoices = computed(() => {
+    const consultationId = Number(currentConsultation.value?.id ?? 0);
+    const currentInvoiceId = Number(currentBilling.value?.invoiceId ?? 0);
+
+    return selectedPatientUnpaidInvoices.value.filter((invoice) => {
+        const invoiceConsultationId = Number(invoice?.consultationId ?? 0);
+        const invoiceId = Number(invoice?.id ?? 0);
+        if (consultationId > 0 && invoiceConsultationId === consultationId) {
+            return false;
+        }
+        if (currentInvoiceId > 0 && invoiceId === currentInvoiceId) {
+            return false;
+        }
+        return Number(invoice?.reste ?? 0) > 0;
+    });
+});
+
+const hasPriorReliquat = computed(() => selectedPriorUnpaidInvoices.value.length > 0);
+
+const selectedPriorReliquatTotal = computed(() => selectedPriorUnpaidInvoices.value.reduce((sum, invoice) => sum + (Number(invoice?.reste ?? 0) || 0), 0));
+
+const dailyRevenueStats = computed(() => {
+    const amount = (value) => Number(value) || 0;
+    const invoiceFamily = (invoice) => (isCabinetServiceFacture(invoice) ? 'service_cabinet' : isInsuranceFactureRow(invoice) ? 'facture_assurance' : 'facture');
+    const familyDefinitions = [
+        { key: 'facture', label: 'Factures normales', icon: 'pi pi-file' },
+        { key: 'facture_assurance', label: 'Factures avec assurance', icon: 'pi pi-shield' },
+        { key: 'service_cabinet', label: 'Prestations du cabinet', icon: 'pi pi-building' }
+    ];
+    const invoiceRows = familyDefinitions.map((family) => {
+        const rows = dailyInvoices.value.filter((invoice) => invoiceFamily(invoice) === family.key);
+        return {
+            ...family,
+            count: rows.length,
+            total: rows.reduce((sum, invoice) => sum + amount(invoice.montantTotal ?? invoice.montant), 0),
+            patient: rows.reduce((sum, invoice) => sum + amount(invoice.montantPatient ?? invoice.montant), 0),
+            insurer: rows.reduce((sum, invoice) => sum + amount(invoice.montantAssureur), 0),
+            remaining: rows.reduce((sum, invoice) => sum + amount(invoice.reste), 0)
+        };
+    });
+
+    // The cashdesk journal is the single source for today's receipts, including old invoices.
+    const uniquePayments = new Map();
+    dailyPayments.value.forEach((payment, index) => {
+        uniquePayments.set(payment.pId ?? payment.id ?? `row-${index}`, payment);
+    });
+    const invoiceDates = new Map(dailyInvoices.value.map((invoice) => [`${invoiceFamily(invoice)}-${invoice.id}`, invoice.date]));
+    const paymentDetails = [...uniquePayments.values()].map((payment) => {
+        const family = payment.type === 'devis' ? 'facture' : payment.type;
+        const invoiceDate = payment.factureDate || invoiceDates.get(`${family}-${payment.factureId}`);
+        const parsedInvoiceDate = parseDateTime(invoiceDate);
+        let context = 'Date de facture non disponible';
+        let contextKey = 'unknown';
+        if (family === 'ticket') {
+            context = 'Ticket de consultation';
+            contextKey = 'ticket';
+        } else if (parsedInvoiceDate && isSameCalendarDay(parsedInvoiceDate, new Date())) {
+            context = 'Facture du jour';
+            contextKey = 'today';
+        } else if (parsedInvoiceDate && parsedInvoiceDate < new Date(`${todayDate()}T00:00:00`)) {
+            context = 'Règlement de reliquat';
+            contextKey = 'prior';
+        }
+        return {
+            ...payment,
+            family,
+            familyLabel: familyDefinitions.find((item) => item.key === family)?.label || (family === 'ticket' ? 'Tickets de consultation' : 'Autres encaissements'),
+            invoiceDate,
+            context,
+            contextKey,
+            montant: amount(payment.montant)
+        };
+    });
+    const paymentFamilies = [...familyDefinitions, { key: 'ticket', label: 'Tickets de consultation', icon: 'pi pi-ticket' }];
+    if (paymentDetails.some((payment) => !paymentFamilies.some((family) => family.key === payment.family))) {
+        paymentFamilies.push({ key: 'other', label: 'Autres encaissements', icon: 'pi pi-wallet' });
+    }
+    const paymentRows = paymentFamilies.map((family) => {
+        const rows = paymentDetails.filter((payment) => (family.key === 'other' ? !['facture', 'facture_assurance', 'service_cabinet', 'ticket'].includes(payment.family) : payment.family === family.key));
+        return {
+            ...family,
+            count: rows.length,
+            documents: new Set(rows.map((payment) => payment.factureId ?? payment.consultationId ?? payment.pId)).size,
+            today: rows.filter((payment) => ['today', 'ticket'].includes(payment.contextKey)).reduce((sum, payment) => sum + payment.montant, 0),
+            prior: rows.filter((payment) => payment.contextKey === 'prior').reduce((sum, payment) => sum + payment.montant, 0),
+            unknown: rows.filter((payment) => payment.contextKey === 'unknown').reduce((sum, payment) => sum + payment.montant, 0),
+            total: rows.reduce((sum, payment) => sum + payment.montant, 0)
+        };
+    });
+    const modes = new Map();
+    paymentDetails.forEach((payment) => {
+        const mode = payment.mode || 'Non renseigné';
+        const row = modes.get(mode) || { mode, amount: 0, count: 0 };
+        row.amount += payment.montant;
+        row.count += 1;
+        modes.set(mode, row);
+    });
+    return {
+        invoiceRows,
+        paymentRows,
+        paymentDetails,
+        totalInvoices: invoiceRows.reduce((sum, row) => sum + row.count, 0),
+        totalBilled: invoiceRows.reduce((sum, row) => sum + row.total, 0),
+        totalUnpaid: invoiceRows.reduce((sum, row) => sum + row.remaining, 0),
+        totalRevenue: paymentDetails.reduce((sum, payment) => sum + payment.montant, 0),
+        totalPaymentsCount: paymentDetails.length,
+        totalPrior: paymentRows.reduce((sum, row) => sum + row.prior, 0),
+        hasUnknownContext: paymentRows.some((row) => row.unknown !== 0),
+        paymentModeRows: [...modes.values()].sort((left, right) => right.amount - left.amount)
+    };
+});
+
+const revenueButtonLabel = computed(() => (financialStatsLoaded.value ? `${formatFcfa(dailyRevenueStats.value.totalRevenue)}` : financialStatsLoading.value ? 'Chargement…' : 'Indisponibles'));
+
+const selectedInvoicePayments = computed(() => {
+    const payments = currentBilling.value?.payments || [];
+    const invoiceId = currentBilling.value?.invoiceId ?? null;
+
+    if (!invoiceId) return [];
+
+    return payments.filter((payment) => Number(payment?.invoiceId) === Number(invoiceId));
+});
+
+const selectedInvoiceState = computed(() => currentBilling.value?.state || { label: 'Aucune facture', severity: 'contrast' });
+
+const selectedInvoiceTotal = computed(() => Number(currentBilling.value?.total ?? 0) || 0);
+
+const selectedInvoiceRemaining = computed(() => (currentBilling.value ? Number(currentBilling.value.remaining ?? 0) || 0 : null));
+
+const _consultationDetailsLines = computed(() => currentBilling.value?.lines || []);
+const hasInvoiceContext = computed(() => Boolean(currentBilling.value?.invoiceId));
+const isPaidInvoice = computed(() => hasInvoiceContext.value && selectedInvoiceRemaining.value === 0 && selectedInvoiceTotal.value > 0);
+const isFreeInvoice = computed(() => hasInvoiceContext.value && selectedInvoiceRemaining.value === 0 && selectedInvoiceTotal.value === 0);
+const isValidatedFreeInvoice = computed(() => isFreeInvoice.value && selectedInvoiceState.value?.severity === 'success');
+const canModifyInvoice = computed(() => {
+    if (!props.allowReceptionInvoiceModification) return false;
+    if (!hasInvoiceContext.value) return false;
+    const payments = Array.isArray(currentBilling.value?.payments) ? currentBilling.value.payments : [];
+    if (payments.length > 0) return false;
+    return selectedInvoiceTotal.value > 0 && selectedInvoiceRemaining.value === selectedInvoiceTotal.value;
+});
+const _canPreviewInvoice = computed(() => hasInvoiceContext.value && !(selectedInvoiceTotal.value === 0 && selectedInvoiceRemaining.value === 0));
+
+const selectConsultation = (consultationId) => {
+    emit('select-consultation', consultationId);
+    if (isMobileFocusLayout()) {
+        mobilePanel.value = 'details';
+    }
+};
+
+const getConsultationBilling = (consultation) => {
+    if (!consultation?.id) return null;
+    return props.billingByConsultation?.[consultation.id] || null;
+};
+
+const isConsultationPayante = (consultation) => {
+    return consultation?.isPaid;
+};
+
+const isConsultationCreateLoading = (patientId) => {
+    if (patientId === undefined || patientId === null) return false;
+    return Boolean(props.consultationLoadingByPatient?.[patientId]);
+};
+
+const getConsultationPaymentId = (consultation) => {
+    if (!consultation) return null;
+
+    const directId = consultation.paymentId ?? consultation.paiementId;
+    if (directId) return directId;
+
+    const billing = getConsultationBilling(consultation);
+    const payments = Array.isArray(billing?.payments) ? billing.payments : [];
+    const ticketPayment = payments.find((payment) => {
+        const type = String(payment?.type || '').toLowerCase();
+        return type === 'ticket' || (!payment?.invoiceId && !payment?.factureId && !type.includes('facture'));
+    });
+
+    // Prefer the consultation ticket payment; never fall back to an invoice payment id.
+    return ticketPayment?.id ?? consultation.id ?? null;
+};
+
+const printConsultationTicket = async (consultation) => {
+    if (!consultation) return;
+    const paymentOrConsultationId = getConsultationPaymentId(consultation);
+    await printPaymentTicket(paymentOrConsultationId);
+};
+
+const _printInvoice = async () => {
+    if (!currentBilling.value?.invoiceId) return;
+    const response = await fetchInvoicePrintData(currentBilling.value.invoiceId, token);
+    await printComponent(PrintDevisBody, { doc: response.doc, title: response.title || 'Facture' });
+};
+
+const printPaymentReceipt = async (paymentId) => {
+    if (!paymentId) return;
+    const response = await fetchReceiptPrintData(paymentId, token);
+    await printComponent(PrintReceiptBody, { paiement: response.paiement }, { format: [226.77, 255.12], width: '80mm' });
+};
+
+const printPaymentTicket = async (paymentId) => {
+    if (!paymentId) return;
+    const response = await fetchTicketPrintData(paymentId, token);
+    await printComponent(PrintTicketBody, { paiement: response.paiement }, { format: [226.77, 255.12], width: '80mm' });
+};
+
+function formatPaymentMode(mode) {
+    if (!mode) return '—';
+
+    if (mode.toLowerCase().includes('esp')) return 'Espèces';
+    if (mode.toLowerCase().includes('mobile')) return 'Mobile';
+    if (mode.toLowerCase().includes('carte')) return 'Carte';
+
+    return mode;
+}
+
+const isInteractiveTarget = (target) => target instanceof Element && Boolean(target.closest('button, a, input, select, textarea, [role="button"], .p-button'));
+
+const _onQueueItemClick = (event, consultationId) => {
+    if (isInteractiveTarget(event?.target)) return;
+    selectConsultation(consultationId);
+};
+
+const handleCancelWithConfirm = (event, consultation) => {
+    if (!consultation?.id) return;
+    const sourceEvent = event?.originalEvent || event;
+    const target = sourceEvent?.currentTarget || sourceEvent?.target?.closest?.('[data-cancel-consultation-id], .p-button, button') || sourceEvent?.target || null;
+    emit('cancel-consultation', target, consultation);
+};
+</script>
+
+<template>
+    <div class="flex min-h-0 flex-1 flex-col xl:grid xl:h-full xl:grid-cols-[360px_minmax(0,1fr)_420px] xl:gap-5 xl:overflow-hidden" v-bind="attrs">
+        <ContextMenu ref="contextMenu" :model="patientContextMenuItems" />
+        <!-- Colonne Gauche - Nouveaux patients -->
+        <aside :class="['min-h-0 flex-col overflow-hidden', mobilePanel === 'patients' ? 'flex flex-1' : 'hidden', 'xl:flex xl:h-full xl:max-h-none xl:flex-none']">
+            <div class="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-surface-200/60 bg-white/90 backdrop-blur-sm dark:border-surface-700/60 dark:bg-surface-900/90">
+                <!-- En-tête -->
+                <div class="shrink-0 border-b border-surface-200/60 px-4 py-3 dark:border-surface-700/60">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 shadow-md">
+                                <i class="pi pi-users text-sm text-white"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-base font-semibold text-surface-900 dark:text-surface-50">Nouveaux patients</h3>
+                                <p class="text-xs text-surface-500">{{ newPatients.length }} aujourd'hui</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button
+                                @click="toggleSearchMode"
+                                :class="[
+                                    'flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 xl:h-8 xl:w-8',
+                                    searchMode ? 'bg-purple-500 text-white shadow-md' : 'bg-surface-100 text-surface-500 hover:bg-surface-200 dark:bg-surface-800 dark:hover:bg-surface-700'
+                                ]"
+                                :title="searchMode ? 'Fermer la recherche' : 'Rechercher un patient'"
+                            >
+                                <i :class="searchMode ? 'pi pi-times text-xs' : 'pi pi-search text-sm'"></i>
+                            </button>
+                            <button
+                                @click="emit('open-create-patient')"
+                                class="flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 px-3.5 py-1.5 text-xs font-medium text-white shadow-md transition-all hover:shadow-lg hover:scale-105 active:scale-95 xl:h-auto"
+                            >
+                                <i class="pi pi-plus text-xs"></i>
+                                <span class="hidden sm:inline">Ajouter</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recherche -->
+                <div v-if="searchMode" class="flex min-h-0 flex-1 flex-col space-y-3 overflow-hidden border-b border-surface-200/60 p-4 dark:border-surface-700/60">
+                    <div class="relative shrink-0">
+                        <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-surface-400 text-sm"></i>
+                        <input
+                            v-model="patientSearchQuery"
+                            type="text"
+                            placeholder="Nom, prénom ou téléphone..."
+                            class="w-full rounded-xl border-0 bg-surface-100/60 pl-9 pr-8 py-2.5 text-sm placeholder:text-surface-400 focus:ring-2 focus:ring-purple-500 dark:bg-surface-800/60"
+                            @input="onPatientSearchInput"
+                            autofocus
+                        />
+                        <button
+                            v-if="patientSearchQuery"
+                            class="absolute right-3 top-1/2 -translate-y-1/2 text-surface-400 hover:text-surface-600"
+                            @click="
+                                patientSearchQuery = '';
+                                patientSearchResults = [];
+                            "
+                        >
+                            <i class="pi pi-times text-xs"></i>
+                        </button>
+                    </div>
+
+                    <!-- Résultats recherche -->
+                    <div class="min-h-0 flex-1 space-y-2 overflow-y-auto scrollbar-thin">
+                        <!-- Loading skeleton -->
+                        <div v-if="patientSearchLoading" class="space-y-2">
+                            <div v-for="i in 3" :key="`search-skeleton-${i}`" class="flex items-center gap-3 rounded-xl bg-surface-100/50 p-3 animate-pulse dark:bg-surface-800/30">
+                                <div class="h-9 w-9 rounded-full bg-gradient-to-br from-purple-400 to-purple-500/50"></div>
+                                <div class="flex-1 space-y-2">
+                                    <div class="h-2.5 w-24 rounded bg-surface-300 dark:bg-surface-600"></div>
+                                    <div class="h-2 w-32 rounded bg-surface-200 dark:bg-surface-700"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Résultats -->
+                        <div v-else-if="patientSearchResults.length" class="space-y-2">
+                            <div
+                                v-for="patient in patientSearchResults"
+                                :key="`search-${patient.id}`"
+                                class="group flex items-center gap-3 rounded-xl bg-surface-50/50 p-3 transition-all hover:bg-purple-50/30 hover:shadow-md dark:bg-surface-800/30 dark:hover:bg-purple-900/20"
+                                @contextmenu.prevent="openPatientContextMenu($event, patient)"
+                            >
+                                <div class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-purple-600 font-bold text-white shadow-md">
+                                    {{ ((patient.prenom?.[0] ?? '') + (patient.nom?.[0] ?? 'P')).toUpperCase() }}
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <p class="break-words text-base font-bold leading-snug text-surface-900 dark:text-surface-50">
+                                        {{ patientDisplayName(patient) }}
+                                    </p>
+                                    <div class="mt-0.5 flex items-center gap-1 truncate text-xs text-surface-400">
+                                        <i class="pi pi-phone text-[10px]"></i>
+                                        {{ patient.telephone || 'Non renseigné' }}
+                                    </div>
+                                </div>
+                                <div class="flex flex-col items-end justify-between gap-1 self-stretch flex-shrink-0">
+                                    <i v-if="hasPatientReliquat(patient)" v-tooltip.top="reliquatTooltip(patient)" class="pi pi-wallet text-xs text-red-500"></i>
+                                    <span v-else class="h-3"></span>
+                                    <div class="flex items-center gap-1.5 opacity-100 transition-opacity xl:opacity-0 xl:group-hover:opacity-100">
+                                        <button
+                                            :disabled="isConsultationCreateLoading(patient?.id)"
+                                            :class="[
+                                                'flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 transition-colors dark:bg-emerald-900/30 dark:text-emerald-400 xl:h-8 xl:w-8',
+                                                isConsultationCreateLoading(patient?.id) ? 'cursor-not-allowed opacity-60' : 'hover:bg-emerald-200'
+                                            ]"
+                                            title="Nouvelle consultation"
+                                            @click="emit('open-create-consultation-for-patient', patient)"
+                                        >
+                                            <i :class="isConsultationCreateLoading(patient?.id) ? 'pi pi-spin pi-spinner text-xs' : 'fas fa-stethoscope text-xs'"></i>
+                                        </button>
+                                        <button
+                                            class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-blue-600 transition-colors hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 xl:h-8 xl:w-8"
+                                            title="Modifier le patient"
+                                            @click="emit('open-edit-patient', patient)"
+                                        >
+                                            <i class="pi pi-user-edit text-xs"></i>
+                                        </button>
+                                        <button
+                                            class="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-100 text-surface-600 transition-colors hover:bg-surface-200 dark:bg-surface-800 dark:text-surface-300 xl:h-8 xl:w-8"
+                                            title="Plus d'actions"
+                                            @click.stop="openPatientContextMenu($event, patient)"
+                                        >
+                                            <i class="pi pi-ellipsis-v text-xs"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Aucun résultat -->
+                        <div v-else-if="patientSearchQuery.length >= 2" class="flex flex-col items-center justify-center py-8 text-center">
+                            <div class="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-surface-100 dark:bg-surface-800">
+                                <i class="pi pi-search text-2xl text-surface-400"></i>
+                            </div>
+                            <p class="text-sm font-medium text-surface-600">Aucun patient trouvé</p>
+                            <p class="mt-1 text-xs text-surface-400">Vérifiez l'orthographe ou essayez le téléphone</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Liste patients -->
+                <div v-else class="min-h-0 flex-1 space-y-2 overflow-y-auto p-3 scrollbar-thin">
+                    <!-- Skeleton loading -->
+                    <div v-if="loading" class="space-y-2">
+                        <div v-for="i in 3" :key="i" class="flex items-center gap-3 rounded-xl bg-surface-100/50 p-3 dark:bg-surface-800/30">
+                            <div class="h-9 w-9 rounded-full bg-gradient-to-br from-purple-400 to-purple-500/50 animate-pulse"></div>
+                            <div class="flex-1 space-y-2">
+                                <div class="h-2.5 w-28 rounded bg-surface-300 animate-pulse dark:bg-surface-600"></div>
+                                <div class="h-2 w-36 rounded bg-surface-200 animate-pulse dark:bg-surface-700"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Liste -->
+                    <div v-else-if="newPatients.length" class="space-y-2">
+                        <div
+                            v-for="patient in newPatients"
+                            :key="patient.id"
+                            class="group flex items-center gap-3 rounded-xl bg-gradient-to-r from-transparent to-transparent p-3 transition-all hover:bg-purple-50/30 hover:shadow-md dark:hover:bg-purple-900/10"
+                            @contextmenu.prevent="openPatientContextMenu($event, patient)"
+                        >
+                            <div class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-fuchsia-500 font-bold text-white shadow-md">
+                                {{ (patient.prenom?.[0] ?? '') + (patient.nom?.[0] ?? 'P') }}
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <p class="break-words text-base font-bold leading-snug text-surface-900 dark:text-surface-50">
+                                    {{ patientDisplayName(patient) }}
+                                </p>
+                                <div class="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-surface-400">
+                                    <div class="flex items-center gap-1">
+                                        <i class="pi pi-clock text-[10px]"></i>
+                                        {{ formatDateTime(patientCreatedAt(patient)).split(' ')[0] }}
+                                    </div>
+                                    <div class="flex items-center gap-1 truncate">
+                                        <i class="pi pi-phone text-[10px]"></i>
+                                        {{ patient.telephone || 'Non renseigné' }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex flex-col items-end justify-between gap-1 self-stretch flex-shrink-0">
+                                <i v-if="hasPatientReliquat(patient)" v-tooltip.top="reliquatTooltip(patient)" class="pi pi-wallet text-xs text-red-500"></i>
+                                <span v-else class="h-3"></span>
+                                <div class="flex items-center gap-1.5 opacity-100 transition-opacity xl:opacity-0 xl:group-hover:opacity-100">
+                                    <button
+                                        :disabled="isConsultationCreateLoading(patient?.id)"
+                                        :class="[
+                                            'flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 transition-colors dark:bg-emerald-900/30 dark:text-emerald-400 xl:h-8 xl:w-8',
+                                            isConsultationCreateLoading(patient?.id) ? 'cursor-not-allowed opacity-60' : 'hover:bg-emerald-200'
+                                        ]"
+                                        title="Nouvelle consultation"
+                                        @click="emit('open-create-consultation-for-patient', patient)"
+                                    >
+                                        <i :class="isConsultationCreateLoading(patient?.id) ? 'pi pi-spin pi-spinner text-xs' : 'fas fa-stethoscope text-xs'"></i>
+                                    </button>
+                                    <button
+                                        class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-blue-600 transition-colors hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 xl:h-8 xl:w-8"
+                                        title="Modifier le patient"
+                                        @click="emit('open-edit-patient', patient)"
+                                    >
+                                        <i class="pi pi-user-edit text-xs"></i>
+                                    </button>
+                                    <button
+                                        class="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-100 text-surface-600 transition-colors hover:bg-surface-200 dark:bg-surface-800 dark:text-surface-300 xl:h-8 xl:w-8"
+                                        title="Plus d'actions"
+                                        @click.stop="openPatientContextMenu($event, patient)"
+                                    >
+                                        <i class="pi pi-ellipsis-v text-xs"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- État vide -->
+                    <div v-else class="flex flex-col items-center justify-center py-12 text-center">
+                        <div class="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-surface-100 to-surface-200 dark:from-surface-800 dark:to-surface-700">
+                            <i class="pi pi-user-plus text-3xl text-surface-400"></i>
+                        </div>
+                        <p class="text-sm font-medium text-surface-600">Aucun nouveau patient</p>
+                        <p class="mt-1 text-xs text-surface-400">Les nouveaux arrivants s'afficheront ici</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Colonne Centre - File d'attente -->
+        <section :class="['min-h-0 flex-col overflow-hidden', mobilePanel === 'queue' ? 'flex flex-1' : 'hidden', 'xl:flex xl:h-full xl:max-h-none xl:flex-none']">
+            <div class="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-surface-200/60 bg-white/90 backdrop-blur-sm dark:border-surface-700/60 dark:bg-surface-900/90">
+                <!-- Header -->
+                <div class="shrink-0 border-b border-surface-200/60 px-3 py-3 dark:border-surface-700/60 sm:px-4">
+                    <div class="flex flex-row gap-3">
+                        <div class="flex min-w-0 items-center gap-2">
+                            <SelectButton v-model="centerView" :options="centerViewOptions" option-label="label" option-value="value" :allow-empty="false" size="small" aria-label="Vue centrale" />
+                            <Tag
+                                :value="centerView === 'queue' ? secretaryRows.length : cabinetServices.length"
+                                :icon="centerView === 'queue' ? 'pi pi-users' : 'pi pi-building'"
+                                severity="info"
+                                :aria-label="centerView === 'queue' ? 'Nombre de consultations' : 'Nombre de prestations du cabinet'"
+                            />
+                        </div>
+                        <div class="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
+                            <ToggleSwitch v-if="centerView === 'queue'" v-model="showCompletedSecretary" />
+                            <button
+                                v-if="centerView === 'queue'"
+                                :class="['flex h-10 w-10 items-center justify-center rounded-xl transition-all xl:h-8 xl:w-8', newestFirstSecretary ? 'bg-primary-500 text-white shadow-md' : 'bg-surface-100 text-surface-500 hover:bg-surface-200']"
+                                :title="newestFirstSecretary ? 'Plus récentes en haut' : 'Plus anciennes en haut'"
+                                @click="newestFirstSecretary = !newestFirstSecretary"
+                            >
+                                <i :class="newestFirstSecretary ? 'pi pi-arrow-down' : 'pi pi-arrow-up'" class="text-xs"></i>
+                            </button>
+                            <button
+                                type="button"
+                                class="rounded-xl border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 shadow-sm transition-colors hover:bg-emerald-100 dark:border-emerald-800/60 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-900/30 sm:px-3"
+                                :title="revenueButtonLabel"
+                                @click="showRevenueStatsModal = true"
+                            >
+                                <i :class="financialStatsLoading ? 'pi pi-spin pi-spinner' : 'pi pi-wallet'" class="mr-1.5"></i>
+                                <span>{{ revenueButtonLabel }}</span>
+                            </button>
+                            <button
+                                @click="centerView === 'queue' ? emit('open-create-consultation') : openCabinetService(null)"
+                                :disabled="centerView === 'queue' && consultationToolbarLoading"
+                                class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-md transition-all hover:shadow-lg hover:scale-105 disabled:cursor-not-allowed disabled:opacity-60 xl:h-auto xl:w-auto xl:p-1.5"
+                            >
+                                <i :class="centerView === 'queue' && consultationToolbarLoading ? 'pi pi-spin pi-spinner text-xs' : 'pi pi-plus text-xs'"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <AppDialog v-model:visible="showRevenueStatsModal" title="Statistiques d'encaissements du jour" icon="pi pi-chart-bar" icon-tone="success" width="min(960px, 96vw)" :show-footer="false">
+                    <div class="space-y-6">
+                        <div class="flex flex-wrap items-center justify-between gap-3 text-sm text-surface-500">
+                            <span><i class="pi pi-calendar mr-2"></i>{{ new Date().toLocaleDateString('fr-FR', { dateStyle: 'full' }) }}</span>
+                            <button type="button" class="inline-flex items-center gap-2 font-medium text-primary-600 dark:text-primary-300" :disabled="financialStatsLoading" @click="loadDailyFinancialData">
+                                <i :class="financialStatsLoading ? 'pi pi-spin pi-spinner' : 'pi pi-refresh'"></i>Actualiser
+                            </button>
+                        </div>
+                        <div v-if="financialStatsError" role="alert" class="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+                            {{ financialStatsError }} {{ financialStatsLoaded ? 'Les derniers chiffres chargés restent affichés.' : '' }}
+                        </div>
+                        <div v-if="!financialStatsLoaded && financialStatsLoading" class="py-8 text-center text-surface-500"><i class="pi pi-spin pi-spinner mr-2"></i>Chargement des statistiques…</div>
+                        <template v-if="financialStatsLoaded">
+                            <section class="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-800 dark:bg-emerald-950/25">
+                                <div class="flex flex-wrap items-start justify-between gap-4">
+                                    <div>
+                                        <h4 class="text-sm font-semibold text-emerald-800 dark:text-emerald-200">Total encaissé aujourd’hui</h4>
+                                        <p class="mt-2 text-3xl font-bold text-emerald-700 dark:text-emerald-200">{{ formatFcfa(dailyRevenueStats.totalRevenue) }}</p>
+                                        <p class="mt-2 text-xs text-emerald-700 dark:text-emerald-300">Factures normales, parts patient des assurances, prestations du cabinet et tickets de consultation.</p>
+                                    </div>
+                                    <Tag :value="dailyRevenueStats.totalPaymentsCount" icon="pi pi-wallet" severity="success" aria-label="Nombre de paiements du jour" />
+                                </div>
+                                <div class="mt-4 grid gap-3 border-t border-emerald-200 pt-4 text-sm dark:border-emerald-800 sm:grid-cols-2">
+                                    <div>
+                                        <span class="text-emerald-800 dark:text-emerald-300">Dont règlements de reliquats</span><strong class="mt-1 block text-emerald-900 dark:text-emerald-100">{{ formatFcfa(dailyRevenueStats.totalPrior) }}</strong>
+                                    </div>
+                                    <div>
+                                        <span class="text-emerald-800 dark:text-emerald-300">Reste patient sur les factures du jour</span
+                                        ><strong class="mt-1 block text-emerald-900 dark:text-emerald-100">{{ formatFcfa(dailyRevenueStats.totalUnpaid) }}</strong>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section class="overflow-hidden rounded-2xl border border-surface-200 dark:border-surface-700">
+                                <div class="border-b border-surface-200 p-4 dark:border-surface-700">
+                                    <h4 class="font-semibold text-surface-900 dark:text-surface-50">Facturation du jour</h4>
+                                    <p class="mt-1 text-xs text-surface-500">Factures émises aujourd’hui. Les montants facturés sont distincts des sommes réellement encaissées.</p>
+                                </div>
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-sm">
+                                        <thead class="bg-surface-50 text-xs text-surface-500 dark:bg-surface-800/50">
+                                            <tr>
+                                                <th class="p-3 text-left">Type</th>
+                                                <th class="p-3 text-right">Nombre</th>
+                                                <th class="p-3 text-right">Montant facturé</th>
+                                                <th class="p-3 text-right">Part patient</th>
+                                                <th class="p-3 text-right">Part assurance</th>
+                                                <th class="p-3 text-right">Reste patient</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-surface-100 dark:divide-surface-800">
+                                            <tr v-for="row in dailyRevenueStats.invoiceRows" :key="row.key">
+                                                <th class="whitespace-nowrap p-3 text-left font-medium"><i :class="row.icon" class="mr-2 text-surface-400"></i>{{ row.label }}</th>
+                                                <td class="p-3 text-right"><Tag :value="row.count" severity="secondary" /></td>
+                                                <td class="whitespace-nowrap p-3 text-right font-semibold">{{ formatFcfa(row.total) }}</td>
+                                                <td class="whitespace-nowrap p-3 text-right">{{ formatFcfa(row.patient) }}</td>
+                                                <td class="whitespace-nowrap p-3 text-right">{{ formatFcfa(row.insurer) }}</td>
+                                                <td class="whitespace-nowrap p-3 text-right text-amber-700 dark:text-amber-300">{{ formatFcfa(row.remaining) }}</td>
+                                            </tr>
+                                        </tbody>
+                                        <tfoot class="border-t border-surface-200 bg-surface-50 font-semibold dark:border-surface-700 dark:bg-surface-800/50">
+                                            <tr>
+                                                <th class="p-3 text-left">Total</th>
+                                                <td class="p-3 text-right">{{ dailyRevenueStats.totalInvoices }}</td>
+                                                <td class="whitespace-nowrap p-3 text-right">{{ formatFcfa(dailyRevenueStats.totalBilled) }}</td>
+                                                <td colspan="2"></td>
+                                                <td class="whitespace-nowrap p-3 text-right">{{ formatFcfa(dailyRevenueStats.totalUnpaid) }}</td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </section>
+
+                            <section class="overflow-hidden rounded-2xl border border-surface-200 dark:border-surface-700">
+                                <div class="border-b border-surface-200 p-4 dark:border-surface-700">
+                                    <h4 class="font-semibold text-surface-900 dark:text-surface-50">Origine des encaissements</h4>
+                                    <p class="mt-1 text-xs text-surface-500">Tous les paiements enregistrés aujourd’hui, quelle que soit la date de la facture. Les reliquats correspondent aux factures antérieures à aujourd’hui.</p>
+                                </div>
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-sm">
+                                        <thead class="bg-surface-50 text-xs text-surface-500 dark:bg-surface-800/50">
+                                            <tr>
+                                                <th class="p-3 text-left">Origine</th>
+                                                <th class="p-3 text-right">Documents</th>
+                                                <th class="p-3 text-right">Paiements</th>
+                                                <th class="p-3 text-right">Factures du jour / tickets</th>
+                                                <th class="p-3 text-right">Reliquats</th>
+                                                <th v-if="dailyRevenueStats.hasUnknownContext" class="p-3 text-right">Date non renseignée</th>
+                                                <th class="p-3 text-right">Total encaissé</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-surface-100 dark:divide-surface-800">
+                                            <tr v-for="row in dailyRevenueStats.paymentRows" :key="row.key">
+                                                <th class="whitespace-nowrap p-3 text-left font-medium">
+                                                    <i :class="row.icon" class="mr-2 text-surface-400"></i>{{ row.label }}<small v-if="row.key === 'facture_assurance'" class="mt-1 block font-normal text-surface-500">Part patient encaissée</small>
+                                                </th>
+                                                <td class="p-3 text-right">{{ row.documents }}</td>
+                                                <td class="p-3 text-right">{{ row.count }}</td>
+                                                <td class="whitespace-nowrap p-3 text-right">{{ formatFcfa(row.today) }}</td>
+                                                <td class="whitespace-nowrap p-3 text-right">{{ formatFcfa(row.prior) }}</td>
+                                                <td v-if="dailyRevenueStats.hasUnknownContext" class="whitespace-nowrap p-3 text-right">{{ formatFcfa(row.unknown) }}</td>
+                                                <td class="whitespace-nowrap p-3 text-right font-semibold text-emerald-700 dark:text-emerald-300">{{ formatFcfa(row.total) }}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </section>
+
+                            <section>
+                                <h4 class="font-semibold text-surface-900 dark:text-surface-50">Répartition par moyen de paiement</h4>
+                                <div class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                                    <div v-for="row in dailyRevenueStats.paymentModeRows" :key="row.mode" class="rounded-xl border border-surface-200 p-4 dark:border-surface-700">
+                                        <div class="flex items-center justify-between gap-2">
+                                            <span class="text-sm text-surface-500">{{ row.mode }}</span
+                                            ><Tag :value="row.count" icon="pi pi-wallet" severity="secondary" />
+                                        </div>
+                                        <strong class="mt-2 block text-lg">{{ formatFcfa(row.amount) }}</strong>
+                                    </div>
+                                </div>
+                                <p v-if="!dailyRevenueStats.paymentModeRows.length" class="mt-3 text-sm text-surface-500">Aucun encaissement enregistré aujourd’hui.</p>
+                            </section>
+
+                            <section v-if="dailyRevenueStats.paymentDetails.length" class="overflow-hidden rounded-2xl border border-surface-200 dark:border-surface-700">
+                                <div class="border-b border-surface-200 p-4 dark:border-surface-700"><h4 class="font-semibold text-surface-900 dark:text-surface-50">Journal des encaissements du jour</h4></div>
+                                <div class="max-h-80 overflow-auto">
+                                    <table class="w-full text-sm">
+                                        <thead class="sticky top-0 bg-surface-50 text-xs text-surface-500 dark:bg-surface-800">
+                                            <tr>
+                                                <th class="p-3 text-left">Heure / patient</th>
+                                                <th class="p-3 text-left">Document</th>
+                                                <th class="p-3 text-left">Contexte</th>
+                                                <th class="p-3 text-left">Moyen</th>
+                                                <th class="p-3 text-right">Montant</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-surface-100 dark:divide-surface-800">
+                                            <tr v-for="(payment, index) in dailyRevenueStats.paymentDetails" :key="payment.pId ?? payment.id ?? index">
+                                                <td class="p-3">
+                                                    <span class="block text-xs text-surface-500">{{ formatTime(payment.date) }}</span
+                                                    ><span class="whitespace-nowrap">{{ typeof payment.patient === 'string' ? payment.patient : patientDisplayName(payment.patient) }}</span>
+                                                </td>
+                                                <td class="p-3">
+                                                    <span class="block whitespace-nowrap">{{ payment.familyLabel }}</span
+                                                    ><small class="text-surface-500"
+                                                        >#{{ payment.factureId }}<span v-if="payment.invoiceDate"> · {{ formatDateTime(payment.invoiceDate).split(' ')[0] }}</span></small
+                                                    >
+                                                </td>
+                                                <td class="p-3"><Tag :value="payment.context" :severity="payment.contextKey === 'prior' ? 'warn' : 'secondary'" /></td>
+                                                <td class="whitespace-nowrap p-3">{{ payment.mode }}</td>
+                                                <td class="whitespace-nowrap p-3 text-right font-semibold">{{ formatFcfa(payment.montant) }}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </section>
+                        </template>
+                    </div>
+                </AppDialog>
+
+                <!-- Contenu consultations -->
+                <div v-if="centerView === 'queue'" class="min-h-0 flex-1 overflow-y-auto p-4 scrollbar-thin">
+                    <div v-if="loading" class="space-y-3">
+                        <div v-for="i in 4" :key="i" class="rounded-xl bg-surface-100/50 p-3 animate-pulse dark:bg-surface-800/30">
+                            <div class="flex gap-3">
+                                <div class="h-8 w-8 rounded-full bg-gradient-to-br from-surface-300 to-surface-400"></div>
+                                <div class="flex-1 space-y-2">
+                                    <div class="h-3 w-20 rounded bg-surface-300"></div>
+                                    <div class="h-2.5 w-40 rounded bg-surface-200"></div>
+                                    <div class="h-2 w-32 rounded bg-surface-200"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-else-if="secretaryRows.length" class="relative">
+                        <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-gradient-to-b from-primary-300 via-primary-200 to-transparent dark:from-primary-600 dark:via-primary-700"></div>
+
+                        <div class="space-y-3">
+                            <div
+                                v-for="(consultation, index) in secretaryRows"
+                                :key="consultation.id"
+                                @click="selectConsultation(consultation.id)"
+                                class="group relative flex gap-3 w-full cursor-pointer rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-primary-400"
+                            >
+                                <div class="relative z-10">
+                                    <div
+                                        :class="[
+                                            'flex h-8 w-8 items-center justify-center rounded-full font-bold text-xs transition-all duration-200 shadow-md',
+                                            consultation.id === selectedConsultationId
+                                                ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white scale-110 ring-2 ring-primary-300 ring-offset-2'
+                                                : Number(consultation.state) === 1
+                                                  ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white'
+                                                  : 'bg-gradient-to-br from-surface-400 to-surface-500 text-white dark:from-surface-600 dark:to-surface-700'
+                                        ]"
+                                    >
+                                        {{ index + 1 }}
+                                    </div>
+                                </div>
+
+                                <div
+                                    :class="[
+                                        'flex-1 rounded-xl border p-3 transition-all duration-200',
+                                        consultation.id === selectedConsultationId
+                                            ? 'border-primary-200 bg-gradient-to-r from-primary-50 to-transparent shadow-md dark:border-primary-800 dark:from-primary-950/30'
+                                            : Number(consultation.state) === 1
+                                              ? 'border-emerald-200 bg-emerald-50/30 opacity-75 dark:border-emerald-800 dark:bg-emerald-950/20'
+                                              : 'border-surface-200 bg-surface-50/30 hover:shadow-md hover:border-primary-200 dark:border-surface-700 dark:bg-surface-800/30'
+                                    ]"
+                                >
+                                    <div class="flex items-center justify-between mb-1.5">
+                                        <span class="font-mono text-[11px] text-surface-400">
+                                            {{ formatTime(consultation.createdAt) }}
+                                        </span>
+                                        <div class="flex items-center gap-1.5">
+                                            <span
+                                                v-if="hasPatientReliquat(consultation)"
+                                                v-tooltip.top="reliquatTooltip(consultation)"
+                                                class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700 dark:bg-red-900/40 dark:text-red-300"
+                                            >
+                                                <i class="pi pi-wallet text-[9px]"></i>
+                                                {{ formatFcfa(patientImpayeesAmount(consultation)) }}
+                                            </span>
+                                            <span
+                                                :class="[
+                                                    'rounded-full px-2 py-0.5 text-[10px] font-medium',
+                                                    Number(consultation.state) === 1 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400'
+                                                ]"
+                                            >
+                                                {{ Number(consultation.state) === 1 ? 'Terminé' : 'En attente' }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <p class="break-words text-base font-bold leading-snug text-surface-900 dark:text-surface-50">
+                                        {{ patientLabel(consultation) }}
+                                    </p>
+                                    <p class="text-xs text-surface-400 truncate mt-0.5">
+                                        {{ medecinLabel(consultation) }}
+                                        <span v-if="consultation.motif" class="text-surface-300">· {{ consultation.motif }}</span>
+                                    </p>
+                                    <div class="flex items-center justify-between mt-2 gap-2">
+                                        <button
+                                            v-if="Number(consultation.state) === 0"
+                                            @click="(e) => handleCancelWithConfirm(e, consultation)"
+                                            class="min-h-10 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-600 transition-colors hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 xl:min-h-0 xl:py-1"
+                                        >
+                                            Annuler
+                                        </button>
+                                        <div class="ml-auto flex items-center gap-2">
+                                            <span :class="['text-xs font-medium', consultation?.factState === 1 ? 'text-emerald-600' : consultation?.factState === 0 ? 'text-sky-600' : 'text-surface-400']">
+                                                {{ formatFactureState(consultation).label }}
+                                            </span>
+                                            <button
+                                                v-if="isConsultationPayante(consultation)"
+                                                @click.stop="printConsultationTicket(consultation)"
+                                                class="flex min-h-10 items-center gap-1 rounded-lg bg-primary-50 px-2.5 py-2 text-[10px] font-medium text-primary-600 transition-colors hover:bg-primary-100 dark:bg-primary-900/30 dark:text-primary-400 xl:min-h-0 xl:py-1"
+                                            >
+                                                <i class="pi pi-print text-xs"></i>
+                                                Ticket
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-else class="flex flex-col items-center justify-center py-16 text-center">
+                        <div class="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-surface-100 to-surface-200 dark:from-surface-800 dark:to-surface-700">
+                            <i class="pi pi-calendar-times text-3xl text-surface-400"></i>
+                        </div>
+                        <p class="text-sm font-medium text-surface-600">Aucune consultation</p>
+                        <p class="mt-1 text-xs text-surface-400">Aujourd'hui</p>
+                    </div>
+                </div>
+                <div v-else class="min-h-0 flex-1 overflow-y-auto p-3 scrollbar-thin">
+                    <div v-if="cabinetServicesLoading" class="p-6 text-center text-sm text-surface-500">Chargement des services…</div>
+                    <button
+                        v-for="service in cabinetServices"
+                        :key="service.id"
+                        type="button"
+                        @click="selectCabinetService(service)"
+                        :class="[
+                            'mb-2 flex w-full items-center justify-between gap-3 rounded-xl border p-3 text-left transition hover:border-primary-400 hover:bg-primary-50/50 dark:hover:bg-primary-950/20',
+                            selectedCabinetService?.id === service.id ? 'border-primary-400 bg-primary-50 dark:bg-primary-950/20' : 'border-surface-200 dark:border-surface-700'
+                        ]"
+                    >
+                        <span class="min-w-0 flex-1">
+                            <strong class="block break-words text-base font-bold leading-snug text-surface-900 dark:text-surface-50">{{ servicePatientLabel(service) }}</strong>
+                            <small class="mt-1 block text-surface-500">{{ service.designation || 'Prestation du cabinet' }} · {{ formatTime(service.createdAt || service.date) }}</small>
+                            <Tag class="mt-2" :value="servicePaymentStatus(service).label" :severity="servicePaymentStatus(service).severity" />
+                            <small v-if="service.statut !== 'annule'" class="mt-1 block text-surface-500">Réglé : {{ formatFcfa(service.facture?.partPatientPayee) }} · Reste patient : {{ formatFcfa(serviceRemaining(service)) }}</small>
+                            <small v-if="service.coveredByInsurance" class="mt-1 block text-surface-500">Patient : {{ formatFcfa(service.facture?.montantPatient) }} · Assurance : {{ formatFcfa(service.facture?.montantAssureur) }}</small>
+                        </span>
+                        <span class="shrink-0 text-xs font-semibold">{{ formatFcfa(service.montant) }}</span>
+                    </button>
+                    <div v-if="!cabinetServicesLoading && !cabinetServices.length" class="p-8 text-center text-sm text-surface-500">Aucune prestation du cabinet enregistrée aujourd’hui.</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Colonne Droite - Détails -->
+        <aside :class="['min-h-0 flex-col overflow-hidden', mobilePanel === 'details' ? 'flex flex-1' : 'hidden', 'xl:flex xl:h-full xl:max-h-none xl:flex-none']">
+            <div class="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-surface-200/60 bg-white/90 backdrop-blur-sm dark:border-surface-700/60 dark:bg-surface-900/90">
+                <div class="shrink-0 border-b border-surface-200/60 px-4 py-3 dark:border-surface-700/60">
+                    <div class="flex items-center justify-between gap-2">
+                        <h3 class="text-base font-semibold text-surface-900 dark:text-surface-50">Détails</h3>
+                        <div class="flex items-center gap-2">
+                            <span v-if="currentConsultation && hasPriorReliquat" class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-[10px] font-semibold text-red-700 dark:bg-red-900/50 dark:text-red-300">
+                                <i class="pi pi-wallet text-[10px]"></i>
+                                Reliquat {{ formatFcfa(selectedPriorReliquatTotal) }}
+                            </span>
+                            <span v-if="currentConsultation" class="relative flex h-2 w-2">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-2 w-2 bg-primary-500"></span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="centerView === 'services' && selectedCabinetService" class="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 scrollbar-thin">
+                    <div class="rounded-xl border border-primary-200 bg-primary-50/60 p-4 dark:border-primary-800 dark:bg-primary-950/20">
+                        <p class="break-words text-xl font-bold leading-snug text-surface-900 dark:text-surface-50">{{ servicePatientLabel(selectedCabinetService) }}</p>
+                        <p class="mt-1 text-sm text-surface-600 dark:text-surface-300">{{ selectedCabinetService.designation || 'Prestation du cabinet' }}</p>
+                        <Tag class="mt-2" :value="servicePaymentStatus(selectedCabinetService).label" :severity="servicePaymentStatus(selectedCabinetService).severity" />
+                    </div>
+                    <div class="space-y-2 rounded-xl border border-surface-200 p-4 text-sm dark:border-surface-700">
+                        <div class="flex justify-between">
+                            <span class="text-surface-500">Date</span><strong>{{ formatDateTime(selectedCabinetService.createdAt || selectedCabinetService.date) }}</strong>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-surface-500">Montant</span><strong>{{ formatFcfa(selectedCabinetService.montant) }}</strong>
+                        </div>
+                        <template v-if="selectedCabinetService.coveredByInsurance">
+                            <div class="flex justify-between">
+                                <span class="text-surface-500">Part patient</span><strong>{{ formatFcfa(selectedCabinetService.facture?.montantPatient) }}</strong>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-surface-500">Part assurance</span><strong>{{ formatFcfa(selectedCabinetService.facture?.montantAssureur) }}</strong>
+                            </div>
+                            <p class="text-xs text-surface-500">{{ cabinetServiceInsuranceLabel(selectedCabinetService) }}</p>
+                        </template>
+                        <div class="flex justify-between">
+                            <span class="text-surface-500">Réglé</span><strong>{{ formatFcfa(selectedCabinetService.facture?.partPatientPayee ?? 0) }}</strong>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-surface-500">Reste patient</span><strong>{{ formatFcfa(serviceRemaining(selectedCabinetService)) }}</strong>
+                        </div>
+                        <div v-if="selectedCabinetService.note" class="border-t border-surface-200 pt-2 dark:border-surface-700">
+                            <span class="text-surface-500">Note</span>
+                            <p class="mt-1">{{ selectedCabinetService.note }}</p>
+                        </div>
+                    </div>
+                    <button
+                        v-if="selectedCabinetService.statut !== 'annule' && selectedCabinetService.facture?.id && serviceRemaining(selectedCabinetService) > 0"
+                        type="button"
+                        class="w-full rounded-xl bg-primary-500 px-4 py-3 text-sm font-semibold text-white hover:bg-primary-600"
+                        @click="cabinetServicePayVisible = true"
+                    >
+                        <i class="pi pi-wallet mr-2"></i>Encaisser {{ formatFcfa(serviceRemaining(selectedCabinetService)) }}<span v-if="selectedCabinetService.coveredByInsurance"> (part patient)</span>
+                    </button>
+                    <button
+                        v-if="selectedCabinetService.patientId"
+                        type="button"
+                        class="w-full rounded-xl border border-primary-200 px-4 py-3 text-sm font-medium text-primary-700 dark:border-primary-800 dark:text-primary-300"
+                        @click="emit('open-patient-dossier', selectedCabinetService.patient || { id: selectedCabinetService.patientId })"
+                    >
+                        <i class="pi pi-address-book mr-2"></i>Ouvrir dossier
+                    </button>
+                </div>
+                <div v-else-if="centerView === 'queue' && currentConsultation" class="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 scrollbar-thin">
+                    <!-- Carte patient -->
+                    <div
+                        :class="[
+                            'rounded-xl border p-4 transition-all',
+                            Number(currentConsultation.state) === 1
+                                ? 'border-emerald-200 bg-gradient-to-br from-emerald-50 to-transparent dark:border-emerald-800 dark:from-emerald-950/30'
+                                : 'border-primary-200 bg-gradient-to-br from-primary-50 to-transparent dark:border-primary-800 dark:from-primary-950/30'
+                        ]"
+                    >
+                        <div class="flex items-start gap-3">
+                            <div
+                                :class="[
+                                    'flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full text-white font-bold shadow-lg',
+                                    Number(currentConsultation.state) === 1 ? 'bg-gradient-to-br from-emerald-500 to-emerald-600' : 'bg-gradient-to-br from-primary-500 to-primary-600'
+                                ]"
+                            >
+                                {{ patientLabel(currentConsultation).charAt(0).toUpperCase() }}
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="break-words text-xl font-bold leading-snug text-surface-900 dark:text-surface-50">
+                                    {{ patientLabel(currentConsultation) }}
+                                </p>
+                                <p class="text-xs text-surface-400 truncate mt-0.5">
+                                    {{ medecinLabel(currentConsultation) }}
+                                </p>
+                                <p class="text-[11px] text-surface-400 mt-1"><i class="pi pi-clock mr-1"></i>{{ formatTime(currentConsultation.createdAt) }}</p>
+                                <p v-if="hasPriorReliquat" class="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-2 py-1 text-xs font-semibold text-red-700 dark:bg-red-950/40 dark:text-red-300">
+                                    <i class="pi pi-exclamation-circle text-[11px]"></i>
+                                    Reliquats antérieurs : {{ formatFcfa(selectedPriorReliquatTotal) }}
+                                </p>
+                            </div>
+                            <span
+                                :class="[
+                                    'rounded-full px-2 py-1 text-[10px] font-medium',
+                                    Number(currentConsultation.state) === 1 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400'
+                                ]"
+                            >
+                                {{ Number(currentConsultation.state) === 1 ? 'Terminé' : 'En cours' }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <button
+                            @click="emit('open-details', currentConsultation)"
+                            class="rounded-xl border border-surface-200 bg-surface-50 px-3 py-2 text-xs font-medium text-surface-600 transition-all hover:bg-surface-100 hover:shadow-sm dark:border-surface-700 dark:bg-surface-800/50"
+                        >
+                            <i class="pi pi-eye mr-1"></i>Détails
+                        </button>
+                        <button
+                            v-if="selectedPatientId"
+                            @click="emit('open-patient-dossier', currentConsultation.patient || { id: selectedPatientId })"
+                            class="rounded-xl border border-primary-200 bg-primary-50 px-3 py-2 text-xs font-medium text-primary-700 transition-all hover:bg-primary-100 dark:border-primary-800 dark:bg-primary-950/30 dark:text-primary-300"
+                        >
+                            <i class="pi pi-address-book mr-1"></i>Ouvrir dossier
+                        </button>
+                        <button
+                            v-if="selectedPatientId"
+                            class="col-span-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 transition-all hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200"
+                            @click="openCabinetService(currentConsultation.patient || { id: selectedPatientId, nom: currentConsultation.patientName })"
+                        >
+                            <i class="pi pi-building mr-1"></i>Enregistrer une prestation du cabinet
+                        </button>
+                        <button
+                            v-if="allowReceptionQuickClose && Number(currentConsultation.state) !== 1"
+                            @click="emit('open-quick-dialog', currentConsultation)"
+                            class="rounded-xl bg-amber-500 px-3 py-2 text-xs font-medium text-white shadow-md transition-all hover:bg-amber-600"
+                        >
+                            <i class="pi pi-bolt mr-1"></i>Clôture rapide
+                        </button>
+                        <button
+                            v-if="(isAdmin || isMedecin) && Number(currentConsultation.state) !== 1"
+                            @click="emit('select-medical-workspace', currentConsultation)"
+                            class="rounded-xl border border-primary-500 bg-primary-50 px-3 py-2 text-xs font-medium text-primary-600 transition-all hover:bg-primary-100 dark:bg-primary-950/30"
+                        >
+                            <i class="pi pi-folder-open mr-1"></i>Ouvrir fiche médicale du patient
+                        </button>
+                    </div>
+
+                    <!-- Facture -->
+                    <div v-if="hasInvoiceContext" class="rounded-xl border border-surface-200 bg-surface-50/50 p-4 dark:border-surface-700 dark:bg-surface-800/30">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-sm font-semibold text-surface-700 dark:text-surface-300">Facture</span>
+                            <span
+                                :class="[
+                                    'rounded-full px-2 py-1 text-[10px] font-medium',
+                                    isPaidInvoice
+                                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400'
+                                        : isValidatedFreeInvoice
+                                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400'
+                                          : isFreeInvoice
+                                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400'
+                                            : 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400'
+                                ]"
+                            >
+                                {{ isPaidInvoice ? 'Réglée' : isValidatedFreeInvoice ? 'Validée' : isFreeInvoice ? 'Gratuite' : 'En attente' }}
+                            </span>
+                        </div>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-surface-500">Total</span>
+                                <span class="font-bold text-surface-900">{{ formatFcfa(selectedInvoiceTotal) }}</span>
+                            </div>
+                            <div class="flex justify-between pt-1 border-t border-surface-200">
+                                <span class="text-surface-500">Reste</span>
+                                <span :class="selectedInvoiceRemaining > 0 ? 'text-red-600 font-bold' : 'text-emerald-600 font-bold'">
+                                    {{ selectedInvoiceRemaining === null ? '--' : formatFcfa(selectedInvoiceRemaining) }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 mt-4">
+                            <button
+                                v-if="!isPaidInvoice && !isFreeInvoice"
+                                @click="emit('open-caisse-pay')"
+                                class="rounded-xl bg-emerald-500 px-3 py-2 text-xs font-medium text-white shadow-md transition-all hover:bg-emerald-600 dark:bg-emerald-700 dark:hover:bg-emerald-800 dark:text-white"
+                            >
+                                <i class="pi pi-credit-card mr-1"></i>Régler
+                            </button>
+                            <button
+                                v-if="isFreeInvoice && !isValidatedFreeInvoice"
+                                @click="emit('open-caisse-validate')"
+                                class="rounded-xl bg-blue-500 px-3 py-2 text-xs font-medium text-white shadow-md transition-all hover:bg-blue-600 dark:bg-blue-700 dark:hover:bg-blue-800 dark:text-white"
+                            >
+                                <i class="pi pi-check mr-1"></i>Valider
+                            </button>
+                            <button
+                                v-if="canModifyInvoice"
+                                @click="emit('open-caisse-modify')"
+                                class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 transition-all hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
+                            >
+                                <i class="pi pi-file-edit mr-1"></i>Modifier
+                            </button>
+                            <button
+                                @click="emit('open-caisse-preview')"
+                                class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-xs font-medium text-surface-600 transition-all hover:bg-surface-50 dark:border-surface-700 dark:bg-surface-800 dark:text-surface-400"
+                            >
+                                <i class="pi pi-eye mr-1"></i>Aperçu
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Paiements -->
+                    <div v-if="selectedInvoicePayments.length" class="space-y-2">
+                        <p class="text-sm font-semibold text-surface-700 dark:text-surface-400">Paiements effectués</p>
+                        <div class="space-y-2">
+                            <div v-for="payment in selectedInvoicePayments" :key="payment.id" class="flex items-center justify-between rounded-xl border border-surface-200 bg-surface-50/50 p-3 dark:border-surface-700 dark:bg-surface-800/30">
+                                <div class="flex items-center gap-3 min-w-0">
+                                    <div
+                                        :class="[
+                                            'flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-white',
+                                            payment.status === 'validated' ? 'bg-gradient-to-br from-emerald-500 to-emerald-600' : 'bg-gradient-to-br from-amber-500 to-amber-600'
+                                        ]"
+                                    >
+                                        <i class="pi pi-wallet text-xs"></i>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <p class="font-semibold text-surface-900 dark:text-surface-300">{{ formatFcfa(payment.montant) }}</p>
+                                        <p class="text-[11px] text-surface-400 truncate">{{ formatPaymentMode(payment.mode) }}</p>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <span :class="['rounded-full px-2 py-0.5 text-[10px] font-medium', payment.status === 'validated' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700']">
+                                        {{ payment.status === 'validated' ? 'Validé' : 'En attente' }}
+                                    </span>
+                                    <div class="mt-1 flex items-center justify-end gap-1">
+                                        <span class="text-[10px] text-surface-400">{{ formatTime(payment.date) }}</span>
+                                        <button v-if="payment.status === 'validated'" @click="printPaymentReceipt(payment.id)" class="text-primary-500 hover:text-primary-600">
+                                            <i class="pi pi-receipt text-xs"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Reliquats antérieurs (hors facture de la consultation sélectionnée) -->
+                    <div v-if="hasPriorReliquat" class="rounded-xl border-2 border-red-200 bg-red-50/70 p-4 dark:border-red-800 dark:bg-red-950/30">
+                        <div class="mb-3 flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-2">
+                                <i class="pi pi-exclamation-circle text-red-600 dark:text-red-400"></i>
+                                <p class="text-sm font-semibold text-red-800 dark:text-red-200">Reliquats antérieurs</p>
+                            </div>
+                            <span class="text-xs font-bold text-red-700 dark:text-red-300">
+                                {{ formatFcfa(selectedPriorReliquatTotal) }}
+                            </span>
+                        </div>
+                        <div class="space-y-2">
+                            <div v-for="invoice in selectedPriorUnpaidInvoices" :key="`unpaid-${invoice.id}`" class="rounded-lg border border-red-200/80 bg-white/80 p-3 dark:border-red-800/60 dark:bg-surface-900/40">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <p class="text-xs font-medium text-surface-600 dark:text-surface-300">
+                                            Facture #{{ invoice.id }}
+                                            <span v-if="invoice.type === 'assurance'" class="text-surface-400">· Assurance</span>
+                                        </p>
+                                        <p class="mt-0.5 text-[11px] text-surface-400">
+                                            {{ formatDateTime(invoice.date) }}
+                                        </p>
+                                        <p class="mt-1 text-[11px] text-surface-500">Montant patient : {{ formatFcfa(invoice.montantPatient) }}</p>
+                                    </div>
+                                    <div class="text-right flex-shrink-0">
+                                        <p class="text-[10px] uppercase tracking-wide text-red-500">Reste</p>
+                                        <p class="text-sm font-bold text-red-700 dark:text-red-300">
+                                            {{ formatFcfa(invoice.reste) }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-else class="flex min-h-0 flex-1 flex-col items-center py-20 text-center">
+                    <div class="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-surface-100 to-surface-200 dark:from-surface-800 dark:to-surface-700">
+                        <i class="pi pi-inbox text-3xl text-surface-400"></i>
+                    </div>
+                    <p class="text-sm font-medium text-surface-600">{{ centerView === 'services' ? 'Aucun service sélectionné' : 'Aucune consultation sélectionnée' }}</p>
+                    <p class="mt-1 text-xs text-surface-400">{{ centerView === 'services' ? 'Sélectionnez un service dans la liste' : 'Sélectionnez une consultation dans la file' }}</p>
+                    <button type="button" class="mt-4 rounded-xl bg-primary-500 px-4 py-2.5 text-xs font-medium text-white shadow-md xl:hidden" @click="mobilePanel = 'queue'">Voir la file d'attente</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Bottom tab bar (mobile / below xl) -->
+        <nav class="mt-2 flex shrink-0 items-stretch gap-1 rounded-2xl border border-surface-200/60 bg-white/95 p-1 shadow-sm backdrop-blur-sm dark:border-surface-700/60 dark:bg-surface-900/95 xl:hidden" aria-label="Navigation Mode Focus">
+            <button
+                type="button"
+                :class="[
+                    'flex flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-2 py-2 text-[11px] font-medium transition-colors',
+                    mobilePanel === 'patients' ? 'bg-purple-500 text-white shadow-sm' : 'text-surface-500 hover:bg-surface-100 dark:hover:bg-surface-800'
+                ]"
+                @click="mobilePanel = 'patients'"
+            >
+                <i class="pi pi-users text-sm"></i>
+                Patients
+            </button>
+            <button
+                type="button"
+                :class="[
+                    'flex flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-2 py-2 text-[11px] font-medium transition-colors',
+                    mobilePanel === 'queue' ? 'bg-primary-500 text-white shadow-sm' : 'text-surface-500 hover:bg-surface-100 dark:hover:bg-surface-800'
+                ]"
+                @click="mobilePanel = 'queue'"
+            >
+                <i class="pi pi-list text-sm"></i>
+                File
+            </button>
+            <button
+                type="button"
+                :class="[
+                    'relative flex flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-2 py-2 text-[11px] font-medium transition-colors',
+                    mobilePanel === 'details' ? 'bg-primary-500 text-white shadow-sm' : 'text-surface-500 hover:bg-surface-100 dark:hover:bg-surface-800'
+                ]"
+                @click="mobilePanel = 'details'"
+            >
+                <i class="pi pi-id-card text-sm"></i>
+                Détails
+                <span v-if="currentConsultation && mobilePanel !== 'details'" class="absolute right-3 top-1.5 h-2 w-2 rounded-full bg-primary-500 ring-2 ring-white dark:ring-surface-900"></span>
+            </button>
+        </nav>
+    </div>
+    <CabinetServicePayDialog v-model:visible="cabinetServicePayVisible" :service="selectedCabinetService" @paid="onCabinetServiceCreated" />
+    <CabinetServiceDialog
+        v-model:visible="cabinetServiceVisible"
+        :patient-id="cabinetServicePatient?.id"
+        :patient-name="cabinetServicePatient?.fullname || cabinetServicePatient?.nom || ''"
+        :allow-patient-select="!cabinetServicePatient?.id"
+        @created="onCabinetServiceCreated"
+    />
+</template>
+
+<style scoped>
+.scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 10px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgba(156, 163, 175, 0.3);
+    border-radius: 10px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: rgba(156, 163, 175, 0.5);
+}
+</style>

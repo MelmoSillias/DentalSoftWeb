@@ -3,10 +3,10 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import * as vue from 'vue';
 import { compileScript, parse } from '@vue/compiler-sfc';
-import { groupPayrollPayments } from '../../src/utils/payrollGroups.js';
+import { groupPayrollPayments } from '../../src/domains/workforce/model/payrollGroups.js';
 
 function setup(props, emit) {
-    const { descriptor } = parse(readFileSync(new URL('../../src/components/administration/PayrollDetailDialog.vue', import.meta.url), 'utf8'));
+    const { descriptor } = parse(readFileSync(new URL('../../src/domains/workforce/components/PayrollDetailDialog.vue', import.meta.url), 'utf8'));
     let source = compileScript(descriptor, { id: 'payroll-detail' }).content;
     const names = [],
         values = [];

@@ -4,7 +4,8 @@
         {
         "label": "Lancer Backend",
         "type": "shell",
-        "command": "cd backend; symfony serve --port 8010", // Remplacez par votre commande
+        "command": "symfony serve --port 8010",
+        "options": { "cwd": "${workspaceFolder}/api" },
         "presentation": {
             "group": "multi-terminals", // Regroupe les terminaux
             "panel": "new", // Ouvre un nouveau terminal
