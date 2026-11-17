@@ -540,32 +540,32 @@ function printAllActs() {
 </script>
 
 <template>
-    <Card class="overflow-hidden rounded-2xl border border-surface-200/60 bg-gradient-to-b from-surface-0 via-surface-0 to-surface-50/70 shadow-sm dark:border-surface-700 dark:from-surface-900 dark:to-surface-800">
+    <Card class="min-w-0 overflow-hidden rounded-xl border border-surface-200 bg-surface-0 dark:bg-surface-900 dark:border-surface-700">
         <template #title>
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-surface-200/60 pb-3 dark:border-surface-700/60">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-surface-200 pb-3 dark:border-surface-700/60">
                 <div>
-                    <h3 class="text-base sm:text-lg font-semibold text-surface-900 dark:text-surface-0">{{ title }}</h3>
+                    <h3 class="text-base font-semibold text-surface-900 dark:text-surface-0">{{ title }}</h3>
                     <p v-if="periodLabel" class="text-xs sm:text-sm text-surface-500 dark:text-surface-400">Période : {{ periodLabel }}</p>
                 </div>
-                <Button label="Imprimer" icon="pi pi-print" outlined class="w-full sm:w-auto" @click="printDialogVisible = true" />
+                <Button label="Imprimer" icon="pi pi-print" outlined size="small" class="w-full sm:w-auto" @click="printDialogVisible = true" />
             </div>
         </template>
         <template #content>
-            <div v-if="showKpi" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 mb-6">
-                <div class="rounded-2xl border border-surface-200/60 bg-surface-50/80 p-3 sm:p-4 text-center shadow-sm dark:border-surface-700/60 dark:bg-surface-800/70">
-                    <p class="text-xs font-semibold uppercase text-surface-500">Total facturé</p>
-                    <p class="text-lg sm:text-xl font-semibold text-surface-900 dark:text-surface-0">{{ formatFcfa(kpi.totalApport ?? 0) }}</p>
+            <div v-if="showKpi" class="grid gap-4 sm:grid-cols-3 mb-5">
+                <div class="rounded-xl border border-surface-200 bg-surface-50/80 p-3 sm:p-4 text-left dark:border-surface-700/60 dark:bg-surface-800/70">
+                    <p class="text-xs font-medium text-surface-500">Total facturé</p>
+                    <p class="mt-1 text-lg font-semibold tabular-nums text-surface-900 dark:text-surface-0">{{ formatFcfa(kpi.totalApport ?? 0) }}</p>
                 </div>
-                <div class="rounded-2xl border border-surface-200/60 bg-surface-50/80 p-3 sm:p-4 text-center shadow-sm dark:border-surface-700/60 dark:bg-surface-800/70">
-                    <p class="text-xs font-semibold uppercase text-surface-500">Parts assurance</p>
-                    <p class="text-lg sm:text-xl font-semibold text-surface-900 dark:text-surface-0">{{ formatFcfa(kpi.totalPartAssurance ?? 0) }}</p>
+                <div class="rounded-xl border border-surface-200 bg-surface-50/80 p-3 sm:p-4 text-left dark:border-surface-700/60 dark:bg-surface-800/70">
+                    <p class="text-xs font-medium text-surface-500">Parts assurance</p>
+                    <p class="mt-1 text-lg font-semibold tabular-nums text-surface-900 dark:text-surface-0">{{ formatFcfa(kpi.totalPartAssurance ?? 0) }}</p>
                 </div>
-                <div class="rounded-2xl border border-surface-200/60 bg-surface-50/80 p-3 sm:p-4 text-center shadow-sm dark:border-surface-700/60 dark:bg-surface-800/70">
-                    <p class="text-xs font-semibold uppercase text-surface-500">
+                <div class="rounded-xl border border-surface-200 bg-surface-50/80 p-3 sm:p-4 text-left dark:border-surface-700/60 dark:bg-surface-800/70">
+                    <p class="text-xs font-medium text-surface-500">
                         Total Encaissé <br />
                         (paiements reliquats inclus)
                     </p>
-                    <p class="text-lg sm:text-xl font-semibold text-surface-900 dark:text-surface-0">{{ formatFcfa(kpi.totalPaidCash ?? kpi.totalPaid ?? 0) }}</p>
+                    <p class="mt-1 text-lg font-semibold tabular-nums text-surface-900 dark:text-surface-0">{{ formatFcfa(kpi.totalPaidCash ?? kpi.totalPaid ?? 0) }}</p>
                 </div>
                 <!-- <div class="rounded-2xl border border-surface-200/60 bg-surface-50/80 p-3 sm:p-4 text-center shadow-sm dark:border-surface-700/60 dark:bg-surface-800/70">
                     <p class="text-xs font-semibold uppercase text-surface-500">Après retrait des %</p>
@@ -586,32 +586,36 @@ function printAllActs() {
                     v-model:expandedRows="expandedRows"
                     paginator
                     :rows="8"
-                    class="min-w-[640px] text-xs sm:text-sm rounded-xl overflow-hidden border border-surface-200/60 dark:border-surface-700/60"
+                    size="small"
+                    class="tabular-nums min-w-[640px] text-xs sm:text-sm rounded-xl overflow-hidden border border-surface-200 dark:border-surface-700/60"
                 >
+                    <template #empty>
+                        <p class="py-6 text-center text-sm text-surface-500 dark:text-surface-400">Aucun médecin à afficher sur cette période.</p>
+                    </template>
                     <Column expander style="width: 2.5rem" />
                     <Column field="name" header="Médecin" />
-                    <Column header="Consultations">
+                    <Column bodyClass="tabular-nums" header="Consultations">
                         <template #body="{ data }">
                             <span>{{ data.consultations || 0 }}</span>
-                            <span class="text-[11px] sm:text-xs text-surface-500"> ({{ data.consultations_paid || 0 }} payantes)</span>
+                            <span class="text-xs text-surface-500"> ({{ data.consultations_paid || 0 }} payantes)</span>
                         </template>
                     </Column>
-                    <Column v-if="variant === 'admin'" header="Montant facturé">
+                    <Column v-if="variant === 'admin'" header="Montant facturé" bodyClass="text-right whitespace-nowrap tabular-nums">
                         <template #body="{ data }">{{ formatFcfa(data.apport) }}</template>
                     </Column>
                     <Column v-if="variant === 'admin'" header="Total rénumérable">
                         <template #body="{ data }">
                             <div>{{ formatFcfa(doctorRevenueTotal(data)) }}</div>
-                            <div class="text-[11px] text-surface-500">
+                            <div class="text-xs text-surface-500">
                                 dont paiements patients : {{ formatFcfa(doctorRevenueCash(data)) }}
                                 <span v-if="Number(data.revenue_assurance || 0) > 0"> · assurance : {{ formatFcfa(data.revenue_assurance) }} </span>
                             </div>
                         </template>
                     </Column>
-                    <Column v-if="variant === 'admin'" header="Impayés patients · période">
+                    <Column v-if="variant === 'admin'" header="Impayés patients · période" bodyClass="text-right whitespace-nowrap tabular-nums">
                         <template #body="{ data }">{{ formatFcfa(data.reliquat) }}</template>
                     </Column>
-                    <Column v-if="variant === 'reception'" header="Montant">
+                    <Column v-if="variant === 'reception'" header="Montant" bodyClass="text-right whitespace-nowrap tabular-nums">
                         <template #body="{ data }">{{ formatFcfa(data.apport) }}</template>
                     </Column>
                     <Column v-if="variant === 'reception'" header="Payantes / Gratuites">
@@ -619,29 +623,29 @@ function printAllActs() {
                             <Tag :value="`${data.consultations_paid || 0} / ${(data.consultations || 0) - (data.consultations_paid || 0)}`" severity="info" />
                         </template>
                     </Column>
-                    <Column header="Salaire">
+                    <Column bodyClass="text-right whitespace-nowrap tabular-nums" header="Salaire">
                         <template #body="{ data }">{{ formatFcfa(data.salary) }}</template>
                     </Column>
                     <Column header="Action" style="width: 6rem">
                         <template #body="{ data }">
-                            <Button icon="pi pi-print" text rounded @click="printDoctorRow(data)" />
+                            <Button icon="pi pi-print" text size="small" aria-label="Imprimer le rapport du médecin" @click="printDoctorRow(data)" />
                         </template>
                     </Column>
                     <template #expansion="{ data }">
                         <div class="doctor-row-details space-y-5 p-1 sm:p-2">
                             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                 <div>
-                                    <p class="text-[11px] font-semibold uppercase tracking-wide text-surface-500">Détail financier</p>
+                                    <p class="text-xs font-medium text-surface-500">Détail financier</p>
                                     <h4 class="text-base font-semibold text-surface-900 dark:text-surface-0">
                                         {{ data.name || 'Médecin' }}
                                     </h4>
                                     <p class="text-xs text-surface-500">
                                         Rémunération :
-                                        <span class="font-semibold text-violet-600 dark:text-violet-300">
+                                        <span class="font-semibold text-surface-900 dark:text-surface-0">
                                             {{ formatFcfa(doctorRevenueTotal(data)) }}
                                         </span>
                                         · Encaissé (paiements reliquats inclus) :
-                                        <span class="font-semibold text-emerald-600 dark:text-emerald-300">
+                                        <span class="font-semibold text-surface-900 dark:text-surface-0">
                                             {{ formatFcfa(doctorRevenueCash(data)) }}
                                         </span>
                                     </p>
@@ -654,24 +658,18 @@ function printAllActs() {
                             </div>
 
                             <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-                                <div v-for="card in doctorSummaryCards(data)" :key="card.key" class="rounded-xl border border-surface-200/70 p-3 shadow-sm dark:border-surface-700/70" :class="card.bg">
+                                <div v-for="card in doctorSummaryCards(data)" :key="card.key" class="rounded-xl border border-surface-200/70 p-3 dark:border-surface-700/70">
                                     <div class="mb-2 flex items-center gap-2">
-                                        <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white/70 dark:bg-surface-900/40" :class="card.tone">
-                                            <i :class="card.icon" />
-                                        </span>
-                                        <p class="text-[11px] font-semibold uppercase tracking-wide text-surface-500">{{ card.label }}</p>
+                                        <p class="text-xs font-medium text-surface-500">{{ card.label }}</p>
                                     </div>
-                                    <p class="text-sm font-semibold text-surface-900 dark:text-surface-0">{{ card.value }}</p>
+                                    <p class="text-sm font-semibold tabular-nums text-surface-900 dark:text-surface-0">{{ card.value }}</p>
                                 </div>
                             </div>
 
                             <div class="grid gap-5 xl:grid-cols-2">
-                                <section class="rounded-2xl border border-surface-200/70 bg-surface-0/80 p-4 shadow-sm dark:border-surface-700/70 dark:bg-surface-900/40">
-                                    <div class="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-surface-200/60 pb-3 dark:border-surface-700/60">
+                                <section class="rounded-xl border border-surface-200/70 bg-surface-0/80 p-4 dark:border-surface-700/70 dark:bg-surface-900/40">
+                                    <div class="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-surface-200 pb-3 dark:border-surface-700/60">
                                         <div class="flex items-center gap-2">
-                                            <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-primary-50 text-primary-600 dark:bg-primary-950/40 dark:text-primary-300">
-                                                <i class="pi pi-heart" />
-                                            </span>
                                             <div>
                                                 <h5 class="text-sm font-semibold text-surface-900 dark:text-surface-0">Soins de la période</h5>
                                                 <p class="text-xs text-surface-500">Consultations et actes réalisés</p>
@@ -680,17 +678,16 @@ function printAllActs() {
                                         <Tag :value="`${(data.actes || []).length} ligne${(data.actes || []).length > 1 ? 's' : ''}`" severity="secondary" />
                                     </div>
 
-                                    <div v-if="!data?.actes?.length" class="flex flex-col items-center justify-center rounded-xl border border-dashed border-surface-300/80 px-4 py-8 text-center dark:border-surface-600/80">
-                                        <i class="pi pi-inbox mb-2 text-2xl text-surface-400" />
+                                    <div v-if="!data?.actes?.length" class="flex flex-col items-center justify-center rounded-xl border border-surface-300/80 px-4 py-8 text-left dark:border-surface-600/80">
                                         <p class="text-sm text-surface-500">Aucun soin enregistré sur cette période.</p>
                                     </div>
 
                                     <ul v-else class="max-h-[320px] space-y-3 overflow-y-auto pr-1">
                                         <li v-for="(row, idx) in data.actes" :key="`acte-${idx}`" class="rounded-xl border border-surface-200/70 bg-surface-50/80 p-3 dark:border-surface-700/70 dark:bg-surface-800/60">
-                                            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                            <div class="flex flex-col gap-3 2xl:flex-row 2xl:items-start sm:justify-between">
                                                 <div class="min-w-0 flex-1">
                                                     <div class="mb-1 flex flex-wrap items-center gap-2">
-                                                        <strong class="truncate text-sm text-surface-900 dark:text-surface-0">
+                                                        <strong class="break-words text-sm text-surface-900 dark:text-surface-0">
                                                             {{ row.description }}
                                                         </strong>
                                                         <Tag v-if="row.isInsurance" value="Assurance" severity="info" />
@@ -704,32 +701,32 @@ function printAllActs() {
                                                         {{ row.date }}
                                                     </p>
                                                 </div>
-                                                <div class="grid shrink-0 gap-2 text-right" :class="row.isInsurance ? 'grid-cols-2 sm:min-w-[280px] sm:grid-cols-4' : 'grid-cols-2 sm:min-w-[210px]'">
+                                                <div class="grid gap-2 text-right tabular-nums" :class="row.isInsurance ? 'grid-cols-2 2xl:min-w-[280px] 2xl:grid-cols-4' : 'grid-cols-2 2xl:min-w-[210px]'">
                                                     <div class="rounded-lg bg-surface-0 px-2 py-1 dark:bg-surface-900/50">
-                                                        <p class="text-[10px] uppercase text-surface-500">Facturé</p>
+                                                        <p class="text-xs text-surface-500">Facturé</p>
                                                         <p class="text-xs font-semibold text-surface-900 dark:text-surface-0">{{ formatFcfa(row.montant) }}</p>
                                                     </div>
-                                                    <div v-if="row.isInsurance" class="rounded-lg bg-violet-50 px-2 py-1 dark:bg-violet-950/30">
-                                                        <p class="text-[10px] uppercase text-violet-700 dark:text-violet-300">Assurance</p>
-                                                        <p class="text-xs font-semibold text-violet-700 dark:text-violet-200">{{ formatFcfa(row.montantAssurance) }}</p>
+                                                    <div v-if="row.isInsurance" class="rounded-lg bg-surface-0 px-2 py-1 dark:bg-surface-900/50">
+                                                        <p class="text-xs text-surface-900 dark:text-surface-0">Assurance</p>
+                                                        <p class="text-xs font-semibold text-surface-900 dark:text-surface-0">{{ formatFcfa(row.montantAssurance) }}</p>
                                                     </div>
                                                     <div v-if="row.isInsurance" class="rounded-lg bg-surface-0 px-2 py-1 dark:bg-surface-900/50">
-                                                        <p class="text-[10px] uppercase text-surface-500">Part patient</p>
+                                                        <p class="text-xs text-surface-500">Part patient</p>
                                                         <p class="text-xs font-semibold text-surface-900 dark:text-surface-0">{{ formatFcfa(row.montantPatient) }}</p>
                                                     </div>
-                                                    <div class="rounded-lg bg-emerald-50 px-2 py-1 dark:bg-emerald-950/30">
-                                                        <p class="text-[10px] uppercase text-emerald-700 dark:text-emerald-300">Encaissé</p>
-                                                        <p class="text-xs font-semibold text-emerald-700 dark:text-emerald-200">{{ formatFcfa(row.montantPaye) }}</p>
+                                                    <div class="rounded-lg bg-surface-0 px-2 py-1 dark:bg-surface-900/50">
+                                                        <p class="text-xs text-surface-900 dark:text-surface-0">Encaissé</p>
+                                                        <p class="text-xs font-semibold text-surface-900 dark:text-surface-0">{{ formatFcfa(row.montantPaye) }}</p>
                                                     </div>
                                                 </div>
                                             </div>
                                             <div class="mt-3">
-                                                <div class="mb-1 flex items-center justify-between text-[10px] text-surface-500">
+                                                <div class="mb-1 flex items-center justify-between text-xs text-surface-500">
                                                     <span>{{ row.isInsurance ? 'Recouvrement part patient' : 'Taux de recouvrement' }}</span>
                                                     <span>{{ paymentProgress(actPaymentBasis(row).due, actPaymentBasis(row).paid) }}%</span>
                                                 </div>
                                                 <div class="h-1.5 overflow-hidden rounded-full bg-surface-200 dark:bg-surface-700">
-                                                    <div class="h-full rounded-full bg-emerald-500 transition-all" :style="{ width: `${paymentProgress(actPaymentBasis(row).due, actPaymentBasis(row).paid)}%` }" />
+                                                    <div class="h-full rounded-full bg-primary-500 transition-all" :style="{ width: `${paymentProgress(actPaymentBasis(row).due, actPaymentBasis(row).paid)}%` }" />
                                                 </div>
                                             </div>
                                         </li>
@@ -742,21 +739,18 @@ function printAllActs() {
                                         </div>
                                         <div class="flex items-center justify-between gap-2">
                                             <span class="text-surface-500">Total rénumérable (soins)</span>
-                                            <strong class="text-emerald-600 dark:text-emerald-300">{{ formatFcfa(sumActesField(data, 'montantPaye')) }}</strong>
+                                            <strong class="text-surface-900 dark:text-surface-0">{{ formatFcfa(sumActesField(data, 'montantPaye')) }}</strong>
                                         </div>
                                         <div class="flex items-center justify-between gap-2 sm:col-span-2">
                                             <span class="text-surface-500">Paiements patients</span>
-                                            <strong class="text-sky-700 dark:text-sky-300">{{ formatFcfa(doctorCashCollected(data)) }}</strong>
+                                            <strong class="text-surface-900 dark:text-surface-0">{{ formatFcfa(doctorCashCollected(data)) }}</strong>
                                         </div>
                                     </div>
                                 </section>
 
-                                <section class="rounded-2xl border border-surface-200/70 bg-surface-0/80 p-4 shadow-sm dark:border-surface-700/70 dark:bg-surface-900/40">
-                                    <div class="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-surface-200/60 pb-3 dark:border-surface-700/60">
+                                <section class="rounded-xl border border-surface-200/70 bg-surface-0/80 p-4 dark:border-surface-700/70 dark:bg-surface-900/40">
+                                    <div class="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-surface-200 pb-3 dark:border-surface-700/60">
                                         <div class="flex items-center gap-2">
-                                            <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-950/40 dark:text-sky-300">
-                                                <i class="pi pi-replay" />
-                                            </span>
                                             <div>
                                                 <h5 class="text-sm font-semibold text-surface-900 dark:text-surface-0">Paiements de reliquats</h5>
                                                 <p class="text-xs text-surface-500">Encaissements sur consultations antérieures</p>
@@ -765,16 +759,15 @@ function printAllActs() {
                                         <Tag :value="formatFcfa(data.paiements_reliquats_total)" severity="info" />
                                     </div>
 
-                                    <div v-if="!data?.paiements_reliquats?.length" class="flex flex-col items-center justify-center rounded-xl border border-dashed border-surface-300/80 px-4 py-8 text-center dark:border-surface-600/80">
-                                        <i class="pi pi-check-circle mb-2 text-2xl text-surface-400" />
+                                    <div v-if="!data?.paiements_reliquats?.length" class="flex flex-col items-center justify-center rounded-xl border border-surface-300/80 px-4 py-8 text-left dark:border-surface-600/80">
                                         <p class="text-sm text-surface-500">Aucun paiement de reliquat sur cette période.</p>
                                     </div>
 
                                     <ul v-else class="max-h-[320px] space-y-3 overflow-y-auto pr-1">
-                                        <li v-for="(row, idx) in data.paiements_reliquats" :key="`reliquat-${idx}`" class="rounded-xl border border-sky-200/70 bg-sky-50/50 p-3 dark:border-sky-900/40 dark:bg-sky-950/20">
-                                            <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                        <li v-for="(row, idx) in data.paiements_reliquats" :key="`reliquat-${idx}`" class="rounded-xl border border-surface-200 bg-surface-0 p-3 dark:border-surface-700 dark:bg-surface-900">
+                                            <div class="flex flex-col gap-2 2xl:flex-row 2xl:items-start sm:justify-between">
                                                 <div class="min-w-0 flex-1">
-                                                    <strong class="block truncate text-sm text-surface-900 dark:text-surface-0">
+                                                    <strong class="block break-words text-sm text-surface-900 dark:text-surface-0">
                                                         {{ row.description }}
                                                     </strong>
                                                     <p class="mt-1 text-xs text-surface-500">
@@ -782,11 +775,11 @@ function printAllActs() {
                                                         {{ row.patient }}
                                                     </p>
                                                     <div class="mt-2 flex flex-wrap gap-2">
-                                                        <span class="inline-flex items-center gap-1 rounded-full bg-white/80 px-2 py-0.5 text-[11px] text-surface-600 dark:bg-surface-900/50 dark:text-surface-300">
+                                                        <span class="inline-flex items-center gap-1 py-0.5 text-xs text-surface-600 dark:bg-surface-900/50 dark:text-surface-300">
                                                             <i class="pi pi-credit-card text-[10px]" />
                                                             Paiement {{ row.date }}
                                                         </span>
-                                                        <span class="inline-flex items-center gap-1 rounded-full bg-white/80 px-2 py-0.5 text-[11px] text-surface-600 dark:bg-surface-900/50 dark:text-surface-300">
+                                                        <span class="inline-flex items-center gap-1 py-0.5 text-xs text-surface-600 dark:bg-surface-900/50 dark:text-surface-300">
                                                             <i class="pi pi-calendar text-[10px]" />
                                                             Consultation {{ row.consultation_date }}
                                                         </span>
@@ -797,9 +790,9 @@ function printAllActs() {
                                         </li>
                                     </ul>
 
-                                    <div v-if="data?.paiements_reliquats?.length" class="mt-4 flex items-center justify-between rounded-xl border border-sky-200/70 bg-sky-50/70 px-3 py-2 text-sm dark:border-sky-900/40 dark:bg-sky-950/20">
+                                    <div v-if="data?.paiements_reliquats?.length" class="mt-4 flex items-center justify-between rounded-xl border border-surface-200 bg-surface-50 px-3 py-2 text-sm dark:border-surface-700 dark:bg-surface-900">
                                         <span class="font-medium text-surface-700 dark:text-surface-200">Total Paiements de reliquats</span>
-                                        <strong class="text-sky-700 dark:text-sky-300">{{ formatFcfa(data.paiements_reliquats_total) }}</strong>
+                                        <strong class="text-surface-900 dark:text-surface-0">{{ formatFcfa(data.paiements_reliquats_total) }}</strong>
                                     </div>
                                 </section>
                             </div>

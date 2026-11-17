@@ -94,15 +94,22 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="space-y-4">
-        <div class="flex flex-wrap items-center justify-end gap-2" data-tour="rapports-admin.range">
-            <div class="flex flex-wrap items-center gap-2">
-                <PanelDatePicker v-model="range" showIcon dateFormat="dd/mm/yy" class="w-64" placeholder="Choisir période" />
-                <Button label="Rafraîchir" icon="pi pi-refresh" outlined size="small" @click="refresh(false)" />
+    <div class="reports-workspace">
+        <div class="reports-toolbar" data-tour="rapports-admin.range">
+            <div class="reports-toolbar__context">
+                <h2>Vue du cabinet</h2>
+                <p>Les indicateurs de période suivent les dates sélectionnées.</p>
+            </div>
+            <div class="reports-toolbar__controls">
+                <div class="reports-period-control">
+                    <span id="admin-report-period" class="reports-field-label">Période du rapport</span>
+                    <PanelDatePicker v-model="range" aria-labelledby="admin-report-period" showIcon dateFormat="dd/mm/yy" class="reports-date-picker" placeholder="Choisir une période" />
+                </div>
+                <Button label="Actualiser" icon="pi pi-refresh" outlined size="small" :loading="adminLoading" @click="refresh(false)" />
             </div>
         </div>
 
-        <Tabs :value="activeTab" @update:value="setActiveTab">
+        <Tabs :value="activeTab" class="reports-tabs" @update:value="setActiveTab">
             <TabList data-tour="rapports-admin.tabs" class="flex-wrap">
                 <Tab value="overview">Vue d'ensemble</Tab>
                 <Tab value="activity">Activité</Tab>
@@ -110,7 +117,7 @@ onMounted(() => {
                 <Tab value="acts">Soins</Tab>
                 <Tab value="doctors">Médecins</Tab>
             </TabList>
-            <TabPanels class="mt-3">
+            <TabPanels class="reports-panels">
                 <TabPanel value="overview">
                     <div class="space-y-4">
                         <div data-tour="rapports-admin.global">
@@ -137,7 +144,7 @@ onMounted(() => {
                     </div>
                 </TabPanel>
                 <TabPanel value="finances">
-                    <FinanceCrossTable show-period-details title="Tableau croisé financier" subtitle="Section dédiée au suivi hebdomadaire des revenus et dépenses validés." />
+                    <FinanceCrossTable class="reports-finance" show-period-details title="Tableau croisé financier" subtitle="Section dédiée au suivi hebdomadaire des revenus et dépenses validés." />
                 </TabPanel>
                 <TabPanel value="acts">
                     <div data-tour="rapports-admin.acts">

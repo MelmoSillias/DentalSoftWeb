@@ -1,6 +1,9 @@
 <script setup>
 import { computed } from 'vue';
 import AppChart from '@/shared/ui/common/AppChart.vue';
+import { useReportChartTheme } from '@/domains/reporting/composables/useReportChartTheme.js';
+
+const { chartStyle } = useReportChartTheme();
 
 const props = defineProps({
     categories: { type: Array, default: () => [] }
@@ -9,7 +12,7 @@ const props = defineProps({
 const palette = ['--p-primary-500', '--p-emerald-500', '--p-amber-500', '--p-cyan-500', '--p-rose-500', '--p-indigo-500', '--p-teal-500', '--p-orange-500', '--p-sky-500', '--p-violet-500'];
 
 const chartPayload = computed(() => {
-    const documentStyle = getComputedStyle(document.documentElement);
+    const documentStyle = chartStyle;
     const categories = Array.isArray(props.categories) ? props.categories : [];
     const labels = categories.map((category) => category.label || 'Autres');
 

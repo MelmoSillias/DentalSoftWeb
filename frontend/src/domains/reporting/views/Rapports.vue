@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue';
+import './reports.css';
 import { useGuidedTour } from '@/shared/composables/useGuidedTour.js';
 import PageShell from '@/app/components/layout/PageShell.vue';
 import PageHeader from '@/app/components/layout/PageHeader.vue';
@@ -36,9 +37,9 @@ useGuidedTour({
 </script>
 
 <template>
-    <PageShell>
+    <PageShell class="reports-page">
         <template #header>
-            <PageHeader title="Rapports" icon="pi pi-chart-bar" :breadcrumb-items="breadcrumbItems" :breadcrumb-home="breadcrumbHome" />
+            <PageHeader title="Statistiques" subtitle="Activité, encaissements et suivi du cabinet" icon="pi pi-chart-bar" :breadcrumb-items="breadcrumbItems" :breadcrumb-home="breadcrumbHome" />
         </template>
 
         <RapportAdmin v-if="isAdmin" />

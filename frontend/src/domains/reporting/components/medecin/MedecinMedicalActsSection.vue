@@ -4,6 +4,9 @@ import Card from 'primevue/card';
 import AppChart from '@/shared/ui/common/AppChart.vue';
 import ToggleButton from 'primevue/togglebutton';
 import Tag from 'primevue/tag';
+import { useReportChartTheme } from '@/domains/reporting/composables/useReportChartTheme.js';
+
+const { chartStyle } = useReportChartTheme();
 
 const props = defineProps({
     acts: { type: Array, default: () => [] },
@@ -24,7 +27,7 @@ function actPaidIncludingInsurance(act) {
 }
 
 const chartData = computed(() => {
-    const documentStyle = getComputedStyle(document.documentElement);
+    const documentStyle = chartStyle;
     return {
         labels: props.acts.map((row) => row.description || 'Acte'),
         datasets: [
@@ -43,7 +46,7 @@ const chartData = computed(() => {
 });
 
 const chartOptions = computed(() => {
-    const documentStyle = getComputedStyle(document.documentElement);
+    const documentStyle = chartStyle;
     const textColorSecondary = documentStyle.getPropertyValue('--text-color-secondary');
     const surfaceBorder = documentStyle.getPropertyValue('--surface-border');
     return {
@@ -65,16 +68,16 @@ const realEncashed = computed(() => totalPayeSoins.value + Number(props.reliquat
 </script>
 
 <template>
-    <Card class="overflow-hidden rounded-2xl border border-surface-200/60 bg-gradient-to-br from-surface-0 via-surface-0 to-surface-50/70 shadow-sm dark:border-surface-700 dark:from-surface-900 dark:to-surface-800">
+    <Card class="min-w-0 overflow-hidden rounded-xl border border-surface-200 bg-surface-0 dark:bg-surface-900 dark:border-surface-700">
         <template #title>
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <span class="text-base font-semibold text-surface-900 dark:text-surface-0">Soins médicaux par consultation</span>
-                <ToggleButton v-model="showChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-bar" offIcon="pi pi-list" />
+                <ToggleButton size="small" v-model="showChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-bar" offIcon="pi pi-list" />
             </div>
         </template>
         <template #content>
             <div v-if="showChart" class="min-h-[240px]">
-                <div class="aspect-[16/9] w-full">
+                <div class="aspect-[16/9] min-h-[240px] w-full">
                     <AppChart type="bar" :data="chartData" :options="chartOptions" class="h-full w-full" />
                 </div>
             </div>
@@ -83,15 +86,19 @@ const realEncashed = computed(() => totalPayeSoins.value + Number(props.reliquat
                     <div>
                         <h4 class="mb-2 text-sm font-semibold text-surface-900 dark:text-surface-0">Soins de la période</h4>
                         <ul v-if="acts.length" class="space-y-2">
-                            <li v-for="(act, idx) in acts" :key="idx" class="flex flex-col gap-2 rounded-xl border border-surface-200/60 bg-surface-50 p-3 text-sm dark:border-surface-700 dark:bg-surface-800">
+                            <li v-for="(act, idx) in acts" :key="idx" class="flex flex-col gap-2 rounded-xl border border-surface-200 bg-surface-50 p-3 text-sm dark:border-surface-700 dark:bg-surface-800">
                                 <div class="flex flex-wrap items-center justify-between gap-2">
                                     <div class="flex flex-wrap items-center gap-2">
                                         <strong class="text-surface-900 dark:text-surface-0">{{ act.description }}</strong>
                                         <Tag v-if="act.isInsurance" value="Assurance" severity="info" />
                                     </div>
                                     <div class="flex flex-wrap gap-2">
-                                        <Tag :value="`Facturé ${formatFcfa(act.montant)}`" severity="secondary" />
-                                        <Tag :value="`Encaissé ${formatFcfa(actPaidIncludingInsurance(act))}`" severity="success" />
+                                        <span class="tabular-nums text-surface-600 dark:text-surface-300"
+                                            >Facturé <strong class="text-surface-900 dark:text-surface-0">{{ formatFcfa(act.montant) }}</strong></span
+                                        >
+                                        <span class="tabular-nums text-surface-600 dark:text-surface-300"
+                                            >Encaissé <strong class="text-surface-900 dark:text-surface-0">{{ formatFcfa(actPaidIncludingInsurance(act)) }}</strong></span
+                                        >
                                     </div>
                                 </div>
                                 <p class="text-surface-500">{{ act.patient }} • {{ act.date }}</p>
@@ -101,15 +108,15 @@ const realEncashed = computed(() => totalPayeSoins.value + Number(props.reliquat
                         <div v-if="acts.length" class="mt-3 grid gap-2 rounded-xl border border-surface-200/70 bg-surface-50/70 p-3 text-xs dark:border-surface-700/70 dark:bg-surface-800/50 sm:grid-cols-3">
                             <div class="flex items-center justify-between gap-2">
                                 <span class="text-surface-500">Total facturé</span>
-                                <strong>{{ formatFcfa(totalApport) }}</strong>
+                                <strong class="tabular-nums">{{ formatFcfa(totalApport) }}</strong>
                             </div>
                             <div class="flex items-center justify-between gap-2">
                                 <span class="text-surface-500">Total encaissé</span>
-                                <strong class="text-emerald-600">{{ formatFcfa(totalPayeSoins) }}</strong>
+                                <strong class="tabular-nums text-surface-900 dark:text-surface-0">{{ formatFcfa(totalPayeSoins) }}</strong>
                             </div>
                             <div class="flex items-center justify-between gap-2">
                                 <span class="text-surface-500">Encaissé (espèces)</span>
-                                <strong class="text-sky-700">{{ formatFcfa(realEncashed) }}</strong>
+                                <strong class="tabular-nums text-surface-900 dark:text-surface-0">{{ formatFcfa(realEncashed) }}</strong>
                             </div>
                         </div>
                     </div>
@@ -117,16 +124,16 @@ const realEncashed = computed(() => totalPayeSoins.value + Number(props.reliquat
                     <div>
                         <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
                             <h4 class="text-sm font-semibold text-surface-900 dark:text-surface-0">Paiements de reliquats</h4>
-                            <Tag :value="`Total ${formatFcfa(reliquatTotal)}`" severity="info" />
+                            <span class="text-sm font-semibold tabular-nums text-surface-900 dark:text-surface-0">Total {{ formatFcfa(reliquatTotal) }}</span>
                         </div>
                         <ul v-if="reliquatPayments.length" class="space-y-2">
-                            <li v-for="(payment, idx) in reliquatPayments" :key="`reliquat-${idx}`" class="flex flex-col gap-1 rounded-xl border border-surface-200/60 bg-surface-50 p-3 text-sm dark:border-surface-700 dark:bg-surface-800">
+                            <li v-for="(payment, idx) in reliquatPayments" :key="`reliquat-${idx}`" class="flex flex-col gap-1 rounded-xl border border-surface-200 bg-surface-50 p-3 text-sm dark:border-surface-700 dark:bg-surface-800">
                                 <div class="flex flex-wrap items-center justify-between gap-2">
                                     <div class="flex flex-wrap items-center gap-2">
                                         <strong class="text-surface-900 dark:text-surface-0">{{ payment.description }}</strong>
                                         <Tag v-if="payment.isInsurance" value="Assurance" severity="info" />
                                     </div>
-                                    <Tag :value="formatFcfa(payment.montant)" severity="info" />
+                                    <span class="font-semibold tabular-nums text-surface-900 dark:text-surface-0">{{ formatFcfa(payment.montant) }}</span>
                                 </div>
                                 <p class="text-surface-500">{{ payment.patient }} • Paiement {{ payment.date }} • Consultation {{ payment.consultation_date }}</p>
                             </li>

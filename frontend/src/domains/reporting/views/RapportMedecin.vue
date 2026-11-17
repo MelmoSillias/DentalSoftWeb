@@ -85,26 +85,29 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="space-y-4">
-        <div class="flex flex-wrap items-center justify-between gap-2" data-tour="rapports-medecin.range">
-            <div class="min-w-0">
-                <h2 class="truncate text-lg font-semibold text-surface-900 dark:text-surface-0">Bienvenue {{ connectedMedecinFullName }}</h2>
-                <p class="text-xs text-surface-500 dark:text-surface-400">{{ periodLabel }}</p>
+    <div class="reports-workspace">
+        <div class="reports-toolbar" data-tour="rapports-medecin.range">
+            <div class="reports-toolbar__context">
+                <h2>{{ connectedMedecinFullName || 'Mon activité' }}</h2>
+                <p>Votre activité · {{ periodLabel }}</p>
             </div>
-            <div class="flex flex-wrap items-center gap-2">
-                <PanelDatePicker v-model="range" showIcon dateFormat="dd/mm/yy" class="w-64" placeholder="Choisir période" />
-                <Button label="Rafraîchir" icon="pi pi-refresh" outlined size="small" @click="refresh(false)" />
+            <div class="reports-toolbar__controls">
+                <div class="reports-period-control">
+                    <span id="doctor-report-period" class="reports-field-label">Période du rapport</span>
+                    <PanelDatePicker v-model="range" aria-labelledby="doctor-report-period" showIcon dateFormat="dd/mm/yy" class="reports-date-picker" placeholder="Choisir une période" />
+                </div>
+                <Button label="Actualiser" icon="pi pi-refresh" outlined size="small" :loading="medecinLoading" @click="refresh(false)" />
             </div>
         </div>
 
-        <Tabs :value="activeTab" @update:value="setActiveTab">
+        <Tabs :value="activeTab" class="reports-tabs" @update:value="setActiveTab">
             <TabList data-tour="rapports-medecin.tabs" class="flex-wrap">
                 <Tab value="summary">Synthèse</Tab>
                 <Tab value="activity">Activité</Tab>
                 <Tab value="acts">Actes</Tab>
                 <Tab value="profile">Profil</Tab>
             </TabList>
-            <TabPanels class="mt-3">
+            <TabPanels class="reports-panels">
                 <TabPanel value="summary">
                     <div class="space-y-6">
                         <div data-tour="rapports-medecin.global">

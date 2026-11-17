@@ -64,23 +64,26 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="space-y-4">
-        <div class="flex flex-wrap items-center justify-between gap-2" data-tour="rapports-reception.date">
-            <div>
-                <h2 class="text-lg font-semibold text-surface-900 dark:text-surface-0">Réception</h2>
-                <p class="text-xs text-surface-500 dark:text-surface-400">{{ periodLabel }}</p>
+    <div class="reports-workspace">
+        <div class="reports-toolbar" data-tour="rapports-reception.date">
+            <div class="reports-toolbar__context">
+                <h2>Activité de la réception</h2>
+                <p>Consultations et encaissements de la journée.</p>
             </div>
-            <div class="flex flex-wrap items-center gap-2" data-tour="rapports-reception.print">
-                <DatePicker v-model="selectedDate" showIcon dateFormat="dd/mm/yy" class="w-56" placeholder="Choisir une date" />
+            <div class="reports-toolbar__controls" data-tour="rapports-reception.print">
+                <div class="reports-period-control">
+                    <label for="reception-report-date" class="reports-field-label">Journée du rapport</label>
+                    <DatePicker v-model="selectedDate" inputId="reception-report-date" showIcon dateFormat="dd/mm/yy" class="reports-date-picker" placeholder="Choisir une date" />
+                </div>
             </div>
         </div>
 
-        <Tabs :value="activeTab" @update:value="setActiveTab">
+        <Tabs :value="activeTab" class="reports-tabs" @update:value="setActiveTab">
             <TabList data-tour="rapports-reception.tabs" class="flex-wrap">
-                <Tab value="daily">Stats du jour</Tab>
+                <Tab value="daily">Synthèse du jour</Tab>
                 <Tab value="doctors">Par médecin</Tab>
             </TabList>
-            <TabPanels class="mt-3">
+            <TabPanels class="reports-panels">
                 <TabPanel value="daily">
                     <div data-tour="rapports-reception.daily">
                         <ReceptionStatsSection :stats="receptionStats" :loading="receptionLoading" :period-label="periodLabel" />

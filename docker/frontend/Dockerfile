@@ -7,7 +7,8 @@ ARG FRONTEND_DIR=frontend
 ARG PWA_RELEASE_METADATA
 ARG PWA_RELEASE_REVISION
 ARG PWA_BUILD_ID
-RUN node "${FRONTEND_DIR}/scripts/pwa-release.mjs" --output /release.json
+RUN sh docker/frontend/prepare-pwa-history.sh \
+    && node "${FRONTEND_DIR}/scripts/pwa-release.mjs" --output /release.json
 
 FROM node:22-alpine AS build
 ARG FRONTEND_DIR=frontend

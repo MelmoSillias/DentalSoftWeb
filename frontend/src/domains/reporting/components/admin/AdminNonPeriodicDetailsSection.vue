@@ -5,6 +5,9 @@ import AppChart from '@/shared/ui/common/AppChart.vue';
 import ToggleButton from 'primevue/togglebutton';
 import ValueListCard from '@/domains/reporting/components/common/ValueListCard.vue';
 import { formatAsOfLabel, printReport } from '@/domains/reporting/model/reportPrint.js';
+import { useReportChartTheme } from '@/domains/reporting/composables/useReportChartTheme.js';
+
+const { chartStyle } = useReportChartTheme();
 
 const props = defineProps({
     employeeDistribution: { type: Array, default: () => [] },
@@ -38,7 +41,7 @@ const patientItems = (patients) => [
 ];
 
 const employeeChartData = computed(() => {
-    const documentStyle = getComputedStyle(document.documentElement);
+    const documentStyle = chartStyle;
     return {
         labels: props.employeeDistribution.map((row) => row.label),
         datasets: [
@@ -57,7 +60,7 @@ const employeeChartData = computed(() => {
 });
 
 const lowStockChartData = computed(() => {
-    const documentStyle = getComputedStyle(document.documentElement);
+    const documentStyle = chartStyle;
     const values = props.lowStock.map((row) => Number(String(row.value).match(/\d+/)?.[0] || 0));
     return {
         labels: props.lowStock.map((row) => row.label),
@@ -72,7 +75,7 @@ const lowStockChartData = computed(() => {
 });
 
 const patientsSexChartData = computed(() => {
-    const documentStyle = getComputedStyle(document.documentElement);
+    const documentStyle = chartStyle;
     const patients = props.patients || {};
     return {
         labels: ['Hommes', 'Femmes', 'Non renseigné'],
@@ -86,7 +89,7 @@ const patientsSexChartData = computed(() => {
 });
 
 const patientsAgeChartData = computed(() => {
-    const documentStyle = getComputedStyle(document.documentElement);
+    const documentStyle = chartStyle;
     const patients = props.patients || {};
     return {
         labels: ['Mineurs', 'Majeurs', 'Séniors', 'Non renseigné'],
@@ -100,7 +103,7 @@ const patientsAgeChartData = computed(() => {
 });
 
 const patientReferralsChartData = computed(() => {
-    const documentStyle = getComputedStyle(document.documentElement);
+    const documentStyle = chartStyle;
     return {
         labels: props.patientReferrals.map((row) => row.label),
         datasets: [
@@ -121,7 +124,7 @@ const patientReferralsChartData = computed(() => {
 });
 
 const pieOptions = computed(() => {
-    const documentStyle = getComputedStyle(document.documentElement);
+    const documentStyle = chartStyle;
     return {
         responsive: true,
         maintainAspectRatio: false,
@@ -136,7 +139,7 @@ const pieOptions = computed(() => {
 });
 
 const barOptions = computed(() => {
-    const documentStyle = getComputedStyle(document.documentElement);
+    const documentStyle = chartStyle;
     const textColorSecondary = documentStyle.getPropertyValue('--text-color-secondary');
     const surfaceBorder = documentStyle.getPropertyValue('--surface-border');
     return {
@@ -194,7 +197,7 @@ function printSection() {
     <section class="space-y-4" id="admin-non-periodic">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
-                <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0">Détails globaux</h3>
+                <h3 class="text-base font-semibold text-surface-900 dark:text-surface-0">Détails globaux</h3>
                 <p class="text-sm text-surface-500 dark:text-surface-400">Indicateurs non liés à la période sélectionnée</p>
             </div>
             <Button label="Imprimer la section" icon="pi pi-print" outlined size="small" @click="printSection" />
@@ -203,10 +206,10 @@ function printSection() {
         <div class="grid gap-4 lg:grid-cols-2">
             <ValueListCard id="admin-employee-distribution" title="Répartition des employés" :items="employeeDistribution" :loading="loading" :show-chart="showEmployeesChart" empty-label="Aucun employé à afficher.">
                 <template #actions>
-                    <ToggleButton v-model="showEmployeesChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-pie" offIcon="pi pi-list" />
+                    <ToggleButton size="small" v-model="showEmployeesChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-pie" offIcon="pi pi-list" />
                 </template>
                 <template #chart>
-                    <div class="aspect-square w-full">
+                    <div class="mx-auto aspect-square w-full max-w-[320px]">
                         <AppChart type="pie" :data="employeeChartData" :options="pieOptions" class="h-full w-full" />
                     </div>
                 </template>
@@ -214,10 +217,10 @@ function printSection() {
 
             <ValueListCard id="admin-low-stock" title="Consommables à stock bas" :items="lowStock" :loading="loading" :show-chart="showLowStockChart" empty-label="Aucun consommable critique.">
                 <template #actions>
-                    <ToggleButton v-model="showLowStockChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-bar" offIcon="pi pi-list" />
+                    <ToggleButton size="small" v-model="showLowStockChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-bar" offIcon="pi pi-list" />
                 </template>
                 <template #chart>
-                    <div class="aspect-[16/9] w-full">
+                    <div class="aspect-[16/9] min-h-[240px] w-full">
                         <AppChart type="bar" :data="lowStockChartData" :options="barOptions" class="h-full w-full" />
                     </div>
                 </template>
@@ -226,19 +229,19 @@ function printSection() {
         <div class="grid gap-4 lg:grid-cols-2">
             <ValueListCard id="admin-global-patients" title="Patients" :items="patientItems(patients)" :loading="loading" :show-chart="showPatientsChart" empty-label="Aucune donnée patient.">
                 <template #actions>
-                    <ToggleButton v-model="showPatientsChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-pie" offIcon="pi pi-list" />
+                    <ToggleButton size="small" v-model="showPatientsChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-pie" offIcon="pi pi-list" />
                 </template>
                 <template #chart>
                     <div class="grid gap-4 sm:grid-cols-2">
                         <div class="space-y-2">
-                            <p class="text-center text-xs font-semibold uppercase tracking-wide text-surface-500">Sexe</p>
-                            <div class="aspect-square w-full">
+                            <p class="text-center text-sm font-medium text-surface-500">Sexe</p>
+                            <div class="mx-auto aspect-square w-full max-w-[320px]">
                                 <AppChart type="doughnut" :data="patientsSexChartData" :options="pieOptions" class="h-full w-full" />
                             </div>
                         </div>
                         <div class="space-y-2">
-                            <p class="text-center text-xs font-semibold uppercase tracking-wide text-surface-500">Âge</p>
-                            <div class="aspect-square w-full">
+                            <p class="text-center text-sm font-medium text-surface-500">Âge</p>
+                            <div class="mx-auto aspect-square w-full max-w-[320px]">
                                 <AppChart type="doughnut" :data="patientsAgeChartData" :options="pieOptions" class="h-full w-full" />
                             </div>
                         </div>
@@ -248,10 +251,10 @@ function printSection() {
 
             <ValueListCard id="admin-patient-referrals" title="Comment les patients ont connu le cabinet" :items="patientReferrals" :loading="loading" :show-chart="showPatientReferralsChart" empty-label="Aucune provenance disponible.">
                 <template #actions>
-                    <ToggleButton v-model="showPatientReferralsChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-bar" offIcon="pi pi-list" />
+                    <ToggleButton size="small" v-model="showPatientReferralsChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-bar" offIcon="pi pi-list" />
                 </template>
                 <template #chart>
-                    <div class="aspect-[16/9] w-full">
+                    <div class="aspect-[16/9] min-h-[240px] w-full">
                         <AppChart type="bar" :data="patientReferralsChartData" :options="barOptions" class="h-full w-full" />
                     </div>
                 </template>

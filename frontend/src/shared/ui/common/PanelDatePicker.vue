@@ -49,6 +49,10 @@ const props = defineProps({
     manualInput: {
         type: Boolean,
         default: false
+    },
+    ariaLabelledby: {
+        type: String,
+        default: undefined
     }
 });
 
@@ -181,7 +185,10 @@ watch(
                 :value="displayValue"
                 :placeholder="placeholder"
                 :disabled="disabled"
+                :aria-labelledby="ariaLabelledby"
                 class="p-inputtext p-component w-full cursor-pointer"
+                @keydown.enter.prevent="togglePanel"
+                @keydown.space.prevent="togglePanel"
                 :class="[inputClass, showIcon ? 'pr-10' : '', showClear && displayValue ? 'pr-16' : '']"
             />
             <button
@@ -197,8 +204,8 @@ watch(
         </div>
 
         <Popover ref="panelRef" class="panel-date-picker__popover">
-            <div class="flex flex-col gap-3 sm:flex-row sm:gap-0">
-                <aside class="flex shrink-0 flex-row gap-1 overflow-x-auto border-b border-surface-200 pb-2 dark:border-surface-700 sm:w-44 sm:flex-col sm:overflow-visible sm:border-b-0 sm:border-r sm:pb-0 sm:pr-3">
+            <div class="panel-date-picker__layout flex min-w-0 flex-col gap-3 sm:flex-row sm:gap-0">
+                <aside class="flex min-w-0 max-w-full flex-row gap-1 overflow-x-auto border-b border-surface-200 pb-2 dark:border-surface-700 sm:w-44 sm:shrink-0 sm:flex-col sm:overflow-visible sm:border-b-0 sm:border-r sm:pb-0 sm:pr-3">
                     <button
                         v-for="entry in periodEntries"
                         :key="entry.key"
@@ -211,7 +218,7 @@ watch(
                     </button>
                 </aside>
 
-                <div class="sm:pl-3">
+                <div class="panel-date-picker__calendar min-w-0 sm:pl-3">
                     <DatePicker :modelValue="draftRange" selectionMode="range" inline :manualInput="manualInput" :dateFormat="dateFormat" @update:modelValue="onCalendarUpdate" />
                 </div>
             </div>
@@ -222,5 +229,19 @@ watch(
 <style scoped>
 .panel-date-picker__trigger input:disabled {
     cursor: not-allowed;
+}
+.panel-date-picker__popover {
+    max-width: calc(100vw - 1.5rem);
+}
+@media (max-width: 639px) {
+    .panel-date-picker__layout {
+        width: min(20rem, calc(100vw - 3.5rem));
+        max-width: 100%;
+    }
+    .panel-date-picker__calendar :deep(.p-datepicker),
+    .panel-date-picker__calendar :deep(.p-datepicker-panel) {
+        width: 100%;
+        min-width: 0;
+    }
 }
 </style>

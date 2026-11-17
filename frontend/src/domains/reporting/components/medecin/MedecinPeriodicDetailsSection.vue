@@ -3,6 +3,9 @@ import { computed, ref } from 'vue';
 import AppChart from '@/shared/ui/common/AppChart.vue';
 import ToggleButton from 'primevue/togglebutton';
 import ValueListCard from '@/domains/reporting/components/common/ValueListCard.vue';
+import { useReportChartTheme } from '@/domains/reporting/composables/useReportChartTheme.js';
+
+const { chartStyle } = useReportChartTheme();
 
 const props = defineProps({
     period: { type: Object, default: () => ({}) },
@@ -57,7 +60,7 @@ const revenueItems = (period) => [
 ];
 
 const barOptions = computed(() => {
-    const documentStyle = getComputedStyle(document.documentElement);
+    const documentStyle = chartStyle;
     const textColorSecondary = documentStyle.getPropertyValue('--text-color-secondary');
     const surfaceBorder = documentStyle.getPropertyValue('--surface-border');
     return {
@@ -74,7 +77,7 @@ const barOptions = computed(() => {
 });
 
 const pieOptions = computed(() => {
-    const documentStyle = getComputedStyle(document.documentElement);
+    const documentStyle = chartStyle;
     return {
         responsive: true,
         maintainAspectRatio: false,
@@ -85,7 +88,7 @@ const pieOptions = computed(() => {
 });
 
 const consultationsChartData = computed(() => {
-    const documentStyle = getComputedStyle(document.documentElement);
+    const documentStyle = chartStyle;
     const period = props.period || {};
     return {
         labels: ['Gratuites', 'Payantes'],
@@ -100,7 +103,7 @@ const consultationsChartData = computed(() => {
 });
 
 const appointmentsChartData = computed(() => {
-    const documentStyle = getComputedStyle(document.documentElement);
+    const documentStyle = chartStyle;
     const period = props.period || {};
     return {
         labels: ['Planifiés', 'En attente', 'Validés', 'Reportés', 'Annulés'],
@@ -115,7 +118,7 @@ const appointmentsChartData = computed(() => {
 });
 
 const apportChartData = computed(() => {
-    const documentStyle = getComputedStyle(document.documentElement);
+    const documentStyle = chartStyle;
     const period = props.period || {};
     return {
         labels: ['Total facturé'],
@@ -129,7 +132,7 @@ const apportChartData = computed(() => {
 });
 
 const revenueChartData = computed(() => {
-    const documentStyle = getComputedStyle(document.documentElement);
+    const documentStyle = chartStyle;
     const period = props.period || {};
     return {
         labels: ['Paiements patients sur l’activité de la période', 'Impayés patients · période'],
@@ -146,47 +149,47 @@ const revenueChartData = computed(() => {
 <template>
     <section class="space-y-4">
         <div>
-            <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0">Activité</h3>
+            <h3 class="text-base font-semibold text-surface-900 dark:text-surface-0">Activité</h3>
             <p class="text-sm text-surface-500 dark:text-surface-400">Impayés : part patient non encaissée sur la période. Rémunération : assurance incluse.</p>
         </div>
 
-        <div class="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+        <div class="grid gap-4 lg:grid-cols-2">
             <ValueListCard title="Consultations" :items="consultationsItems(period)" :loading="loading" :show-chart="showConsultationsChart">
                 <template #actions>
-                    <ToggleButton v-model="showConsultationsChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-pie" offIcon="pi pi-list" />
+                    <ToggleButton size="small" v-model="showConsultationsChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-pie" offIcon="pi pi-list" />
                 </template>
                 <template #chart>
-                    <div class="aspect-square w-full">
+                    <div class="mx-auto aspect-square w-full max-w-[320px]">
                         <AppChart type="doughnut" :data="consultationsChartData" :options="pieOptions" class="h-full w-full" />
                     </div>
                 </template>
             </ValueListCard>
             <ValueListCard title="Rendez-vous" :items="appointmentsItems(period)" :loading="loading" :show-chart="showAppointmentsChart">
                 <template #actions>
-                    <ToggleButton v-model="showAppointmentsChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-bar" offIcon="pi pi-list" />
+                    <ToggleButton size="small" v-model="showAppointmentsChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-bar" offIcon="pi pi-list" />
                 </template>
                 <template #chart>
-                    <div class="aspect-[16/9] w-full">
+                    <div class="aspect-[16/9] min-h-[240px] w-full">
                         <AppChart type="bar" :data="appointmentsChartData" :options="barOptions" class="h-full w-full" />
                     </div>
                 </template>
             </ValueListCard>
             <ValueListCard title="Facturé durant la période" :items="apportItems(period)" :loading="loading" :show-chart="showRevenueChart">
                 <template #actions>
-                    <ToggleButton v-model="showRevenueChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-pie" offIcon="pi pi-list" />
+                    <ToggleButton size="small" v-model="showRevenueChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-pie" offIcon="pi pi-list" />
                 </template>
                 <template #chart>
-                    <div class="aspect-square w-full">
+                    <div class="mx-auto aspect-square w-full max-w-[320px]">
                         <AppChart type="doughnut" :data="apportChartData" :options="pieOptions" class="h-full w-full" />
                     </div>
                 </template>
             </ValueListCard>
             <ValueListCard title="Paiements et Total rénumérable" :items="revenueItems(period)" :loading="loading" :show-chart="showReliquatsChart">
                 <template #actions>
-                    <ToggleButton v-model="showReliquatsChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-pie" offIcon="pi pi-list" />
+                    <ToggleButton size="small" v-model="showReliquatsChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-pie" offIcon="pi pi-list" />
                 </template>
                 <template #chart>
-                    <div class="aspect-square w-full">
+                    <div class="mx-auto aspect-square w-full max-w-[320px]">
                         <AppChart type="doughnut" :data="revenueChartData" :options="pieOptions" class="h-full w-full" />
                     </div>
                 </template>

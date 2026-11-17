@@ -4,6 +4,7 @@ import Button from 'primevue/button';
 import AppChart from '@/shared/ui/common/AppChart.vue';
 import ToggleButton from 'primevue/togglebutton';
 import { overviewCards } from '@/domains/reporting/model/reportOverview.js';
+import { useReportChartTheme } from '@/domains/reporting/composables/useReportChartTheme.js';
 import { formatAsOfLabel, printReport } from '@/domains/reporting/model/reportPrint.js';
 
 const props = defineProps({
@@ -12,16 +13,19 @@ const props = defineProps({
     periodLabel: { type: String, default: '' }
 });
 const showChart = ref(false);
-
+const { chartStyle } = useReportChartTheme();
 const items = overviewCards;
-const bentoSize = (item) => {
-    const details = item.subStats?.length ?? 0;
-    return details >= 6 ? 'bento-card--large' : details >= 3 ? 'bento-card--medium' : details ? 'bento-card--small' : 'bento-card--compact';
-};
+const groups = computed(() => {
+    const cards = items(props.stats);
+    return [
+        { key: 'financials', title: 'Situation financière', items: cards.slice(0, 4) },
+        { key: 'activity', title: 'Patients et ressources', items: cards.slice(4) }
+    ];
+});
 
 const chartData = computed(() => {
     const stats = props.stats || {};
-    const documentStyle = getComputedStyle(document.documentElement);
+    const documentStyle = chartStyle;
     return {
         labels: ['Entrées validées', 'Sorties validées', 'Montant facturé', 'Paiements patients reçus'],
         datasets: [
@@ -36,7 +40,7 @@ const chartData = computed(() => {
 });
 
 const chartOptions = computed(() => {
-    const documentStyle = getComputedStyle(document.documentElement);
+    const documentStyle = chartStyle;
     const textColor = documentStyle.getPropertyValue('--text-color');
     const textColorSecondary = documentStyle.getPropertyValue('--text-color-secondary');
     const surfaceBorder = documentStyle.getPropertyValue('--surface-border');
@@ -44,30 +48,11 @@ const chartOptions = computed(() => {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-            legend: {
-                display: false,
-                labels: {
-                    color: textColor
-                }
-            }
+            legend: { display: false, labels: { color: textColor } }
         },
         scales: {
-            x: {
-                ticks: {
-                    color: textColorSecondary
-                },
-                grid: {
-                    display: false
-                }
-            },
-            y: {
-                ticks: {
-                    color: textColorSecondary
-                },
-                grid: {
-                    color: surfaceBorder
-                }
-            }
+            x: { ticks: { color: textColorSecondary }, grid: { display: false } },
+            y: { ticks: { color: textColorSecondary }, grid: { color: surfaceBorder } }
         }
     };
 });
@@ -89,199 +74,200 @@ function printBento(item) {
         title: item.label,
         periodLabel: props.periodLabel || formatAsOfLabel(),
         landscape: false,
-        sections: [
-            {
-                title: item.label,
-                items: [{ label: 'Total', value: item.value }, ...(item.subStats || [])],
-                note: item.note
-            }
-        ]
+        sections: [{ title: item.label, items: [{ label: 'Total', value: item.value }, ...(item.subStats || [])], note: item.note }]
     });
 }
 </script>
 
 <template>
-    <section class="space-y-4" id="admin-global-stats">
-        <div class="flex flex-wrap items-center justify-between gap-3">
+    <section id="admin-global-stats" class="report-overview" :aria-busy="loading">
+        <div class="report-overview__header">
             <div>
-                <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0">Statistiques globales</h3>
-                <p class="text-sm text-surface-500 dark:text-surface-400">Activité et flux de la période sélectionnée · effectifs et créances actuels signalés dans chaque case</p>
+                <h3>Vue d'ensemble</h3>
+                <p>Montants de la période sélectionnée. Les effectifs et créances actuels sont indiqués séparément.</p>
             </div>
-            <div class="flex items-center gap-2">
-                <ToggleButton v-model="showChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-bar" offIcon="pi pi-list" />
-                <Button label="Imprimer" icon="pi pi-print" outlined size="small" @click="printSection" />
+            <div class="report-overview__actions">
+                <ToggleButton v-model="showChart" onLabel="Graphique" offLabel="Graphique" onIcon="pi pi-chart-bar" offIcon="pi pi-chart-bar" size="small" aria-label="Afficher le graphique financier" />
+                <Button label="Imprimer" icon="pi pi-print" severity="secondary" outlined size="small" :disabled="loading" @click="printSection" />
             </div>
         </div>
 
-        <div v-if="!showChart" class="stats-bento" :aria-busy="loading">
-            <article v-for="item in items(stats)" :key="item.key" :class="['bento-card', bentoSize(item), 'bento-tone--' + item.tone]">
-                <div class="flex items-start justify-between gap-3">
-                    <h3 class="text-xl font-medium text-surface-600 dark:text-surface-300">{{ item.label }}</h3>
-                    <div class="flex shrink-0 items-center gap-1">
-                        <Button icon="pi pi-print" text rounded severity="secondary" size="small" class="bento-print" :aria-label="'Imprimer : ' + item.label" :title="'Imprimer : ' + item.label" :disabled="loading" @click="printBento(item)" />
-                        <span class="bento-icon" aria-hidden="true"><i :class="item.icon"></i></span>
-                    </div>
+        <template v-if="!showChart">
+            <section v-for="group in groups" :key="group.key" class="overview-group" :aria-labelledby="`overview-${group.key}`">
+                <h4 :id="`overview-${group.key}`" class="overview-group__title">{{ group.title }}</h4>
+                <div class="overview-grid" :class="{ 'overview-grid--resources': group.key === 'activity' }">
+                    <article v-for="item in group.items" :key="item.key" class="overview-stat">
+                        <div class="overview-stat__header">
+                            <h5>{{ item.label }}</h5>
+                            <Button icon="pi pi-print" text severity="secondary" size="small" class="overview-stat__print" :aria-label="'Imprimer : ' + item.label" :title="'Imprimer : ' + item.label" :disabled="loading" @click="printBento(item)" />
+                        </div>
+                        <div v-if="loading" class="my-3 h-8 w-32 animate-pulse rounded bg-surface-200 dark:bg-surface-700" aria-label="Chargement"></div>
+                        <p v-else class="overview-stat__value" :class="{ 'overview-stat__value--negative': item.key === 'treasury' && Number(stats.resultTotal) < 0 }">{{ item.value }}</p>
+                        <dl v-if="item.subStats?.length" class="overview-stat__details">
+                            <div v-for="sub in item.subStats" :key="sub.label">
+                                <dt>{{ sub.label }}</dt>
+                                <dd>{{ loading ? '…' : sub.value }}</dd>
+                            </div>
+                        </dl>
+                        <p v-if="item.note" class="overview-stat__note">{{ item.note }}</p>
+                    </article>
                 </div>
-                <div v-if="loading" class="mt-3 h-9 w-32 animate-pulse rounded bg-surface-200 dark:bg-surface-700" aria-label="Chargement"></div>
-                <p v-else class="bento-value">{{ item.value }}</p>
-                <dl v-if="item.subStats?.length" class="bento-details">
-                    <div v-for="sub in item.subStats" :key="sub.label">
-                        <dt>{{ sub.label }}</dt>
-                        <dd>
-                            <span v-if="loading">…</span><span v-else>{{ sub.value }}</span>
-                        </dd>
-                    </div>
-                </dl>
-                <p v-if="item.note" class="bento-note">{{ item.note }}</p>
-            </article>
-        </div>
-        <div v-else class="rounded-2xl border border-surface-200/60 bg-gradient-to-br from-surface-0 to-surface-50/70 p-4 shadow-sm dark:border-surface-700 dark:from-surface-900 dark:to-surface-800">
-            <div class="aspect-[16/9] w-full">
-                <AppChart type="bar" :data="chartData" :options="chartOptions" class="h-full w-full" />
-            </div>
+            </section>
+        </template>
+        <div v-else class="overview-chart">
+            <div v-if="loading" class="flex h-full items-center justify-center text-sm text-surface-500" role="status">Chargement du graphique…</div>
+            <AppChart v-else type="bar" :data="chartData" :options="chartOptions" class="h-full w-full" />
         </div>
     </section>
 </template>
 
 <style scoped>
-.stats-bento {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-    align-items: stretch;
-}
-.bento-card {
-    --bento-accent: var(--p-primary-500);
-    min-width: 0;
-    flex: 1 0 100%;
-    padding: 1.35rem;
-    border: 1px solid var(--p-surface-200);
-    border-radius: 1.35rem;
-    background: linear-gradient(140deg, color-mix(in srgb, var(--bento-accent) 7%, var(--p-surface-0)), var(--p-surface-0) 60%);
+.report-overview {
     display: flex;
     flex-direction: column;
-    box-shadow: 0 3px 18px rgb(15 23 42 / 3%);
+    gap: 1.5rem;
 }
-:global(.app-dark .bento-card) {
-    border-color: var(--p-surface-700);
-    background: linear-gradient(140deg, color-mix(in srgb, var(--bento-accent) 12%, var(--p-surface-900)), var(--p-surface-900) 60%);
-}
-.bento-icon {
-    color: var(--bento-accent);
-    background: color-mix(in srgb, var(--bento-accent) 12%, transparent);
-    border-radius: 0.8rem;
-    padding: 0.65rem;
-    flex-shrink: 0;
-}
-.bento-value {
-    font-size: clamp(1.5rem, 2vw, 2.2rem);
-    font-weight: 700;
-    letter-spacing: -0.04em;
-    margin: 0.7rem 0 1rem;
-    overflow-wrap: anywhere;
-    font-variant-numeric: tabular-nums;
-}
-:global(.app-dark .bento-value) {
-    color: var(--p-surface-0);
-}
-:global(.app-dark .bento-details dd) {
-    color: var(--p-surface-100);
-}
-:global(.app-dark .bento-details dt),
-:global(.app-dark .bento-note) {
-    color: var(--p-surface-400);
-}
-.bento-details {
-    display: grid;
-    gap: 0.7rem;
-    margin: 0;
-}
-.bento-details > div {
+.report-overview__header {
     display: flex;
+    flex-wrap: wrap;
+    align-items: center;
     justify-content: space-between;
-    gap: 0.8rem;
-    border-top: 1px solid color-mix(in srgb, var(--bento-accent) 12%, transparent);
-    padding-top: 0.65rem;
-    font-size: 0.8rem;
+    gap: 1rem;
 }
-.bento-details dt {
-    color: var(--p-surface-500);
-    line-height: 1.4;
-}
-.bento-details dd {
+.report-overview__header h3 {
     margin: 0;
-    text-align: right;
+    font-size: 1rem;
     font-weight: 600;
-    font-variant-numeric: tabular-nums;
+    color: var(--text-color);
+}
+.report-overview__header p {
+    margin: 0.375rem 0 0;
+    max-width: 42rem;
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    color: var(--text-color-secondary);
+}
+.report-overview__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.overview-group__title {
+    margin: 0 0 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text-color-secondary);
+}
+.overview-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+.overview-grid--resources {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.overview-stat {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding: 1.25rem;
+    border: 1px solid var(--surface-border);
+    border-radius: 0.75rem;
+    background: var(--surface-card);
+}
+.overview-stat__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+.overview-stat__header h5 {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.5;
+    color: var(--text-color-secondary);
+}
+.overview-stat__print {
     flex-shrink: 0;
-    max-width: 52%;
+    width: 1.75rem;
+    height: 1.75rem;
+}
+.overview-stat__value {
+    margin: 0.5rem 0 0;
+    font-size: clamp(1.375rem, 2vw, 1.875rem);
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    line-height: 1.4;
+    color: var(--text-color);
+    font-variant-numeric: tabular-nums;
     overflow-wrap: anywhere;
 }
-.bento-note {
-    margin-top: auto;
-    padding-top: 1rem;
-    font-size: 0.72rem;
+.overview-stat__value--negative {
+    color: var(--p-red-500);
+}
+.overview-stat__details {
+    display: grid;
+    margin: 1rem 0 0;
+}
+.overview-stat__details > div {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr);
+    align-items: baseline;
+    gap: 0.75rem;
+    padding: 0.625rem 0;
+    border-top: 1px solid var(--surface-border);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+}
+.overview-stat__details dt {
+    color: var(--text-color-secondary);
+}
+.overview-stat__details dd {
+    margin: 0;
+    font-weight: 500;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+}
+.overview-stat__note {
+    margin: auto 0 0;
+    padding-top: 0.75rem;
+    font-size: 0.75rem;
     line-height: 1.6;
-    color: var(--p-surface-500);
+    color: var(--text-color-secondary);
 }
-.bento-tone--emerald {
-    --bento-accent: var(--p-emerald-500);
+.overview-chart {
+    height: clamp(20rem, 45vw, 30rem);
+    padding: 1.25rem;
+    border: 1px solid var(--surface-border);
+    border-radius: 0.75rem;
+    background: var(--surface-card);
 }
-.bento-tone--indigo {
-    --bento-accent: var(--p-indigo-500);
-}
-.bento-tone--violet {
-    --bento-accent: var(--p-violet-500);
-}
-.bento-tone--blue {
-    --bento-accent: var(--p-blue-500);
-}
-.bento-tone--cyan {
-    --bento-accent: var(--p-cyan-500);
-}
-.bento-tone--orange {
-    --bento-accent: var(--p-orange-500);
-}
-.bento-tone--rose {
-    --bento-accent: var(--p-rose-500);
-}
-.bento-tone--teal {
-    --bento-accent: var(--p-teal-500);
-}
-@media (min-width: 640px) {
-    .bento-card {
-        flex-basis: calc((100% - 1rem) / 2);
-    }
-    .bento-card--large {
-        flex-basis: 100%;
-    }
-    .bento-card--compact {
-        flex-basis: calc((100% - 2rem) / 3);
+@media (max-width: 1023px) {
+    .overview-grid--resources {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
-@media (min-width: 1280px) {
-    .bento-card--large {
-        flex-basis: calc((100% - 1rem) / 2);
+@media (max-width: 639px) {
+    .overview-grid,
+    .overview-grid--resources {
+        grid-template-columns: minmax(0, 1fr);
     }
-    .bento-card--medium {
-        flex-basis: calc((100% - 2rem) / 3);
-    }
-    .bento-card--small {
-        flex-basis: calc((100% - 3rem) / 4);
-    }
-    .bento-card--compact {
-        flex-basis: calc((100% - 5rem) / 6);
+    .overview-stat {
+        padding: 1rem;
     }
 }
 @media print {
-    .stats-bento {
+    .overview-grid {
         display: block;
     }
-    .bento-card {
+    .overview-stat {
         break-inside: avoid;
         margin-bottom: 1rem;
     }
-    .bento-print {
+    .overview-stat__print,
+    .report-overview__actions {
         display: none;
     }
 }

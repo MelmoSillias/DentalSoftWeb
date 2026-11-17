@@ -5,6 +5,9 @@ import AppChart from '@/shared/ui/common/AppChart.vue';
 import ToggleButton from 'primevue/togglebutton';
 import StatsCardsGrid from '@/domains/reporting/components/common/StatsCardsGrid.vue';
 import { printReport } from '@/domains/reporting/model/reportPrint.js';
+import { useReportChartTheme } from '@/domains/reporting/composables/useReportChartTheme.js';
+
+const { chartStyle } = useReportChartTheme();
 
 const props = defineProps({
     stats: { type: Object, default: () => ({}) },
@@ -34,7 +37,7 @@ const buildItems = (stats) => [
 ];
 
 const chartData = computed(() => {
-    const documentStyle = getComputedStyle(document.documentElement);
+    const documentStyle = chartStyle;
     const volumes = buildItems(props.stats).filter((item) => !['cash', 'total'].includes(item.key));
     return {
         labels: volumes.map((item) => item.label),
@@ -49,7 +52,7 @@ const chartData = computed(() => {
 });
 
 const chartOptions = computed(() => {
-    const documentStyle = getComputedStyle(document.documentElement);
+    const documentStyle = chartStyle;
     const textColorSecondary = documentStyle.getPropertyValue('--text-color-secondary');
     const surfaceBorder = documentStyle.getPropertyValue('--surface-border');
     return {
@@ -86,20 +89,20 @@ function printSection() {
     <div class="space-y-4" id="reception-daily-stats">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
-                <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0">Statistiques du jour</h3>
+                <h3 class="text-base font-semibold text-surface-900 dark:text-surface-0">Statistiques du jour</h3>
                 <p class="text-sm text-surface-500 dark:text-surface-400">
                     Vue instantanée des indicateurs de la réception
                     <span v-if="periodLabel"> — Journée du {{ periodLabel }}</span>
                 </p>
             </div>
-            <div class="flex items-center gap-2">
-                <ToggleButton v-model="showChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-bar" offIcon="pi pi-list" />
+            <div class="flex flex-wrap items-center gap-2">
+                <ToggleButton size="small" v-model="showChart" onLabel="Graphique" offLabel="Données" onIcon="pi pi-chart-bar" offIcon="pi pi-list" />
                 <Button label="Imprimer" icon="pi pi-print" outlined size="small" data-tour="rapports-reception.print" @click="printSection" />
             </div>
         </div>
         <StatsCardsGrid v-if="!showChart" :items="buildItems(stats)" :loading="loading" />
-        <div v-else class="rounded-2xl border border-surface-200/60 bg-gradient-to-br from-surface-0 to-surface-50/70 p-4 shadow-sm dark:border-surface-700 dark:from-surface-900 dark:to-surface-800">
-            <div class="aspect-[16/9] w-full">
+        <div v-else class="rounded-xl border border-surface-200 bg-surface-0 p-4 dark:bg-surface-900 dark:border-surface-700">
+            <div class="aspect-[16/9] min-h-[240px] w-full">
                 <AppChart type="bar" :data="chartData" :options="chartOptions" class="h-full w-full" />
             </div>
         </div>
