@@ -1,4 +1,5 @@
-import { buildDataTableHtml, buildKeyValueTableHtml as _buildKeyValueTableHtml, formatPeriodSubtitle, openPrintWindow, printReport } from '@/domains/reporting/model/reportPrint.js';
+import { buildDataTableHtml, buildKeyValueTableHtml as _buildKeyValueTableHtml, formatPeriodSubtitle, printReport } from '@/domains/reporting/model/reportPrint.js';
+import { openPrintHtmlPreview } from '@/shared/print/printPreview.js';
 import { buildPrintHtmlDocument, buildPrintTitleBandHtml } from '@/shared/print/printDocumentStyles.js';
 
 export const DAY_PRINT_SECTIONS = [
@@ -72,7 +73,7 @@ export function printDayTransactions(transactions, { dateLabel = '', filterLabel
         <p style="margin-top: 12px; font-weight: 600;">Total = ${formatFcfa(total)}</p>
     `;
 
-    openPrintWindow(buildPrintHtmlDocument({ title: `Transactions ${filterLabel}`, body }));
+    openPrintHtmlPreview(buildPrintHtmlDocument({ title: `Transactions ${filterLabel}`, body }));
 }
 
 export function printDayActs(actes, { dateLabel = '' } = {}) {
@@ -95,7 +96,7 @@ export function printDayActs(actes, { dateLabel = '' } = {}) {
         <p style="margin-top: 12px; font-weight: 600;">Total = ${formatFcfa(total)}</p>
     `;
 
-    openPrintWindow(buildPrintHtmlDocument({ title: 'Actes médicaux', body }));
+    openPrintHtmlPreview(buildPrintHtmlDocument({ title: 'Actes médicaux', body }));
 }
 
 export function buildDayReportSections(data, selection = DEFAULT_DAY_PRINT_SELECTION) {

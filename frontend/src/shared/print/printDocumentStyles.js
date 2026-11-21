@@ -150,6 +150,19 @@ export const PRINT_DOCUMENT_BASE_CSS = `
     .signature-table { margin-top: 24px; width: 100%; border: none; }
     .signature-table td { border: none; width: 45%; text-align: center; vertical-align: top; }
     .signature-line { border-top: 1px solid #111; width: 80%; margin: 20px auto 6px; }
+    @media screen {
+        body { background: #f1f5f9; padding: 12px; }
+        .print-page {
+            display: flex;
+            flex-direction: column;
+            max-width: var(--print-paper-width);
+            margin: 0 auto;
+            padding: clamp(12px, 4vw, 14mm);
+            background: #fff;
+        }
+        .print-footer { position: relative; order: 1; padding: 6px 0; margin-top: 12px; }
+        .print-running > tfoot { display: none; }
+    }
 `;
 
 export function buildPrintCabinetHeaderHtml() {
@@ -195,17 +208,18 @@ export function buildPrintFooterHtml() {
 
 export function buildPrintHtmlDocument({ title = 'Document', body = '', landscape = true } = {}) {
     const pageSize = landscape ? 'A4 landscape' : 'A4';
+    const paperWidth = landscape ? '297mm' : '210mm';
     const css = PRINT_DOCUMENT_BASE_CSS.replace('A4 landscape', pageSize);
 
-    return `
-    <html lang="fr">
+    return `<!doctype html>
+    <html lang="fr" style="--print-paper-width: ${paperWidth}">
     <head>
         <meta charset="UTF-8" />
         <title>${title}</title>
         <style>${css}</style>
     </head>
     <body>
-        <div class="print-page">
+        <div class="print-page" data-print-format="${landscape ? 'landscape' : 'portrait'}">
             ${buildPrintFooterHtml()}
             <table class="print-running">
                 <tfoot>

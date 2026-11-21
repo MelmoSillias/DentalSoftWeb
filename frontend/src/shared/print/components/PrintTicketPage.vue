@@ -17,7 +17,7 @@ const watermarkStyle = computed(() => ({
 </script>
 
 <template>
-    <div class="print-ticket-page" :style="watermarkStyle">
+    <div class="print-ticket-page" data-print-format="ticket" :style="watermarkStyle">
         <div v-if="watermark" class="print-ticket-page__watermark" aria-hidden="true" />
         <div class="print-ticket-page__inner">
             <slot />

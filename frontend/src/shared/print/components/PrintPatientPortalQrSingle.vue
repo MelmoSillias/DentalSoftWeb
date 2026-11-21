@@ -8,7 +8,7 @@ defineProps({
 </script>
 
 <template>
-    <div class="single-page">
+    <div class="single-page" data-print-format="card">
         <article :class="entry.key === 'showcase' ? 'feature-card' : 'qr-card'">
             <div :class="entry.key === 'showcase' ? 'feature-icon' : 'card-icon'">
                 <i :class="entry.iconClass"></i>

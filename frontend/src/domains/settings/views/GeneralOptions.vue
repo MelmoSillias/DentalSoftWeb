@@ -1305,7 +1305,7 @@ const printPatientPortalPoster = async () => {
         toast.add({ severity: 'warn', summary: 'Impression QR', detail: 'Aucune URL valide a imprimer.', life: 2600 });
         return;
     }
-    await printComponent(PrintPatientPortalQrPoster, { data: patientPortalQrPrintModel.value }, { title: 'Affiche QR portail patient', printDelay: 900 });
+    await printComponent(PrintPatientPortalQrPoster, { data: patientPortalQrPrintModel.value }, { title: 'Affiche QR portail patient' });
 };
 
 const printPatientPortalSingleQr = async (entryKey) => {
@@ -1314,7 +1314,7 @@ const printPatientPortalSingleQr = async (entryKey) => {
         toast.add({ severity: 'warn', summary: 'Impression QR', detail: 'URL indisponible pour ce QR code.', life: 2600 });
         return;
     }
-    await printComponent(PrintPatientPortalQrSingle, { entry }, { title: `QR ${entry.title}`, printDelay: 700 });
+    await printComponent(PrintPatientPortalQrSingle, { entry }, { title: `QR ${entry.title}` });
 };
 
 watch(

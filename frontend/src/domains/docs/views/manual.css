@@ -1434,10 +1434,23 @@
     }
 }
 
-/* ---------- Impression et PDF (A4) ---------- */
+/* ---------- Aperçu, impression et PDF (A4) ---------- */
+
+@media screen {
+    .manual.manual--print-preview {
+        display: block;
+        max-width: 210mm;
+        margin: 0 auto;
+        padding: 0.75rem;
+    }
+
+    .manual--print-preview .m-print-only {
+        display: block;
+    }
+}
 
 @media print {
-    @page {
+    @page dentalsoft-manual {
         size: A4;
         margin: 16mm 14mm 18mm;
 
@@ -1456,7 +1469,7 @@
         }
     }
 
-    @page :first {
+    @page dentalsoft-manual:first {
         @bottom-left {
             content: none;
         }
@@ -1464,6 +1477,10 @@
         @bottom-right {
             content: none;
         }
+    }
+
+    body.manual-open {
+        page: dentalsoft-manual;
     }
 
     html,

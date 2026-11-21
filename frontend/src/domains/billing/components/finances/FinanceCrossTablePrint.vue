@@ -48,17 +48,6 @@ const formatCellDate = (week, weekday) => {
 };
 </script>
 
-<script>
-export const printStyles = `
-    @page { size: A4 landscape; margin: 14mm 14mm 22mm 14mm; }
-    .print-cross-table { font-size: 9.5pt; }
-    .print-cross-table th, .print-cross-table td { padding: 5px 7px; }
-    .muted, .cell-date { font-size: 8pt; color: #6b7280 !important; }
-    .row-label { font-weight: 600; background-color: #f9fafb; }
-    .row-total, .grand-total { font-weight: bold; text-align: right; }
-    .totals-row th, .totals-row td { background-color: #eef3f8 !important; font-weight: bold; }
-`;
-</script>
 
 <template>
     <PrintA4Page :logo-src="logoSrc" orientation="landscape">
@@ -105,7 +94,7 @@ export const printStyles = `
 .muted,
 .cell-date {
     font-size: 8pt;
-    color: #6b7280;
+    color: #6b7280 !important;
 }
 
 .row-label {
@@ -121,11 +110,16 @@ export const printStyles = `
 
 .totals-row th,
 .totals-row td {
-    background-color: #eef3f8;
+    background-color: #eef3f8 !important;
     font-weight: 700;
 }
 
 .print-cross-table {
     font-size: 9.5pt;
+}
+
+.print-cross-table th,
+.print-cross-table td {
+    padding: 5px 7px;
 }
 </style>

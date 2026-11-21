@@ -1,6 +1,7 @@
 <script setup>
-import { computed, onMounted, ref, watch, createApp, nextTick } from 'vue';
-import FinanceCrossTablePrint, { printStyles } from '@/domains/billing/components/finances/FinanceCrossTablePrint.vue';
+import { computed, onMounted, ref, watch } from 'vue';
+import FinanceCrossTablePrint from '@/domains/billing/components/finances/FinanceCrossTablePrint.vue';
+import { usePrinter } from '@/shared/print/usePrinter.js';
 import FinanceCrossTableDayDialog from '@/domains/billing/components/finances/FinanceCrossTableDayDialog.vue';
 import FinanceCrossTablePeriodDetails from '@/domains/billing/components/finances/FinanceCrossTablePeriodDetails.vue';
 import Button from 'primevue/button';
@@ -18,56 +19,12 @@ const props = defineProps({
 
 const { crossTableData, crossTablePeriodOverview, loading, fetchCrossTable, fetchCrossTablePeriodOverview } = useFinances();
 
-const printRef = ref(null);
+const { printComponent } = usePrinter();
 const dayDialogVisible = ref(false);
 const selectedDay = ref('');
 
-const printCrossTable = async () => {
-    const headerHtml = props.printerHeader || '';
-    const features = 'width=1200,height=900,scrollbars=yes';
-    const target = window.open('', '_blank', features);
-
-    if (!target) {
-        window.print();
-        return;
-    }
-
-    target.document.open();
-    target.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${props.title || ''}</title></head><body></body></html>`);
-    target.document.close();
-
-    // copy styles from current document
-    const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'));
-    styles.forEach((node) => target.document.head.appendChild(node.cloneNode(true)));
-
-    // inject minimal print styles ensuring landscape plus component-specific styles
-    const styleEl = target.document.createElement('style');
-    styleEl.type = 'text/css';
-    styleEl.textContent = `@page { size: landscape; margin: 15mm; } body { background:#fff; color:#111827; }\n` + (printStyles || '');
-    target.document.head.appendChild(styleEl);
-
-    const container = target.document.createElement('div');
-    target.document.body.appendChild(container);
-
-    const app = createApp(FinanceCrossTablePrint, { crossTableData: crossTableData.value, headerHtml, title: props.title });
-    app.mount(container);
-
-    await nextTick();
-
-    // wait for a short time to ensure resources (fonts/images) are ready
-    setTimeout(() => {
-        try {
-            target.focus();
-            target.print();
-        } catch (_e) {
-            /* ignore */
-        }
-        try {
-            target.close();
-        } catch (__e) {
-            /* ignore */
-        }
-    }, 400);
+const printCrossTable = () => {
+    printComponent(FinanceCrossTablePrint, { crossTableData: crossTableData.value, headerHtml: props.printerHeader, title: props.title }, { orientation: 'landscape' });
 };
 
 const currentMonth = new Date();
@@ -230,7 +187,7 @@ const openDayOverview = (week, weekday) => {
                     <div v-for="index in 5" :key="index" class="h-12 animate-pulse rounded-xl bg-surface-100 dark:bg-surface-700/50"></div>
                 </div>
 
-                <div v-else ref="printRef" class="overflow-x-auto">
+                <div v-else class="overflow-x-auto">
                     <table class="min-w-full border-separate border-spacing-0 overflow-hidden rounded-2xl text-sm">
                         <thead>
                             <tr>

@@ -20,7 +20,7 @@ const watermarkStyle = computed(() => ({
 </script>
 
 <template>
-    <div class="print-a4-page" :class="[`print-a4-page--${orientation}`]" :style="watermarkStyle">
+    <div class="print-a4-page" :class="[`print-a4-page--${orientation}`]" :data-print-format="orientation" :style="watermarkStyle">
         <div v-if="watermark" class="print-a4-page__watermark" aria-hidden="true" />
         <div class="print-a4-page__inner">
             <slot name="header" />

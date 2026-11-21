@@ -7,7 +7,7 @@ import DataTable from 'primevue/datatable';
 import AppDialog from '@/app/components/layout/AppDialog.vue';
 import Tag from 'primevue/tag';
 import { buildPrintHtmlDocument, buildPrintTitleBandHtml } from '@/shared/print/printDocumentStyles.js';
-import { openPrintWindow } from '@/domains/reporting/model/reportPrint.js';
+import { openPrintHtmlPreview } from '@/shared/print/printPreview.js';
 
 const props = defineProps({
     title: { type: String, default: 'Rapports périodiques par médecin' },
@@ -301,7 +301,7 @@ function printDoctorRow(row) {
         </table>
     `;
 
-    openPrintWindow(
+    openPrintHtmlPreview(
         buildPrintHtmlDocument({
             title: `Rapport ${row.name || ''}`,
             body
@@ -390,7 +390,7 @@ function printSummary() {
     `;
 
     printDialogVisible.value = false;
-    openPrintWindow(buildPrintHtmlDocument({ title: 'Rapport de service', body }));
+    openPrintHtmlPreview(buildPrintHtmlDocument({ title: 'Rapport de service', body }));
 }
 
 function printAllActs() {
@@ -535,7 +535,7 @@ function printAllActs() {
     `;
 
     printDialogVisible.value = false;
-    openPrintWindow(buildPrintHtmlDocument({ title: "Rapport d'activités", body }));
+    openPrintHtmlPreview(buildPrintHtmlDocument({ title: "Rapport d'activités", body }));
 }
 </script>
 

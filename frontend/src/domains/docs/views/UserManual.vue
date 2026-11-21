@@ -2,6 +2,7 @@
 import PageHeader from '@/app/components/layout/PageHeader.vue';
 import PageShell from '@/app/components/layout/PageShell.vue';
 import { useAuthStore } from '@/domains/auth/stores/auth.js';
+import { openPrintPreview } from '@/shared/print/printPreview.js';
 import Button from 'primevue/button';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import AppendixReference from '@/domains/docs/views/chapters/AppendixReference.vue';
@@ -33,6 +34,7 @@ const activeChapterId = computed(() => {
 });
 
 const navTree = ref(null);
+const manualDocument = ref(null);
 
 watch(activeId, async () => {
     await nextTick();
@@ -71,7 +73,18 @@ function goTo(id) {
 }
 
 function exportPdf() {
-    window.print();
+    if (!manualDocument.value) return;
+    const article = manualDocument.value.cloneNode(true);
+    openPrintPreview({
+        title: 'Manuel d’utilisation',
+        mount(doc) {
+            doc.body.classList.add('manual-open');
+            const manual = doc.createElement('div');
+            manual.className = 'manual manual--print-preview';
+            manual.appendChild(article);
+            doc.body.appendChild(manual);
+        }
+    });
 }
 
 watch(audience, async () => {
@@ -131,7 +144,7 @@ onBeforeUnmount(() => {
                 <button type="button" class="m-nav__print" @click="exportPdf"><i class="pi pi-print" aria-hidden="true"></i>Exporter en PDF</button>
             </aside>
 
-            <article class="m-doc">
+            <article ref="manualDocument" class="m-doc">
                 <header class="m-cover">
                     <div class="m-cover__band" aria-hidden="true"></div>
                     <p class="m-cover__brand">DentalSoft · Gestion de cabinet dentaire</p>

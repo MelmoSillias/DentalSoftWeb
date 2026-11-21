@@ -1,4 +1,5 @@
 import { buildPrintHtmlDocument, buildPrintTitleBandHtml } from '@/shared/print/printDocumentStyles.js';
+import { openPrintHtmlPreview } from '@/shared/print/printPreview.js';
 
 export function escapeHtml(text) {
     return String(text ?? '')
@@ -21,19 +22,6 @@ export function formatPeriodSubtitle(periodLabel) {
     return `Date : ${label}`;
 }
 
-export function openPrintWindow(html, delay = 500) {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return false;
-
-    printWindow.document.write(html);
-    printWindow.document.close();
-    setTimeout(() => {
-        printWindow.focus();
-        printWindow.print();
-        printWindow.close();
-    }, delay);
-    return true;
-}
 
 export function buildKeyValueTableHtml(items, { columns = ['Indicateur', 'Valeur'], emptyLabel = 'Aucune donnée.' } = {}) {
     const rows = (items || [])
@@ -114,5 +102,5 @@ export function printReport({ title = 'Rapport', periodLabel = '', sections = []
         ${extraBody}
     `;
 
-    return openPrintWindow(buildPrintHtmlDocument({ title, body, landscape }));
+    openPrintHtmlPreview(buildPrintHtmlDocument({ title, body, landscape }));
 }
