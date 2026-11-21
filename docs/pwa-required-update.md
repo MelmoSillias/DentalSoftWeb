@@ -43,10 +43,11 @@ npm --prefix frontend ci
 npm --prefix frontend run build
 ```
 
-`docker/frontend/Dockerfile` capture les métadonnées dans une étape intermédiaire `release-metadata`, **avant** de copier les sources vers l'étape applicative. Son dockerignore autorise le `.git` racine si présent. Il faut un contexte à la racine du dépôt et Git disponible dans cette étape (installé par l'image). Si le clone est superficiel (notamment avec Dokploy), l'étape complète automatiquement son historique depuis `origin` avant la capture, sans déplacer `HEAD` ni modifier les sources. `.git` n'est jamais copié dans nginx. Les métadonnées sont transférées dans `/pwa-release.json` puis lues via `PWA_RELEASE_FILE` au build Vite.
+`docker/frontend/Dockerfile` capture les métadonnées dans une étape intermédiaire `release-metadata` pour les deux frontends, **avant** de copier les sources vers l'étape applicative. Son dockerignore autorise le `.git` racine si présent. Il faut un contexte à la racine du dépôt et Git disponible dans cette étape (installé par l'image). Si le clone est superficiel (notamment avec Dokploy), l'étape complète automatiquement son historique depuis `origin` avant la capture, sans déplacer `HEAD` ni modifier les sources. `.git` n'est jamais copié dans nginx. Les métadonnées sont transférées dans `/pwa-release.json` puis lues via `PWA_RELEASE_FILE` au build Vite.
 
 ```sh
 docker build -f docker/frontend/Dockerfile --build-arg CABINET=default -t dentalsoft-frontend .
+docker build -f docker/frontend/Dockerfile --build-arg FRONTEND_DIR=patient-frontend --build-arg CABINET=orodent -t dentalsoft-frontendpatient .
 ```
 
 Le contexte `.git` peut être volumineux et contenir des informations privées : n'exposer ni contexte ni cache intermédiaire publiquement. Un contexte BuildKit Git peut retirer `.git` ; dans ce cas utiliser la méthode suivante, ou configurer sa conservation. Un worktree avec un fichier `.git` pointant hors contexte ne fonctionne pas automatiquement.

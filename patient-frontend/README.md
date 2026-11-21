@@ -122,14 +122,14 @@ node scripts/pwa-release.mjs --base64
 npm run pwa:release
 ```
 
-**Le parent gère Docker et doit capturer les métadonnées avant d'exclure `.git` du contexte** avec `patient-frontend/scripts/pwa-release.mjs --base64`. Le build accepte :
+Le Dockerfile partagé capture les métadonnées du portail depuis `.git` dans une étape intermédiaire. Si `.git` est absent du contexte Docker, capturer les métadonnées depuis le checkout complet à déployer avec `patient-frontend/scripts/pwa-release.mjs --base64`. Le build accepte :
 
 - `PWA_RELEASE_METADATA` : JSON de capture encodé en base64, utilisable sans `.git` ;
 - `PWA_RELEASE_REVISION` : révision source attendue, vérifiée si fournie ;
 - `PWA_RELEASE_FILE` : chemin vers une capture JSON, prioritaire dans le plugin de build, également validée ;
 - `PWA_BUILD_ID` : identifiant de build optionnel lors de la capture depuis l'historique.
 
-Sans capture fournie, le build lit l'historique complet disponible. Le mode PWA désactivé continue d'émettre les métadonnées de build, sans SW ni manifest. Aucun fichier Docker/racine n'est modifié ici.
+Sans capture fournie, le build lit l'historique complet disponible. Le mode PWA désactivé continue d'émettre les métadonnées de build, sans SW ni manifest.
 
 Côté serveur parent : publier `release.json`, `sw.js` et `pwa-release-worker.js` à leurs vraies URLs, sans fallback HTML ni cache longue durée (recommandation : `Cache-Control: no-store` pour ces fichiers et `index.html`). Les assets hashés peuvent être immutables. Déployer le shell, ses assets et les métadonnées de façon cohérente, conserver les assets nécessaires aux anciens onglets et utiliser une origine patient distincte du cabinet : SW, CacheStorage et stockage navigateur sont liés à l'origine/scope.
 
