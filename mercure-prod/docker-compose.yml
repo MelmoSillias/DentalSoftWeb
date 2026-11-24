@@ -1,5 +1,5 @@
-# Référence alignée sur l'exemple officiel dunglas/mercure, adaptée DentalSoft.
-# Usage local : docker compose -f mercure-prod/docker-compose.yml up -d
+# Usage local : fournir les deux secrets JWT, puis
+# docker compose -f mercure-prod/docker-compose.yml up -d --build
 
 services:
   mercure:
@@ -9,12 +9,14 @@ services:
     restart: unless-stopped
     environment:
       SERVER_NAME: ":80"
-      MERCURE_PUBLISHER_JWT_KEY: "${MERCURE_PUBLISHER_JWT_KEY:-!ChangeMe!}"
-      MERCURE_SUBSCRIBER_JWT_KEY: "${MERCURE_SUBSCRIBER_JWT_KEY:-!ChangeMe!}"
-      MERCURE_CORS_ORIGINS: "${MERCURE_CORS_ORIGINS:-https://admin.cabinetdentaireousmanesow.cloud https://admin.mondentiste-mali.com}"
-      TRUSTED_PROXIES: "private_ranges"
+      MERCURE_PUBLISHER_JWT_KEY: "${MERCURE_PUBLISHER_JWT_KEY:?Renseigner MERCURE_PUBLISHER_JWT_KEY}"
+      MERCURE_SUBSCRIBER_JWT_KEY: "${MERCURE_SUBSCRIBER_JWT_KEY:?Renseigner MERCURE_SUBSCRIBER_JWT_KEY}"
+      MERCURE_CORS_ORIGINS: "${MERCURE_CORS_ORIGINS:-}"
+      MERCURE_EXTRA_DIRECTIVES: "${MERCURE_EXTRA_DIRECTIVES:-}"
+      MERCURE_HISTORY_SIZE: "${MERCURE_HISTORY_SIZE:-10000}"
+      TRUSTED_PROXIES: "${TRUSTED_PROXIES:-private_ranges}"
     ports:
-      - "3000:80"
+      - "127.0.0.1:${MERCURE_PORT:-3000}:80"
     volumes:
       - mercure_data:/data
       - mercure_config:/config

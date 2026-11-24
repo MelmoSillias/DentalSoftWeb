@@ -1,0 +1,23 @@
+{
+    auto_https off
+    servers {
+        trusted_proxies static {$TRUSTED_PROXIES:private_ranges}
+    }
+}
+
+{$SERVER_NAME::80} {
+    mercure {
+        protocol_version_compatibility 8
+        publisher_jwt {env.MERCURE_PUBLISHER_JWT_KEY} HS256
+        subscriber_jwt {env.MERCURE_SUBSCRIBER_JWT_KEY} HS256
+        transport bolt {
+            path /data/mercure.db
+            size {$MERCURE_HISTORY_SIZE:10000}
+            cleanup_frequency 0.3
+        }
+        {$MERCURE_EXTRA_DIRECTIVES}
+    }
+    # Ne pas compresser le SSE ni journaliser les JWT transmis dans l'URL.
+    respond /healthz 200
+    respond "Not Found" 404
+}

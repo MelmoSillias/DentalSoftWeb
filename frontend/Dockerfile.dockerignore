@@ -1,0 +1,17 @@
+*
+!frontend/
+!frontend/**
+!patient-frontend/
+!patient-frontend/**
+!docker/frontend/prepare-pwa-history.sh
+**/node_modules
+**/dist
+**/.git
+# Uniquement utilisé dans l'étape intermédiaire release-metadata.
+!.git/
+!.git/**
+**/.env
+**/.env.*
+**/*.log
+**/*.rar
+**/coverage
