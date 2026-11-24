@@ -1,10 +1,11 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
+import { format, parseISO } from 'date-fns';
 import AppDialog from '@/app/components/layout/AppDialog.vue';
 import InputText from 'primevue/inputtext';
 import InputNumber from 'primevue/inputnumber';
 import Select from 'primevue/select';
-import _Calendar from 'primevue/calendar';
+import DatePicker from 'primevue/datepicker';
 import MultiSelect from 'primevue/multiselect';
 import FileUpload from 'primevue/fileupload';
 import EmployeeSalarySection from '@/domains/workforce/components/EmployeeSalarySection.vue';
@@ -29,7 +30,7 @@ const typeContratOptions = [
     { label: 'Prestataire', value: 'Prestataire' }
 ];
 
-const daysOptions = [
+const weekdays = [
     { label: 'Lundi', value: 'Lundi' },
     { label: 'Mardi', value: 'Mardi' },
     { label: 'Mercredi', value: 'Mercredi' },
@@ -38,90 +39,52 @@ const daysOptions = [
     { label: 'Samedi', value: 'Samedi' }
 ];
 
-const form = ref({
-    nom: '',
-    prenom: '',
-    telephone: '',
-    adresse: '',
-    titre: '',
-    email: '',
-    fonction: '',
-    type: 'Medecin',
-    dateEmbauche: new Date(),
-    typeContrat: 'CDI',
-    dureeContrat: null,
-    typeSalaire: 'fixe',
-    valeurSalaire: 100000,
-    frequencePaiement: 'mensuel',
-    typePrime: 'aucune',
-    valeurPrime: null,
-    comingDays: []
-});
+const daysOptions = computed(() => (props.mode === 'edit' && props.employee?.comingDays?.includes('Dimanche') ? [...weekdays, { label: 'Dimanche', value: 'Dimanche' }] : weekdays));
+const form = ref({});
 
 const files = ref([]);
 
 const dialogTitle = computed(() => (props.mode === 'edit' ? 'Modifier un employé' : 'Ajouter un employé'));
 
-const hydrateForm = (employee) => {
+const hydrateForm = (employee, mode) => {
     form.value = {
         nom: employee?.nom || '',
         prenom: employee?.prenom || '',
         telephone: employee?.telephone || '',
         adresse: employee?.adresse || '',
-        titre: employee?.titre || ((employee?.type || 'Medecin') === 'Medecin' ? 'Dr Chirurgien Dentiste' : ''),
-        email: employee?.email || employee?.mail || '',
-        fonction: employee?.fonction || employee?.poste || '',
+        titre: employee?.titre ?? (mode === 'create' ? 'Dr Chirurgien Dentiste' : ''),
+        email: employee?.email ?? employee?.mail ?? '',
+        fonction: employee?.fonction ?? employee?.poste ?? '',
         type: employee?.type || 'Medecin',
-        dateEmbauche: employee?.dateEmbauche ? new Date(employee.dateEmbauche) : null,
+        dateEmbauche: employee?.dateEmbauche ? parseISO(employee.dateEmbauche) : null,
         typeContrat: (employee?.typeContrat === 'Freelance' ? 'Prestataire' : employee?.typeContrat) || 'CDI',
         dureeContrat: employee?.dureeContrat ?? null,
-        typeSalaire: employee?.typeSalaire || 'fixe',
+        typeSalaire: employee?.typeSalaire || (mode === 'edit' ? 'non_defini' : 'fixe'),
         valeurSalaire: employee?.valeurSalaire ?? null,
         frequencePaiement: employee?.frequencePaiement || 'mensuel',
         typePrime: employee?.typePrime || 'aucune',
         valeurPrime: employee?.valeurPrime ?? null,
-        comingDays: Array.isArray(employee?.comingDays) ? employee.comingDays.filter((day) => day !== 'Dimanche') : []
+        comingDays: Array.isArray(employee?.comingDays) ? [...employee.comingDays] : []
     };
     files.value = [];
 };
 
-watch(
-    () => form.value.type,
-    (value) => {
-        if (value === 'Medecin' && !form.value.titre) form.value.titre = 'Dr Chirurgien Dentiste';
-        if (value !== 'Medecin' && form.value.typeSalaire === 'pourcentage') {
-            form.value.typeSalaire = 'fixe';
-        }
-    }
-);
+const onTypeChange = (type) => {
+    if (type === 'Medecin' && !form.value.titre) form.value.titre = 'Dr Chirurgien Dentiste';
+    if (type !== 'Medecin' && form.value.typeSalaire === 'pourcentage') form.value.typeSalaire = 'fixe';
+};
+
+const onContractChange = (type) => {
+    if (type === 'CDI') form.value.dureeContrat = null;
+    else if (!form.value.dureeContrat) form.value.dureeContrat = 3;
+};
 
 watch(
-    () => form.value.typeContrat,
-    (value) => {
-        if (value === 'CDI') {
-            form.value.dureeContrat = null;
-            return;
-        }
-
-        if (!form.value.dureeContrat) {
-            form.value.dureeContrat = 3;
-        }
-    }
-);
-
-watch(
-    () => props.employee,
-    (value) => hydrateForm(value),
+    [() => props.visible, () => props.mode, () => props.employee],
+    ([visible, mode, employee]) => {
+        if (visible) hydrateForm(mode === 'edit' ? employee : null, mode);
+    },
     { immediate: true }
-);
-
-watch(
-    () => props.visible,
-    (visible) => {
-        if (visible && props.mode === 'create') {
-            hydrateForm({});
-        }
-    }
 );
 
 const onFilesSelect = (event) => {
@@ -146,7 +109,7 @@ const buildFormData = () => {
             return;
         }
         if (value instanceof Date) {
-            formData.append(key, value.toISOString().substring(0, 10));
+            formData.append(key, format(value, 'yyyy-MM-dd'));
             return;
         }
         // Envoyer aussi les valeurs nulles/vides : en édition, elles doivent
@@ -219,7 +182,7 @@ const closeDialog = () => {
                 <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="space-y-1">
                         <label class="text-sm font-medium">Type de poste <span class="text-red-500">*</span></label>
-                        <Select v-model="form.type" :options="typeOptions" optionLabel="label" optionValue="value" class="w-full" />
+                        <Select v-model="form.type" :options="typeOptions" optionLabel="label" optionValue="value" class="w-full" @update:modelValue="onTypeChange" />
                     </div>
                     <div class="space-y-1">
                         <label class="text-sm font-medium">Adresse</label>
@@ -239,7 +202,7 @@ const closeDialog = () => {
                     </div>
                     <div class="space-y-1">
                         <label class="text-sm font-medium">Type de contrat</label>
-                        <Select v-model="form.typeContrat" :options="typeContratOptions" optionLabel="label" optionValue="value" class="w-full" />
+                        <Select v-model="form.typeContrat" :options="typeContratOptions" optionLabel="label" optionValue="value" class="w-full" @update:modelValue="onContractChange" />
                     </div>
                     <div class="space-y-1">
                         <label class="text-sm font-medium">Durée du contrat (mois)</label>
@@ -271,8 +234,14 @@ const closeDialog = () => {
                 <div class="px-4 py-3 border-b border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-900/40">
                     <h6 class="font-semibold flex items-center gap-2 mb-0"><i class="pi pi-file text-primary-500"></i> Documents</h6>
                 </div>
-                <div class="p-4">
-                    <FileUpload name="administrativeFiles[]" :multiple="true" :customUpload="true" :auto="false" @select="onFilesSelect" @clear="onFilesClear" chooseLabel="Choisir" uploadLabel="Ajouter" cancelLabel="Vider" />
+                <div class="p-4 space-y-3">
+                    <div v-if="mode === 'edit' && employee?.administrativeFiles?.length">
+                        <p class="text-sm font-medium mb-1">Documents enregistrés</p>
+                        <ul class="text-sm text-surface-600 dark:text-surface-300 space-y-1">
+                            <li v-for="file in employee.administrativeFiles" :key="file" class="break-all">{{ file.split('/').pop() }}</li>
+                        </ul>
+                    </div>
+                    <FileUpload name="administrativeFiles[]" :multiple="true" :customUpload="true" :auto="false" @select="onFilesSelect" @remove="onFilesSelect" @clear="onFilesClear" chooseLabel="Choisir" uploadLabel="Ajouter" cancelLabel="Vider" />
                 </div>
             </section>
         </div>

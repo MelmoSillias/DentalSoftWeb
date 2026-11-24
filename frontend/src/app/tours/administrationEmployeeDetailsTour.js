@@ -55,8 +55,8 @@ function buildOverviewSteps(ctx) {
         {
             group: GROUP,
             target: '[data-tour="admin-employee-details.summary"]',
-            title: 'Cartes de synthese',
-            content: 'Les cartes de l onglet Informations personnelles affichent un resume du profil, du type et de la remuneration actuelle.'
+            title: 'Synthèse du profil',
+            content: 'La synthèse de l’onglet Informations personnelles regroupe le matricule, le type de poste et la rémunération actuelle.'
         }
     ]);
 }
@@ -96,7 +96,7 @@ export const administrationEmployeeDetailsRegistry = createTourRegistry(GROUP, T
                 group: GROUP,
                 target: '[data-tour="admin-employee-details.summary"]',
                 title: 'Verifier le profil',
-                content: 'Les cartes de synthese permettent de confirmer le contexte avant d archiver un document.'
+                content: 'Vérifiez le matricule et le type de poste dans la synthèse du profil avant d’ajouter un document.'
             }
         ])
 });

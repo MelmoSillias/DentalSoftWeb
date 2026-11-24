@@ -70,7 +70,7 @@ node frontend/scripts/build-pwa-docker.mjs --build-arg CABINET=default -t dental
 
 Il sélectionne `docker/frontend/Dockerfile`, capture avant le lancement de Docker et ajoute `PWA_RELEASE_METADATA` et `PWA_RELEASE_REVISION`. Dans Dokploy : utiliser ce script dans la préparation/build personnalisé avec accès Git, ou capturer dans la CI puis renseigner les arguments de build. Une variable d'environnement Dokploy n'est pas automatiquement un `ARG` Docker : vérifier la configuration effective du builder. Le Compose transmet `PWA_RELEASE_METADATA` et `PWA_RELEASE_REVISION` aux deux builds. Ces valeurs doivent être régénérées pour chaque checkout déployé ; ne pas laisser une ancienne capture dans les variables Dokploy.
 
-`frontend/Dockerfile` (autre chemin historique, contexte racine lui aussi) accepte les mêmes arguments ; comme il ne copie pas `.git`, la capture externe est nécessaire. Ne pas fournir uniquement le hash courant ou le trailer courant : cela ne suffit pas à reconstruire les obligations précédentes.
+`frontend/Dockerfile` (déploiement individuel, contexte racine lui aussi) utilise la même capture intermédiaire et accepte les mêmes arguments pour les deux frontends. Ne pas fournir uniquement le hash courant ou le trailer courant : cela ne suffit pas à reconstruire les obligations précédentes.
 
 ### Historique shallow et sécurité du déploiement
 

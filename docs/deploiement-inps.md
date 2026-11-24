@@ -40,7 +40,7 @@ php bin/console cache:warmup --env=prod
 php bin/console app:doctrine:ensure-proxies --env=prod
 ```
 
-Sur Dokploy, le [script de démarrage](../api/docker/entrypoint.sh) exécute déjà migration et préparation du cache lorsque `RUN_MIGRATIONS=1` (valeur par défaut). Vérifier les journaux et le statut de migration. Un échec de migration bloque désormais le démarrage ; ne pas le contourner en désactivant les migrations sur une base incomplète.
+Sur Dokploy, le [script de démarrage](../api/docker/entrypoint.dokploy.sh) exécute déjà migration et préparation du cache lorsque `RUN_MIGRATIONS=1` (valeur par défaut). Vérifier les journaux et le statut de migration. Un échec de migration bloque désormais le démarrage ; ne pas le contourner en désactivant les migrations sur une base incomplète.
 
 Ne pas utiliser `doctrine:schema:update --force` à la place des migrations. La migration cible MariaDB/MySQL, comme les déploiements existants. Ses modifications DDL ne sont pas transactionnelles : en cas d’échec partiel, inspecter la base avant toute reprise.
 

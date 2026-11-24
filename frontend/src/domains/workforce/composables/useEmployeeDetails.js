@@ -3,12 +3,12 @@ import { useAuthStore } from '@/domains/auth/stores/auth.js';
 import { apiPrefix } from '@/config.js';
 import http from '@/shared/api/http.js';
 
-const employee = ref(null);
-const loading = ref(false);
-const error = ref(null);
-const auth = useAuthStore();
-
 export function useEmployeeDetails() {
+    const employee = ref(null);
+    const loading = ref(false);
+    const error = ref(null);
+    const auth = useAuthStore();
+
     function buildAuthHeaders(includeJson = false) {
         const token = auth?.token || localStorage.getItem('token') || localStorage.getItem('authToken');
         const headers = {};

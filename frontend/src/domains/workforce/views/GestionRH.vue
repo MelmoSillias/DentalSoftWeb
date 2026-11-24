@@ -29,6 +29,7 @@ import DailyPayrollPaymentDialog from '@/domains/workforce/components/DailyPayro
 import PrintDataTablePage from '@/shared/print/components/PrintDataTablePage.vue';
 import PrintPayrollSlipPage from '@/shared/print/components/PrintPayrollSlipPage.vue';
 import { useEmployees } from '@/domains/workforce/composables/useEmployees.js';
+import { useEmployeeDetails } from '@/domains/workforce/composables/useEmployeeDetails.js';
 import { useUsers } from '@/domains/settings/composables/useUsers.js';
 import { useLeaves } from '@/domains/scheduling/composables/useLeaves.js';
 import { usePayrolls } from '@/domains/workforce/composables/usePayrolls.js';
@@ -135,6 +136,8 @@ const leaveRange = ref([]);
 const formVisible = ref(false);
 const formMode = ref('create');
 const currentEmployee = ref(null);
+const employeeEditLoadingId = ref(null);
+const { fetchEmployee, error: employeeDetailsError } = useEmployeeDetails();
 const showTrashDialog = ref(false);
 const trashEmployees = ref([]);
 const trashLoading = ref(false);
@@ -272,14 +275,30 @@ const resetFilters = () => {
 };
 
 const openCreateEmployee = () => {
+    if (employeeEditLoadingId.value !== null) return;
     formMode.value = 'create';
     currentEmployee.value = null;
     formVisible.value = true;
 };
 
-const openEditEmployee = (employee) => {
+const openEditEmployee = async (employee) => {
+    if (!employee?.id || employeeEditLoadingId.value !== null) return;
+
+    let details = employee;
+    if (!guidedTourDemoActive) {
+        employeeEditLoadingId.value = employee.id;
+        details = await fetchEmployee(employee.id);
+        if (employeeEditLoadingId.value !== employee.id) return;
+        employeeEditLoadingId.value = null;
+        if (activeTab.value !== 'employees') return;
+        if (!details?.id) {
+            toast.add({ severity: 'error', summary: 'Fiche employé indisponible', detail: employeeDetailsError.value || 'Impossible de charger les informations de cet employé.', life: 4000 });
+            return;
+        }
+    }
+
     formMode.value = 'edit';
-    currentEmployee.value = employee;
+    currentEmployee.value = details;
     formVisible.value = true;
 };
 
@@ -654,6 +673,7 @@ const closeRhTourDialogs = () => {
     accountDialogVisible.value = false;
     dailyPayrollDialogVisible.value = false;
     formVisible.value = false;
+    employeeEditLoadingId.value = null;
     leaveDialogVisible.value = false;
     payrollDialogVisible.value = false;
     payrollDetailVisible.value = false;
@@ -683,6 +703,7 @@ const cleanupGuidedTourDemo = async () => {
 
 useGuidedTour({
     routeName: 'administration-gestionrh',
+    isLoading: () => employeeEditLoadingId.value !== null,
     prepareDemo: prepareGuidedTourDemo,
     cleanupDemo: cleanupGuidedTourDemo,
     getStepContext: () => ({
@@ -690,7 +711,7 @@ useGuidedTour({
         openCreateDialog: async () => openCreateEmployee(),
         openEditDialog: async () => {
             if (filteredEmployees.value.length) {
-                openEditEmployee(filteredEmployees.value[0]);
+                await openEditEmployee(filteredEmployees.value[0]);
             }
         },
         expandGroups: async () => undefined,
@@ -760,7 +781,7 @@ onBeforeUnmount(() => {
             <PageHeader title="Gestion RH" subtitle="Gestion des employes, paie et conges." icon="pi pi-users" tour-id="admin-rh.header" :breadcrumb-items="breadcrumbItems" :breadcrumb-home="breadcrumbHome">
                 <template #actions>
                     <Button v-if="activeTab === 'employees'" icon="pi pi-trash" label="Corbeille" severity="secondary" outlined @click="openTrashDialog" />
-                    <Button v-if="activeTab === 'employees'" icon="pi pi-plus" label="Nouvel employe" @click="openCreateEmployee" />
+                    <Button v-if="activeTab === 'employees'" icon="pi pi-plus" label="Nouvel employe" :disabled="employeeEditLoadingId !== null" @click="openCreateEmployee" />
                     <Button v-if="activeTab === 'payroll'" icon="pi pi-wallet" label="Ajouter un paiement" @click="openPayrollDialog()" />
                     <Button v-if="activeTab === 'leaves'" icon="pi pi-calendar-plus" label="Ajouter un conge" @click="openCreateLeave" />
                 </template>
@@ -853,7 +874,16 @@ onBeforeUnmount(() => {
                                     <template #body="{ data }">
                                         <div data-tour="admin-rh.actions" class="flex items-center gap-2">
                                             <Button icon="pi pi-eye" text rounded severity="secondary" @click="openDetails(data)" />
-                                            <Button icon="pi pi-pen-to-square" text rounded severity="info" @click="openEditEmployee(data)" />
+                                            <Button
+                                                icon="pi pi-pen-to-square"
+                                                text
+                                                rounded
+                                                severity="info"
+                                                aria-label="Modifier l’employé"
+                                                :loading="employeeEditLoadingId === data.id"
+                                                :disabled="employeeEditLoadingId !== null"
+                                                @click="openEditEmployee(data)"
+                                            />
                                             <Button
                                                 v-if="data.user || suggestRoleFromEmployeeType(data.type)"
                                                 :icon="data.user ? 'pi pi-user-edit' : 'pi pi-user-plus'"

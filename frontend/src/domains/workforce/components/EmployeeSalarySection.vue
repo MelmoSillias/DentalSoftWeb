@@ -13,7 +13,8 @@ const props = defineProps({
     compact: {
         type: Boolean,
         default: false
-    }
+    },
+    flat: Boolean
 });
 
 const frequenceOptions = [
@@ -130,11 +131,11 @@ watch(
             </div>
         </div>
 
-        <div class="rounded-xl border border-surface-200 dark:border-surface-700 p-4 bg-surface-50/60 dark:bg-surface-900/30">
-            <h4 class="text-sm font-semibold mb-3 flex items-center gap-2">
-                <i class="pi pi-star text-amber-500"></i>
+        <div :class="flat ? '' : 'rounded-xl border border-surface-200 dark:border-surface-700 p-4 bg-surface-50/60 dark:bg-surface-900/30'">
+            <component :is="flat ? 'h5' : 'h4'" class="text-sm font-semibold mb-3 flex items-center gap-2">
+                <i v-if="!flat" class="pi pi-star text-amber-500" aria-hidden="true"></i>
                 Prime
-            </h4>
+            </component>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="space-y-1">
                     <label class="text-sm font-medium">Type de prime</label>

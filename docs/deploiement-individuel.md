@@ -1,19 +1,21 @@
-# Déploiement Dokploy — DentalSoft (Admin + API)
+# Déploiement Dokploy — services individuels DentalSoft
 
-Guide de configuration pour déployer les admins Vue et les APIs Symfony depuis le monorepo `DentalSoftWeb`.
+Guide pour déployer séparément l'interface cabinet, le portail patient, l'API Symfony, MariaDB et Mercure, sans passer au [Compose complet](dokploy-env.template.md).
 Les Dockerfiles ne sont utilisés qu'en production sur le serveur — le développement local reste inchangé (Symfony CLI, `npm run dev`, MariaDB local).
 
 ---
 
-## Applications Dokploy (5 déploiements minimum)
+## Services Dokploy
 
-| Application | Root directory | Domaine | Spécificité |
-|-------------|----------------|---------|-------------|
-| Admin CDOS | `frontend/` | `admin.cabinetdentaireousmanesow.cloud` | Build arg `CABINET=cdos` |
-| Admin Mondentiste | `frontend/` | `admin.mondentiste-mali.com` | Build arg `CABINET=mondentiste` |
-| API CDOS | `api/` | `api.cabinetdentaireousmanesow.cloud` | Env cdos — worker SMS/Messenger **embarqué** par défaut |
-| API Mondentiste | `api/` | `api.mondentiste-mali.com` | Env mondentiste — worker SMS/Messenger **embarqué** par défaut |
-| **Mercure Hub** | `mercure-prod/` | `mercure.cabinetdentaireousmanesow.cloud` | Hub temps réel partagé (SSE) |
+| Service | Contexte Docker | Dockerfile (par rapport au contexte) | Domaine / accès |
+|---------|-----------------|------------------------------------|-----------------|
+| Interface cabinet | `.` | `frontend/Dockerfile` | Domaine admin du cabinet |
+| Portail patient | `.` | `frontend/Dockerfile` (`FRONTEND_DIR=patient-frontend`) | Domaine patient du cabinet |
+| API | `api/` | `Dockerfile` | Domaine API du cabinet |
+| MariaDB | — | Service MariaDB natif Dokploy | Hôte interne distinct, sans port public |
+| Mercure | `mercure-prod/` | `Dockerfile` | Domaine HTTPS du hub (éventuellement partagé) |
+
+Choisir un `CABINET` par frontend, par exemple `cdos` ou `mondentiste`. Chaque cabinet conserve sa base, ses volumes API et ses domaines.
 
 > Les services `worker-*` séparés sont **optionnels** (scaling). Par défaut, FrankenPHP + poll SMS + `messenger:consume` tournent dans le **même** conteneur API (`ENABLE_EMBEDDED_WORKER=1`).
 
@@ -23,14 +25,7 @@ Les Dockerfiles ne sont utilisés qu'en production sur le serveur — le dévelo
 
 ### Build
 
-- **Dockerfile path :** `frontend/Dockerfile`
-- **Build Path / Root Directory :** `.` (racine du monorepo) **ou** `frontend`
-- **Docker Context Path :** `.`
-- **Build argument :** `CABINET` = `cdos` ou `mondentiste`
-- **Port exposé :** 80
-
-> Le Dockerfile est écrit pour un build depuis la **racine du monorepo** (`frontend/package.json`, etc.).
-> Si tu mets **Build Path** = `frontend`, utilise plutôt `Dockerfile` comme chemin et adapte si besoin.
+Les deux applications utilisent `frontend/Dockerfile` avec le **contexte à la racine du dépôt**. Elles exposent le port `80` et fournissent un contrôle de santé HTTP sur `/healthz`.
 
 Dokploy → Service → Build :
 
@@ -40,19 +35,16 @@ Dokploy → Service → Build :
 | Dockerfile Path | `frontend/Dockerfile` |
 | Docker Context Path | `.` |
 
-Dokploy → Application → Build → Build Args :
+Dans **Build Args**, renseigner `CABINET=cdos` (ou `CABINET=mondentiste`). Pour le portail patient uniquement, ajouter `FRONTEND_DIR=patient-frontend` ; l'interface cabinet garde la valeur par défaut `frontend`.
 
-```
-CABINET=cdos
-```
-
-ou
-
-```
-CABINET=mondentiste
+```sh
+docker build -f frontend/Dockerfile --build-arg CABINET=cdos -t dentalsoft-admin-cdos .
+docker build -f frontend/Dockerfile --build-arg FRONTEND_DIR=patient-frontend --build-arg CABINET=cdos -t dentalsoft-patient-cdos .
 ```
 
-Aucune variable d'environnement runtime n'est nécessaire : l'URL API, le branding et la config PWA sont intégrés au build via `cabinet-configs/<id>/config.json`.
+Aucune variable runtime nginx n'est nécessaire : le build conserve les URLs d'API publiques de `frontend/cabinet-configs/<id>/config.prod.json` pour l'admin et `patient-frontend/cabinet-configs/<id>/config.json` pour le portail. Ne pas activer `VITE_DOKPLOY` dans ce mode. Ajouter les deux origines HTTPS à `CORS_ALLOW_ORIGIN` côté API.
+
+Le build capture l'historique des releases PWA. Si Dokploy ne fournit pas `.git` ou si le builder ne peut pas compléter un clone superficiel, fournir `PWA_RELEASE_METADATA` et `PWA_RELEASE_REVISION` comme [arguments de build](pwa-required-update.md#git-absent-du-contexte-dokploy-archive-ci).
 
 ### Domaine et SSL
 
@@ -142,11 +134,11 @@ Le backend **publie** sur Mercure ; le navigateur **s'abonne** via SSE. Sans ce 
 |-------|--------|
 | **Build Path** | `mercure-prod` |
 | **Dockerfile Path** | `Dockerfile` |
-| **Docker Context Path** | `mercure-prod` |
+| **Docker Context Path** | `.` (relatif à `mercure-prod`) |
 | Port exposé | `80` |
 | Domaine | `mercure.cabinetdentaireousmanesow.cloud` (HTTPS Let's Encrypt) |
 
-> Le Dockerfile (`mercure-prod/Dockerfile`) part de `dunglas/mercure:v0.16.2` et injecte les directives CORS via `MERCURE_CORS_ORIGINS` (équivalent à `MERCURE_EXTRA_DIRECTIVES` de l'exemple officiel).
+Le Dockerfile utilise `dunglas/mercure:v1.1.5` avec la compatibilité de protocole 0.x et un contrôle de disponibilité interne du transport. Conserver les montages `/data` et `/config`. Avant de remplacer un hub `v0.16.2`, sauvegarder ces volumes et vérifier la reprise sur une copie : le nouveau Caddyfile utilise `/data/mercure.db`. Conserver l'ancien volume intact pour le retour arrière si l'ancien chemin ou format diffère.
 
 ### Étape 2 — Variables d'environnement du hub Mercure
 
@@ -160,12 +152,9 @@ MERCURE_CORS_ORIGINS=https://admin.cabinetdentaireousmanesow.cloud https://admin
 TRUSTED_PROXIES=private_ranges
 ```
 
-**Équivalent docker-compose officiel dunglas/mercure** (si vous n'utilisez pas `mercure-prod/entrypoint.sh`) :
+Ajouter à `MERCURE_CORS_ORIGINS` toute autre origine qui s'abonne au hub. `MERCURE_EXTRA_DIRECTIVES` reste disponible pour les directives supplémentaires ; ne pas y redéclarer `cors_origins` si `MERCURE_CORS_ORIGINS` est déjà défini.
 
-```env
-MERCURE_EXTRA_DIRECTIVES=cors_origins https://admin.cabinetdentaireousmanesow.cloud
-cors_origins https://admin.mondentiste-mali.com
-```
+Pour le Compose local `mercure-prod/docker-compose.yml`, fournir les deux clés JWT dans l'environnement de la commande ou via `--env-file`. Le port publié est `127.0.0.1:3000` par défaut (`MERCURE_PORT` permet de changer le port). Sur Dokploy, utiliser le domaine HTTPS plutôt qu'un port hôte public.
 
 **Règles critiques :**
 - `MERCURE_CORS_ORIGINS` : origines **sans slash final**
@@ -255,10 +244,8 @@ MERCURE_PUBLIC_URL=https://mercure.cabinetdentaireousmanesow.cloud/.well-known/m
 MERCURE_JWT_SECRET=<secret-partage-avec-conteneur-mercure>
 MERCURE_TOPIC_NAMESPACE=dentalsoft-cdos
 
-CORS_ALLOW_ORIGIN='^https?://admin\.cabinetdentaireousmanesow\.cloud$'
-
-JWT_SECRET_KEY=%kernel.project_dir%/config/jwt/private.pem
-JWT_PUBLIC_KEY=%kernel.project_dir%/config/jwt/public.pem
+# Exemple avec patient.<domaine> : adapter au domaine réellement configuré.
+CORS_ALLOW_ORIGIN='^https://(admin|patient)\.cabinetdentaireousmanesow\.cloud$'
 JWT_PASSPHRASE=<passphrase-cdos>
 
 MAILER_DSN=<smtp-prod>
@@ -299,10 +286,8 @@ MERCURE_PUBLIC_URL=https://mercure.cabinetdentaireousmanesow.cloud/.well-known/m
 MERCURE_JWT_SECRET=<secret-partage-avec-conteneur-mercure>
 MERCURE_TOPIC_NAMESPACE=dentalsoft-mondentiste
 
-CORS_ALLOW_ORIGIN='^https?://admin\.mondentiste-mali\.com$'
-
-JWT_SECRET_KEY=%kernel.project_dir%/config/jwt/private.pem
-JWT_PUBLIC_KEY=%kernel.project_dir%/config/jwt/public.pem
+# Exemple avec patient.<domaine> : adapter au domaine réellement configuré.
+CORS_ALLOW_ORIGIN='^https://(admin|patient)\.mondentiste-mali\.com$'
 JWT_PASSPHRASE=<passphrase-mondentiste>
 
 MAILER_DSN=<smtp-prod>
@@ -311,19 +296,26 @@ MESSENGER_TRANSPORT_DSN=doctrine://default?queue_name=default
 
 ### Notes importantes
 
-- **DATABASE_URL :** utiliser le **Internal Host** du service MariaDB Dokploy (même projet), port `3306`. Ne jamais utiliser `localhost`.
+- **DATABASE_URL :** utiliser l'hôte interne du service MariaDB Dokploy (même projet), port `3306`, et encoder les caractères spéciaux des identifiants dans l'URL. Ne jamais utiliser `localhost`. Si l'API est derrière un proxy, renseigner `TRUSTED_PROXIES` avec les adresses ou plages réseau des seuls proxys de confiance.
 - **MERCURE_TOPIC_NAMESPACE :** doit être unique par instance si les deux APIs partagent le même hub Mercure.
-- **JWT :** les clés sont dans `config/jwt/` du dépôt. À terme, les injecter via secrets Dokploy plutôt que de les garder dans l'image.
+- **JWT :** `JWT_PASSPHRASE` est une variable **runtime**, plus un argument Docker. L'API réutilise les clés de `/app/config/jwt` ou génère une paire au démarrage si le montage est vide. Une paire incomplète ou une passphrase incorrecte empêche le démarrage.
+- **Environnement :** aucun fichier `.env*` du dépôt n'est embarqué. Vérifier les valeurs Dokploy avant le premier redéploiement ; conserver notamment `APP_SECRET`, la passphrase et le secret Mercure existants.
 - **Migrations :** le dossier `migrations/` est versionné dans Git. Au démarrage, `doctrine:migrations:migrate` s'exécute (`RUN_MIGRATIONS=1` par défaut). Voir [migrations/README.md](../api/migrations/README.md).
 
 ### Backend — volumes Dokploy
 
-| Volume hôte | Montage conteneur | Instance |
-|-------------|-------------------|----------|
-| `/srv/data/uploads-cdos` | `/app/public/uploads` | API CDOS |
-| `/srv/data/backups-cdos` | `/app/var/backups` | API CDOS |
-| `/srv/data/uploads-mondentiste` | `/app/public/uploads` | API Mondentiste |
-| `/srv/data/backups-mondentiste` | `/app/var/backups` | API Mondentiste |
+**Avant le premier redéploiement**, sauvegarder les répertoires du conteneur actuel, y compris ceux qui ne sont pas montés, puis restaurer les données dans les montages. Copier les deux clés JWT existantes dans le nouveau montage avec la **même** passphrase pour préserver les sessions ; n'utiliser un volume vide que pour une installation neuve ou une rotation voulue.
+
+| Données par cabinet | Montage conteneur |
+|---------------------|-------------------|
+| Clés JWT | `/app/config/jwt` |
+| Uploads publics | `/app/public/uploads` |
+| Fichiers joints publics | `/app/public/upload_files` |
+| Fichiers d'assurances (y compris les logos si un montage hôte masque ceux de l'image) | `/app/public/assurances` |
+| Uploads privés | `/app/var/uploads` |
+| Sauvegardes | `/app/var/backups` |
+
+Garder les volumes existants, par exemple `/srv/data/uploads-cdos` et `/srv/data/backups-cdos`, et ajouter les montages manquants séparément pour chaque cabinet.
 
 ### Backend — build Dokploy
 
@@ -438,7 +430,7 @@ tar -czf /srv/data/backups-mondentiste/uploads-$(date +%Y%m%d).tar.gz -C /srv/da
 
 L'API met les SMS en file (`sms_queue`). Le traitement automatique tourne **dans le même conteneur** que FrankenPHP (pas de second service Dokploy).
 
-Au démarrage (`docker/entrypoint.sh`), si `WORKER_MODE` est absent/`0` et `ENABLE_EMBEDDED_WORKER=1` (défaut) :
+Au démarrage ([entrypoint partagé](../api/docker/entrypoint.dokploy.sh)), si `WORKER_MODE` est absent/`0` et `ENABLE_EMBEDDED_WORKER=1` (défaut) :
 
 1. **Poll SMS** — toutes les 60 s : `app:sms:process-queue` (traitement direct des SMS dus)
 2. **Consume Messenger** — `messenger:consume async` (mails / autres messages async)
@@ -500,7 +492,7 @@ RUN_MIGRATIONS=0
 ENABLE_EMBEDDED_WORKER=0
 ```
 
-Dans ce cas, mettre `ENABLE_EMBEDDED_WORKER=0` sur l’API pour éviter un double traitement SMS. Pas de domaine / pas de healthcheck HTTP sur le worker.
+Dans ce cas, mettre `ENABLE_EMBEDDED_WORKER=0` sur l’API pour éviter un double traitement SMS. Démarrer l'API en premier et réutiliser son montage JWT sur le worker, sans générer une seconde paire. Pas de domaine / pas de healthcheck HTTP sur le worker.
 
 ### Cron optionnel — nettoyage notifications
 

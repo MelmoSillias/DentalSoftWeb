@@ -7,12 +7,12 @@ import PageSection from '@/app/components/layout/PageSection.vue';
 import Button from 'primevue/button';
 import Calendar from 'primevue/calendar';
 import ConfirmPopup from 'primevue/confirmpopup';
-import Divider from 'primevue/divider';
 import FileUpload from 'primevue/fileupload';
 import InputNumber from 'primevue/inputnumber';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import SelectButton from 'primevue/selectbutton';
+import Skeleton from 'primevue/skeleton';
 import Tag from 'primevue/tag';
 import Tab from 'primevue/tab';
 import TabList from 'primevue/tablist';
@@ -26,7 +26,6 @@ import { useEmployeeDetails } from '@/domains/workforce/composables/useEmployeeD
 import { useGuidedTour } from '@/shared/composables/useGuidedTour.js';
 import { formatEmployeeTypeLabel } from '@/domains/workforce/model/employeeTypeUtils.js';
 import EmployeeSalarySection from '@/domains/workforce/components/EmployeeSalarySection.vue';
-import StatsCardsGrid from '@/domains/reporting/components/common/StatsCardsGrid.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -55,6 +54,7 @@ const daysOptions = [
 const { employee, loading, error, fetchEmployee, updateEmployee } = useEmployeeDetails();
 
 const files = ref([]);
+const documentUpload = ref(null);
 const activeTab = ref('personal');
 const rhSection = ref(null);
 const rhSectionOptions = [
@@ -134,6 +134,7 @@ const hydrateForm = (data) => {
         comingDays: Array.isArray(data?.comingDays) ? data.comingDays.filter((day) => day !== 'Dimanche') : []
     };
     files.value = [];
+    documentUpload.value?.clear();
 };
 
 const loadEmployee = async () => {
@@ -294,17 +295,17 @@ const paymentKpis = computed(() => {
     const rows = filteredPayments.value;
     const total = rows.reduce((sum, payment) => sum + Number(payment.paidAmount || 0), 0);
     return [
-        { label: 'Total versé', value: formatCurrency(total), icon: 'pi pi-wallet', tone: 'emerald' },
-        { label: 'Versements', value: rows.length, icon: 'pi pi-list', tone: 'blue' },
-        { label: 'Versement moyen', value: rows.length ? formatCurrency(total / rows.length) : '—', icon: 'pi pi-chart-bar', tone: 'violet' },
-        { label: 'Dernier versement', value: rows.length ? formatDate(rows[0].paidAt) : '—', icon: 'pi pi-calendar', tone: 'orange' }
+        { label: 'Total versé', value: formatCurrency(total), icon: 'pi pi-wallet' },
+        { label: 'Versements', value: rows.length, icon: 'pi pi-list' },
+        { label: 'Versement moyen', value: rows.length ? formatCurrency(total / rows.length) : '—', icon: 'pi pi-chart-bar' },
+        { label: 'Dernier versement', value: rows.length ? formatDate(rows[0].paidAt) : '—', icon: 'pi pi-calendar' }
     ];
 });
 const contractKpis = computed(() => [
-    { label: 'Type de contrat', value: employee.value?.typeContrat === 'Freelance' ? 'Prestataire' : employee.value?.typeContrat || '—', icon: 'pi pi-file', tone: 'blue' },
-    { label: 'Durée du contrat', value: employee.value?.typeContrat === 'CDI' ? 'Indéterminée' : employee.value?.dureeContrat ? `${employee.value.dureeContrat} mois` : 'Non renseignée', icon: 'pi pi-clock', tone: 'violet' },
-    { label: "Date d'embauche", value: formatDate(employee.value?.dateEmbauche), icon: 'pi pi-calendar', tone: 'emerald' },
-    { label: 'Jours travaillés / semaine', value: employee.value ? (employee.value.comingDays || []).filter((day) => day !== 'Dimanche').length : '—', icon: 'pi pi-briefcase', tone: 'orange' }
+    { label: 'Type de contrat', value: employee.value?.typeContrat === 'Freelance' ? 'Prestataire' : employee.value?.typeContrat || '—', icon: 'pi pi-file' },
+    { label: 'Durée du contrat', value: employee.value?.typeContrat === 'CDI' ? 'Indéterminée' : employee.value?.dureeContrat ? `${employee.value.dureeContrat} mois` : 'Non renseignée', icon: 'pi pi-clock' },
+    { label: "Date d'embauche", value: formatDate(employee.value?.dateEmbauche), icon: 'pi pi-calendar' },
+    { label: 'Jours travaillés / semaine', value: employee.value ? (employee.value.comingDays || []).filter((day) => day !== 'Dimanche').length : '—', icon: 'pi pi-briefcase' }
 ]);
 
 const monthYearLabel = (month, year) => {
@@ -337,7 +338,7 @@ const congeSeverity = (type) => {
     return map[String(type || '').toLowerCase()] || 'secondary';
 };
 
-const salaireCard = computed(() => {
+const salarySummary = computed(() => {
     const typeSalaire = employee.value?.typeSalaire;
     const valeurSalaire = employee.value?.valeurSalaire ?? null;
     const salaireCalcule = employee.value?.salaireCalcule ?? null;
@@ -346,7 +347,6 @@ const salaireCard = computed(() => {
 
     if (typeSalaire === 'non_defini') {
         return {
-            title: 'Salaire actuel',
             value: 'Non défini',
             sub: `${frequence}${prime ? ` · Prime ${prime}` : ''}`
         };
@@ -354,14 +354,12 @@ const salaireCard = computed(() => {
 
     if (typeSalaire === 'pourcentage' && employee.value?.type === 'Medecin') {
         return {
-            title: 'Salaire actuel',
             value: formatCurrency(salaireCalcule),
             sub: `${valeurSalaire ?? 0}% · ${frequence}${prime ? ` · Prime ${prime}` : ''}`
         };
     }
 
     return {
-        title: 'Salaire actuel',
         value: formatCurrency(valeurSalaire ?? salaireCalcule),
         sub: `${frequence}${prime ? ` · Prime ${prime}` : ''}`
     };
@@ -411,7 +409,7 @@ onMounted(() => {
         <ConfirmPopup />
 
         <template #header>
-            <PageHeader title="Détails employé" subtitle="Consultez et mettez a jour les informations RH." icon="pi pi-id-card" tour-id="admin-employee-details.header" :breadcrumb-items="breadcrumbItems" :breadcrumb-home="breadcrumbHome">
+            <PageHeader title="Détails employé" subtitle="Consultez et mettez à jour les informations RH." icon="pi pi-id-card" tour-id="admin-employee-details.header" :breadcrumb-items="breadcrumbItems" :breadcrumb-home="breadcrumbHome">
                 <template #actions>
                     <Button icon="pi pi-arrow-left" severity="secondary" outlined label="Retour" @click="goBack" />
                     <Button icon="pi pi-save" label="Enregistrer" :loading="loading" @click="confirmSave" />
@@ -427,288 +425,423 @@ onMounted(() => {
                 </div>
             </div>
 
-            <Tabs v-model:value="activeTab" class="dossier-folder__tabs">
+            <Tabs v-model:value="activeTab" class="dossier-folder__tabs" scrollable>
                 <TabList data-tour="admin-employee-details.tabs">
-                    <Tab v-for="tab in tabs" :key="tab.id" :value="tab.id" :aria-label="tab.label" v-tooltip.top="tab.label">
+                    <Tab v-for="tab in tabs" :key="tab.id" :value="tab.id">
                         <span class="dossier-folder__tab-label">
                             <i :class="tab.icon" aria-hidden="true"></i>
-                            <span class="hidden sm:inline">{{ tab.label }}</span>
+                            <span>{{ tab.label }}</span>
                             <span v-if="tab.badge" class="dossier-folder__tab-badge">{{ tab.badge }}</span>
                         </span>
                     </Tab>
                 </TabList>
                 <TabPanels>
-                    <TabPanel value="personal">
-                        <div class="dossier-folder__panel">
-                            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                <div class="lg:col-span-2 min-w-0">
-                                    <PageSection title="Informations personnelles" tour-id="admin-employee-details.personal" padded>
-                                        <div class="space-y-4">
-                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div class="space-y-1">
-                                                    <label class="text-sm font-medium">Nom</label>
-                                                    <InputText v-model="form.nom" class="w-full" placeholder="Nom" />
-                                                </div>
-                                                <div class="space-y-1">
-                                                    <label class="text-sm font-medium">Prenom</label>
-                                                    <InputText v-model="form.prenom" class="w-full" placeholder="Prenom" />
-                                                </div>
-                                                <div class="space-y-1">
-                                                    <label class="text-sm font-medium">Matricule</label>
-                                                    <InputText v-model="form.matricule" class="w-full" readonly />
-                                                </div>
-                                                <div class="space-y-1">
-                                                    <label class="text-sm font-medium">Description de fonction</label>
-                                                    <InputText v-model="form.fonction" class="w-full" placeholder="Description de fonction (optionnel)" />
-                                                </div>
-                                                <div class="space-y-1">
-                                                    <label class="text-sm font-medium">Type de poste</label>
-                                                    <InputText :modelValue="formatEmployeeTypeLabel(form.type)" class="w-full" readonly />
-                                                </div>
-                                                <div class="space-y-1">
-                                                    <label class="text-sm font-medium">Date d'embauche</label>
-                                                    <Calendar v-model="form.dateEmbauche" class="w-full" dateFormat="yy-mm-dd" showIcon readonlyInput />
-                                                </div>
-                                                <div class="space-y-1">
-                                                    <label class="text-sm font-medium">Telephone</label>
-                                                    <InputText v-model="form.telephone" class="w-full" placeholder="Telephone" />
-                                                </div>
-                                                <div class="space-y-1">
-                                                    <label class="text-sm font-medium">Email</label>
-                                                    <InputText v-model="form.email" class="w-full" placeholder="Email" />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </PageSection>
+                    <TabPanel value="personal" class="employee-panel grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
+                        <PageSection title="Informations personnelles" tour-id="admin-employee-details.personal" class="employee-section" plain>
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <div class="space-y-1">
+                                    <label for="employee-last-name" class="text-sm font-medium">Nom</label>
+                                    <InputText id="employee-last-name" v-model="form.nom" class="w-full" />
                                 </div>
-                                <div class="min-w-0">
-                                    <div data-tour="admin-employee-details.summary">
-                                        <div class="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/20 rounded-2xl p-5 border border-blue-200/50 dark:border-blue-800/50">
-                                            <div class="flex items-center justify-between">
-                                                <div>
-                                                    <p class="text-sm text-blue-700 dark:text-blue-300 font-medium">Employe</p>
-                                                    <p class="text-2xl font-bold text-blue-900 dark:text-blue-100 mt-2">
-                                                        {{ employee?.fullname || employee?.nom || '-' }}
-                                                    </p>
-                                                </div>
-                                                <i class="pi pi-user text-2xl text-blue-500"></i>
-                                            </div>
-                                        </div>
-
-                                        <div class="bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-900/20 dark:to-emerald-800/20 rounded-2xl p-5 border border-emerald-200/50 dark:border-emerald-800/50 mt-6">
-                                            <div class="flex items-center justify-between">
-                                                <div>
-                                                    <p class="text-sm text-emerald-700 dark:text-emerald-300 font-medium">Type</p>
-                                                    <p class="text-2xl font-bold text-emerald-900 dark:text-emerald-100 mt-2">
-                                                        {{ formatEmployeeTypeLabel(employee?.type) || '-' }}
-                                                    </p>
-                                                </div>
-                                                <i class="pi pi-briefcase text-2xl text-emerald-500"></i>
-                                            </div>
-                                        </div>
-
-                                        <div class="bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-800/20 rounded-2xl p-5 border border-amber-200/50 dark:border-amber-800/50 mt-6">
-                                            <div class="flex items-center justify-between">
-                                                <div>
-                                                    <p class="text-sm text-amber-700 dark:text-amber-300 font-medium">{{ salaireCard.title }}</p>
-                                                    <p class="text-2xl font-bold text-amber-900 dark:text-amber-100 mt-2">
-                                                        {{ salaireCard.value }}
-                                                    </p>
-                                                    <p v-if="salaireCard.sub" class="text-xs text-amber-600 dark:text-amber-300 mt-1">
-                                                        {{ salaireCard.sub }}
-                                                    </p>
-                                                </div>
-                                                <i class="pi pi-wallet text-2xl text-amber-500"></i>
-                                            </div>
-                                        </div>
-                                    </div>
+                                <div class="space-y-1">
+                                    <label for="employee-first-name" class="text-sm font-medium">Prénom</label>
+                                    <InputText id="employee-first-name" v-model="form.prenom" class="w-full" />
+                                </div>
+                                <div class="space-y-1">
+                                    <label for="employee-phone" class="text-sm font-medium">Téléphone</label>
+                                    <InputText id="employee-phone" v-model="form.telephone" type="tel" class="w-full" />
+                                </div>
+                                <div class="space-y-1">
+                                    <label for="employee-email" class="text-sm font-medium">Adresse e-mail</label>
+                                    <InputText id="employee-email" v-model="form.email" class="w-full" />
+                                </div>
+                                <div class="space-y-1">
+                                    <label for="employee-job" class="text-sm font-medium">Description de fonction</label>
+                                    <InputText id="employee-job" v-model="form.fonction" class="w-full" placeholder="Facultatif" />
+                                </div>
+                                <div class="space-y-1">
+                                    <label for="employee-hired-at" class="text-sm font-medium">Date d'embauche</label>
+                                    <Calendar v-model="form.dateEmbauche" inputId="employee-hired-at" class="w-full" dateFormat="yy-mm-dd" showIcon readonlyInput />
                                 </div>
                             </div>
-                        </div>
+                        </PageSection>
+                        <PageSection title="Synthèse du profil" tour-id="admin-employee-details.summary" class="employee-section employee-profile-summary" plain>
+                            <dl class="employee-metrics grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-1">
+                                <div>
+                                    <dt><i class="pi pi-id-card" aria-hidden="true"></i> Matricule</dt>
+                                    <dd>{{ employee?.matricule || '—' }}</dd>
+                                </div>
+                                <div>
+                                    <dt><i class="pi pi-briefcase" aria-hidden="true"></i> Type de poste</dt>
+                                    <dd>{{ formatEmployeeTypeLabel(employee?.type) || '—' }}</dd>
+                                </div>
+                                <div>
+                                    <dt><i class="pi pi-wallet" aria-hidden="true"></i> Salaire actuel</dt>
+                                    <dd>{{ salarySummary.value }}</dd>
+                                    <dd v-if="employee" class="employee-metrics__note">{{ salarySummary.sub }}</dd>
+                                </div>
+                            </dl>
+                        </PageSection>
                     </TabPanel>
-                    <TabPanel value="rh">
-                        <div class="dossier-folder__panel space-y-5">
-                            <StatsCardsGrid title="Synthèse du contrat" subtitle="Informations enregistrées de cet employé" :items="contractKpis" :loading="loading" />
-                            <div class="flex flex-wrap items-end gap-3">
-                                <div class="space-y-1 w-full sm:w-72">
+                    <TabPanel value="rh" class="employee-panel space-y-6">
+                        <PageSection title="Synthèse du contrat" subtitle="Informations enregistrées pour cet employé" class="employee-section" :aria-busy="loading" plain>
+                            <dl class="employee-metrics employee-metrics--row">
+                                <div v-for="item in contractKpis" :key="item.label">
+                                    <dt><i :class="item.icon" aria-hidden="true"></i> {{ item.label }}</dt>
+                                    <dd>
+                                        <Skeleton v-if="loading" width="5rem" /><template v-else>{{ item.value }}</template>
+                                    </dd>
+                                </div>
+                            </dl>
+                        </PageSection>
+                        <PageSection title="Informations RH" tour-id="admin-employee-details.rh" class="employee-section employee-section--separated" plain>
+                            <div class="flex flex-wrap items-end gap-2 mb-5">
+                                <div class="w-full space-y-1 sm:w-64">
                                     <label for="employee-rh-section" class="text-sm font-medium">Informations à afficher</label>
                                     <Select v-model="rhSection" inputId="employee-rh-section" :options="rhSectionOptions" optionLabel="label" optionValue="value" placeholder="Toutes les informations" showClear class="w-full" />
                                 </div>
-                                <Button label="Réinitialiser" icon="pi pi-filter-slash" severity="secondary" outlined :disabled="!rhSection" @click="rhSection = null" />
+                                <Button label="Réinitialiser" icon="pi pi-filter-slash" severity="secondary" text :disabled="!rhSection" @click="rhSection = null" />
                             </div>
-                            <PageSection title="Informations RH" tour-id="admin-employee-details.rh" padded>
-                                <div class="space-y-5">
-                                    <EmployeeSalarySection v-show="!rhSection || rhSection === 'salary'" v-model:form="form" :employee-type="form.type" />
-
-                                    <Divider v-if="!rhSection" />
-
-                                    <div v-show="!rhSection || rhSection === 'contract'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="space-y-5">
+                                <section v-show="!rhSection || rhSection === 'salary'" class="space-y-3">
+                                    <h4 class="employee-subtitle">Rémunération</h4>
+                                    <EmployeeSalarySection v-model:form="form" :employee-type="form.type" flat />
+                                </section>
+                                <section v-show="!rhSection || rhSection === 'contract'" class="space-y-3" :class="{ 'employee-section--separated': !rhSection }">
+                                    <h4 class="employee-subtitle">Contrat</h4>
+                                    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                                         <div class="space-y-1">
-                                            <label class="text-sm font-medium">Type de contrat</label>
-                                            <Select v-model="form.typeContrat" :options="typeContratOptions" optionLabel="label" optionValue="value" class="w-full" />
+                                            <label for="employee-contract-type" class="text-sm font-medium">Type de contrat</label>
+                                            <Select v-model="form.typeContrat" inputId="employee-contract-type" :options="typeContratOptions" optionLabel="label" optionValue="value" class="w-full" />
                                         </div>
                                         <div class="space-y-1">
-                                            <label class="text-sm font-medium">Duree de contrat (mois)</label>
-                                            <InputNumber v-model="form.dureeContrat" class="w-full" :min="1" :disabled="form.typeContrat === 'CDI'" />
+                                            <label for="employee-contract-duration" class="text-sm font-medium">Durée du contrat (mois)</label>
+                                            <InputNumber v-model="form.dureeContrat" inputId="employee-contract-duration" class="w-full" :min="1" :disabled="form.typeContrat === 'CDI'" />
                                         </div>
                                     </div>
-
-                                    <Divider v-if="!rhSection" />
-
-                                    <div v-show="!rhSection || rhSection === 'schedule'" class="space-y-2">
-                                        <label class="text-sm font-medium">Jours travailles</label>
-                                        <SelectButton v-model="form.comingDays" :options="daysOptions" optionLabel="label" optionValue="value" multiple class="w-full flex flex-wrap gap-2" />
-                                    </div>
-                                </div>
-                            </PageSection>
-                        </div>
+                                </section>
+                                <section v-show="!rhSection || rhSection === 'schedule'" class="space-y-3" :class="{ 'employee-section--separated': !rhSection }">
+                                    <h4 id="employee-workdays" class="employee-subtitle">Jours travaillés</h4>
+                                    <SelectButton v-model="form.comingDays" :options="daysOptions" optionLabel="label" optionValue="value" aria-labelledby="employee-workdays" multiple class="flex flex-wrap gap-2" />
+                                </section>
+                            </div>
+                        </PageSection>
                     </TabPanel>
-                    <TabPanel value="documents">
-                        <div class="dossier-folder__panel">
-                            <PageSection title="Documents administratifs" tour-id="admin-employee-details.documents" padded>
-                                <div class="space-y-4">
-                                    <div class="space-y-2">
-                                        <FileUpload name="administrativeFiles[]" :multiple="true" :customUpload="true" :auto="false" @select="onFilesSelect" @clear="onFilesClear" chooseLabel="Choisir" uploadLabel="Ajouter" cancelLabel="Vider" />
-                                    </div>
+                    <TabPanel value="documents" class="employee-panel">
+                        <PageSection title="Documents administratifs" tour-id="admin-employee-details.documents" class="employee-section" plain>
+                            <FileUpload
+                                ref="documentUpload"
+                                name="administrativeFiles[]"
+                                multiple
+                                customUpload
+                                :showUploadButton="false"
+                                chooseLabel="Choisir des fichiers"
+                                cancelLabel="Vider la sélection"
+                                :chooseButtonProps="{ size: 'small' }"
+                                :cancelButtonProps="{ size: 'small', severity: 'secondary', variant: 'text' }"
+                                :pt="{
+                                    root: { class: '!border-0 !bg-transparent' },
+                                    header: { class: '!p-0 flex-wrap' },
+                                    content: { class: '!gap-0 !p-0' },
+                                    file: { class: '!px-0 !rounded-none' },
+                                    fileName: { class: 'break-all' },
+                                    pcProgressbar: { root: { class: 'hidden' } }
+                                }"
+                                @select="onFilesSelect"
+                                @remove="onFilesSelect"
+                                @clear="onFilesClear"
+                            >
+                                <template #empty>
+                                    <p class="employee-muted mt-3 text-sm">Vous pouvez aussi glisser-déposer les fichiers ici.</p>
+                                </template>
+                            </FileUpload>
+                            <p class="employee-muted mt-2 text-sm">Pour ajouter les fichiers sélectionnés, cliquez sur « Enregistrer » en haut de la fiche.</p>
 
-                                    <div>
-                                        <h4 class="text-sm font-semibold text-surface-800 dark:text-surface-200 mb-2">Fichiers existants</h4>
-                                        <div v-if="(employee?.administrativeFiles || []).length" class="flex flex-wrap gap-2">
-                                            <Button
-                                                v-for="file in employee.administrativeFiles"
-                                                :key="file"
-                                                icon="pi pi-download"
-                                                severity="secondary"
-                                                outlined
-                                                size="small"
-                                                :label="file.split('/').pop()"
-                                                @click="() => window.open(resolveFileUrl(file), '_blank')"
-                                            />
-                                        </div>
-                                        <div v-else class="text-sm text-surface-500 dark:text-surface-400">Aucun fichier administratif.</div>
-                                    </div>
-                                </div>
-                            </PageSection>
-                        </div>
+                            <section class="employee-section--separated mt-6">
+                                <h4 class="employee-subtitle">Documents enregistrés</h4>
+                                <ul v-if="employee?.administrativeFiles?.length" class="employee-list">
+                                    <li v-for="file in employee.administrativeFiles" :key="file">
+                                        <a :href="resolveFileUrl(file)" target="_blank" rel="noopener noreferrer" class="employee-document-link">
+                                            <i class="pi pi-file shrink-0 text-primary" aria-hidden="true"></i>
+                                            <span class="min-w-0 flex-1 break-all">{{ file.split('/').pop() }}</span>
+                                            <span class="sr-only">(nouvel onglet)</span>
+                                            <i class="pi pi-external-link shrink-0" aria-hidden="true"></i>
+                                        </a>
+                                    </li>
+                                </ul>
+                                <p v-else class="employee-empty"><i class="pi pi-folder-open" aria-hidden="true"></i> Aucun document administratif enregistré.</p>
+                            </section>
+                        </PageSection>
                     </TabPanel>
-                    <TabPanel value="payments">
-                        <div class="dossier-folder__panel space-y-5">
-                            <StatsCardsGrid title="Synthèse des salaires versés" subtitle="Indicateurs calculés sur les versements correspondant aux filtres" :items="paymentKpis" :loading="loading" />
-                            <PageSection title="Filtres des paiements" padded>
-                                <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                                    <div class="space-y-1">
-                                        <label for="employee-payment-year" class="text-sm font-medium">Année de salaire</label>
-                                        <Select v-model="paymentYear" inputId="employee-payment-year" :options="paymentYearOptions" placeholder="Toutes les années" showClear class="w-full" />
-                                    </div>
-                                    <div class="space-y-1">
-                                        <label for="employee-payment-month" class="text-sm font-medium">Mois de salaire</label>
-                                        <Select v-model="paymentMonth" inputId="employee-payment-month" :options="paymentMonthOptions" optionLabel="label" optionValue="value" placeholder="Tous les mois" showClear class="w-full" />
-                                    </div>
-                                    <div class="space-y-1">
-                                        <label for="employee-payment-frequency" class="text-sm font-medium">Fréquence</label>
-                                        <Select v-model="paymentFrequency" inputId="employee-payment-frequency" :options="paymentFrequencyOptions" optionLabel="label" optionValue="value" placeholder="Toutes les fréquences" showClear class="w-full" />
-                                    </div>
-                                    <div class="space-y-1">
-                                        <label for="employee-payment-search" class="text-sm font-medium">Recherche</label>
-                                        <InputText id="employee-payment-search" v-model="paymentSearch" placeholder="Note, période, mode de paiement" class="w-full" />
-                                    </div>
+                    <TabPanel value="payments" class="employee-panel space-y-6">
+                        <PageSection title="Synthèse des salaires versés" subtitle="Indicateurs correspondant aux filtres actifs" class="employee-section" :aria-busy="loading" plain>
+                            <dl class="employee-metrics employee-metrics--row">
+                                <div v-for="item in paymentKpis" :key="item.label">
+                                    <dt><i :class="item.icon" aria-hidden="true"></i> {{ item.label }}</dt>
+                                    <dd>
+                                        <Skeleton v-if="loading" width="5rem" /><template v-else>{{ item.value }}</template>
+                                    </dd>
                                 </div>
-                                <div class="flex flex-wrap items-center justify-between gap-3 mt-4">
-                                    <span class="text-sm text-surface-500" role="status">{{ filteredPayments.length }} versement(s) sur {{ salaryPayments.length }}</span>
-                                    <Button label="Réinitialiser" icon="pi pi-filter-slash" severity="secondary" outlined :disabled="!paymentYear && !paymentMonth && !paymentFrequency && !paymentSearch" @click="resetPaymentFilters" />
+                            </dl>
+                        </PageSection>
+                        <PageSection title="Filtres des paiements" class="employee-section employee-section--separated" plain>
+                            <template #headerActions>
+                                <Button label="Réinitialiser" icon="pi pi-filter-slash" severity="secondary" text size="small" :disabled="!paymentYear && !paymentMonth && !paymentFrequency && !paymentSearch" @click="resetPaymentFilters" />
+                            </template>
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                                <div class="space-y-1">
+                                    <label for="employee-payment-year" class="text-sm font-medium">Année de salaire</label>
+                                    <Select v-model="paymentYear" inputId="employee-payment-year" :options="paymentYearOptions" placeholder="Toutes les années" showClear class="w-full" />
                                 </div>
-                            </PageSection>
-                            <div class="bg-surface-0 dark:bg-surface-800/80 rounded-2xl shadow-lg border border-surface-200/50 dark:border-surface-700/50 overflow-hidden">
-                                <div class="px-6 py-4 border-b border-surface-200/50 dark:border-surface-700/50 bg-gradient-to-r from-surface-50 to-surface-0 dark:from-surface-900/50 dark:to-surface-800">
-                                    <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 flex items-center gap-2">
-                                        <i class="pi pi-calendar text-primary-500"></i>
-                                        Historique des paiements
-                                    </h3>
+                                <div class="space-y-1">
+                                    <label for="employee-payment-month" class="text-sm font-medium">Mois de salaire</label>
+                                    <Select v-model="paymentMonth" inputId="employee-payment-month" :options="paymentMonthOptions" optionLabel="label" optionValue="value" placeholder="Tous les mois" showClear class="w-full" />
                                 </div>
-                                <div class="p-4 md:p-5">
-                                    <div v-if="filteredPayments.length" class="overflow-x-auto">
-                                        <table class="min-w-full text-sm border-separate border-spacing-0">
-                                            <thead>
-                                                <tr class="text-left bg-surface-50 dark:bg-surface-900/50">
-                                                    <th class="px-3 py-2 border-b border-surface-200 dark:border-surface-700">Période</th>
-                                                    <th class="px-3 py-2 border-b border-surface-200 dark:border-surface-700">Fréquence</th>
-                                                    <th class="px-3 py-2 border-b border-surface-200 dark:border-surface-700">Salaire base</th>
-                                                    <th class="px-3 py-2 border-b border-surface-200 dark:border-surface-700">Prime</th>
-                                                    <th class="px-3 py-2 border-b border-surface-200 dark:border-surface-700">Total calculé</th>
-                                                    <th class="px-3 py-2 border-b border-surface-200 dark:border-surface-700">Versé</th>
-                                                    <th class="px-3 py-2 border-b border-surface-200 dark:border-surface-700">Date</th>
-                                                    <th class="px-3 py-2 border-b border-surface-200 dark:border-surface-700">Note</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <tr v-for="payment in filteredPayments" :key="payment.id" class="odd:bg-surface-0 even:bg-surface-50/50 dark:odd:bg-surface-800 dark:even:bg-surface-900/40">
-                                                    <td class="px-3 py-2 border-b border-surface-100 dark:border-surface-800">
-                                                        {{ paymentPeriodLabel(payment) }}
-                                                    </td>
-                                                    <td class="px-3 py-2 border-b border-surface-100 dark:border-surface-800">
-                                                        {{ frequenceLabel(payment.frequenceSnapshot) }}
-                                                    </td>
-                                                    <td class="px-3 py-2 border-b border-surface-100 dark:border-surface-800">
-                                                        {{ formatCurrency(payment.baseSalaryAmount) }}
-                                                    </td>
-                                                    <td class="px-3 py-2 border-b border-surface-100 dark:border-surface-800">
-                                                        {{ formatCurrency(payment.primeAmount) }}
-                                                    </td>
-                                                    <td class="px-3 py-2 border-b border-surface-100 dark:border-surface-800">
-                                                        {{ formatCurrency(payment.calculatedAmount) }}
-                                                    </td>
-                                                    <td class="px-3 py-2 border-b border-surface-100 dark:border-surface-800 font-semibold text-primary-700 dark:text-primary-300">
-                                                        {{ formatCurrency(payment.paidAmount) }}
-                                                    </td>
-                                                    <td class="px-3 py-2 border-b border-surface-100 dark:border-surface-800">
-                                                        {{ formatDate(payment.paidAt) }}
-                                                    </td>
-                                                    <td class="px-3 py-2 border-b border-surface-100 dark:border-surface-800">
-                                                        {{ payment.note || '-' }}
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <div v-else class="text-sm text-surface-500 dark:text-surface-400">{{ salaryPayments.length ? 'Aucun versement ne correspond aux filtres sélectionnés.' : 'Aucun paiement enregistré pour cet employé.' }}</div>
+                                <div class="space-y-1">
+                                    <label for="employee-payment-frequency" class="text-sm font-medium">Fréquence</label>
+                                    <Select v-model="paymentFrequency" inputId="employee-payment-frequency" :options="paymentFrequencyOptions" optionLabel="label" optionValue="value" placeholder="Toutes les fréquences" showClear class="w-full" />
+                                </div>
+                                <div class="space-y-1">
+                                    <label for="employee-payment-search" class="text-sm font-medium">Recherche</label>
+                                    <InputText id="employee-payment-search" v-model="paymentSearch" placeholder="Note, période ou mode de paiement" class="w-full" />
                                 </div>
                             </div>
-                        </div>
+                        </PageSection>
+                        <PageSection class="employee-section employee-section--separated" :aria-busy="loading" plain>
+                            <template #header>
+                                <h3 id="employee-payments-history" class="page-section__title">Historique des paiements</h3>
+                            </template>
+                            <template #headerActions>
+                                <span class="employee-muted text-sm tabular-nums" role="status">{{ filteredPayments.length }} {{ filteredPayments.length === 1 ? 'versement' : 'versements' }} sur {{ salaryPayments.length }}</span>
+                            </template>
+                            <div v-if="filteredPayments.length" class="employee-table-scroll" role="region" aria-labelledby="employee-payments-history" tabindex="0">
+                                <table class="employee-table">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Période</th>
+                                            <th scope="col">Fréquence</th>
+                                            <th scope="col" class="employee-table__amount">Salaire de base</th>
+                                            <th scope="col" class="employee-table__amount">Prime</th>
+                                            <th scope="col" class="employee-table__amount">Total calculé</th>
+                                            <th scope="col" class="employee-table__amount">Versé</th>
+                                            <th scope="col">Date</th>
+                                            <th scope="col">Note</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="payment in filteredPayments" :key="payment.id">
+                                            <th scope="row" class="whitespace-nowrap font-medium">{{ paymentPeriodLabel(payment) }}</th>
+                                            <td>{{ frequenceLabel(payment.frequenceSnapshot) }}</td>
+                                            <td class="employee-table__amount">{{ formatCurrency(payment.baseSalaryAmount) }}</td>
+                                            <td class="employee-table__amount">{{ formatCurrency(payment.primeAmount) }}</td>
+                                            <td class="employee-table__amount">{{ formatCurrency(payment.calculatedAmount) }}</td>
+                                            <td class="employee-table__amount font-semibold">{{ formatCurrency(payment.paidAmount) }}</td>
+                                            <td class="whitespace-nowrap tabular-nums">{{ formatDate(payment.paidAt) }}</td>
+                                            <td class="min-w-32 break-words">{{ payment.note || '—' }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p v-else class="employee-empty">
+                                <i class="pi pi-wallet" aria-hidden="true"></i>
+                                {{ loading ? 'Chargement des paiements…' : salaryPayments.length ? 'Aucun versement ne correspond aux filtres sélectionnés.' : 'Aucun paiement enregistré pour cet employé.' }}
+                            </p>
+                        </PageSection>
                     </TabPanel>
-                    <TabPanel value="conges">
-                        <div class="dossier-folder__panel">
-                            <PageSection title="Conges par annee" tour-id="admin-employee-details.conges" padded>
-                                <div class="space-y-4">
-                                    <div v-if="congesByYear.length" class="space-y-6">
-                                        <div v-for="group in congesByYear" :key="group.year" class="space-y-3">
-                                            <div class="flex items-center justify-between">
-                                                <div class="text-sm font-semibold text-surface-900 dark:text-surface-100">
-                                                    {{ group.year }}
-                                                </div>
-                                                <div class="text-xs text-surface-500 dark:text-surface-400">{{ group.totalDays }} jour(s)</div>
-                                            </div>
-                                            <div class="space-y-2">
-                                                <div v-for="conge in group.items" :key="conge.id" class="flex items-center justify-between gap-3 rounded-xl border border-surface-200/50 dark:border-surface-700/50 p-3">
-                                                    <div>
-                                                        <div class="flex items-center gap-2">
-                                                            <Tag :value="conge.type" :severity="congeSeverity(conge.type)" />
-                                                            <span class="text-sm font-medium text-surface-800 dark:text-surface-200"> {{ formatDate(conge.startDate) }} - {{ formatDate(conge.endDate) }} </span>
-                                                        </div>
-                                                    </div>
-                                                    <div class="text-xs text-surface-500 dark:text-surface-400">
-                                                        {{ conge.startDate && conge.endDate ? `${Math.max(1, Math.floor((new Date(conge.endDate) - new Date(conge.startDate)) / (1000 * 60 * 60 * 24)) + 1)} jour(s)` : '-' }}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
+                    <TabPanel value="conges" class="employee-panel">
+                        <PageSection title="Congés par année" subtitle="Historique des absences et total annuel" tour-id="admin-employee-details.conges" class="employee-section" :aria-busy="loading" plain>
+                            <div v-if="congesByYear.length" class="space-y-5">
+                                <section v-for="group in congesByYear" :key="group.year">
+                                    <div class="employee-leave-heading">
+                                        <h4 class="employee-subtitle"><i class="pi pi-calendar mr-1.5 text-primary" aria-hidden="true"></i> {{ group.year === 'Inconnu' ? 'Année non renseignée' : group.year }}</h4>
+                                        <span class="employee-muted text-sm tabular-nums">{{ group.totalDays }} {{ group.totalDays === 1 ? 'jour' : 'jours' }} au total</span>
                                     </div>
-                                    <div v-else class="text-sm text-surface-500 dark:text-surface-400">Aucun conge enregistre pour cet employe.</div>
-                                </div>
-                            </PageSection>
-                        </div>
+                                    <ul class="employee-list">
+                                        <li v-for="conge in group.items" :key="conge.id" class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-3">
+                                            <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                                <Tag :value="conge.type" :severity="congeSeverity(conge.type)" />
+                                                <span class="text-sm font-medium tabular-nums">{{ formatDate(conge.startDate) }} – {{ formatDate(conge.endDate) }}</span>
+                                            </div>
+                                            <span class="employee-muted text-sm tabular-nums">
+                                                {{ conge.startDate && conge.endDate ? `${Math.max(1, Math.floor((new Date(conge.endDate) - new Date(conge.startDate)) / (1000 * 60 * 60 * 24)) + 1)} jour(s)` : '—' }}
+                                            </span>
+                                        </li>
+                                    </ul>
+                                </section>
+                            </div>
+                            <p v-else class="employee-empty"><i class="pi pi-calendar" aria-hidden="true"></i> {{ loading ? 'Chargement des congés…' : 'Aucun congé enregistré pour cet employé.' }}</p>
+                        </PageSection>
                     </TabPanel>
                 </TabPanels>
             </Tabs>
         </div>
     </PageShell>
 </template>
+
+<style scoped>
+.employee-panel {
+    min-width: 0;
+    padding: clamp(1rem, 2vw, 1.5rem);
+}
+
+.employee-section :deep(.page-section__header) {
+    padding: 0;
+    margin-bottom: 1rem;
+    border: 0;
+}
+
+.employee-section :deep(.page-section__title),
+.employee-section :deep(.page-section__subtitle) {
+    white-space: normal;
+}
+
+.employee-section--separated,
+.employee-profile-summary {
+    border-top: 1px solid var(--surface-border);
+    padding-top: 1rem;
+}
+
+.employee-subtitle {
+    margin: 0;
+    color: var(--text-color);
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.employee-metrics {
+    margin: 0;
+}
+
+.employee-metrics--row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.employee-metrics dt {
+    color: var(--text-color-secondary);
+    font-size: 0.8125rem;
+}
+
+.employee-metrics dt i {
+    margin-inline-end: 0.25rem;
+    color: var(--primary-color);
+}
+
+.employee-metrics dd {
+    margin: 0.3rem 0 0;
+    color: var(--text-color);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+}
+
+.employee-metrics--row dd {
+    font-size: 1.125rem;
+}
+
+.employee-metrics__note,
+.employee-muted {
+    color: var(--text-color-secondary);
+}
+
+.employee-metrics dd.employee-metrics__note {
+    color: var(--text-color-secondary);
+    font-size: 0.8125rem;
+    font-weight: 400;
+}
+
+.employee-list {
+    list-style: none;
+    margin: 0.5rem 0 0;
+    padding: 0;
+}
+
+.employee-list > li + li {
+    border-top: 1px solid var(--surface-border);
+}
+
+.employee-document-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 0;
+    color: var(--text-color);
+    font-size: 0.875rem;
+}
+
+.employee-document-link:hover {
+    text-decoration: underline;
+}
+
+.employee-empty {
+    display: flex;
+    align-items: baseline;
+    gap: 0.625rem;
+    margin: 0;
+    padding: 0.75rem 0;
+    color: var(--text-color-secondary);
+    font-size: 0.875rem;
+}
+
+.employee-leave-heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.25rem 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--surface-border);
+}
+
+.employee-table-scroll {
+    overflow-x: auto;
+}
+
+.employee-table-scroll:focus-visible,
+.employee-document-link:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: -2px;
+}
+
+.employee-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    text-align: start;
+}
+
+.employee-table th,
+.employee-table td {
+    padding: 0.625rem 0.75rem;
+    vertical-align: top;
+    border-bottom: 1px solid var(--surface-border);
+}
+
+.employee-table thead th {
+    background: color-mix(in srgb, var(--surface-card) 96%, var(--text-color));
+    color: var(--text-color-secondary);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.employee-table .employee-table__amount {
+    text-align: end;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 768px) {
+    .employee-metrics--row {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1024px) {
+    .employee-profile-summary {
+        border-top: 0;
+        border-inline-start: 1px solid var(--surface-border);
+        padding: 0 0 0 1.5rem;
+    }
+}
+</style>

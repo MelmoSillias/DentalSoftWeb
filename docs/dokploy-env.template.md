@@ -186,16 +186,15 @@ précédent. Vérifier leurs cibles serveur avant chaque exécution.
 |---|---|
 | API Docker individuelle | `api/Dockerfile`, contexte `api` |
 | Frontend admin individuel | `frontend/Dockerfile`, contexte racine |
-| Portail patient manuel | `npm run build:cabinet -- --cabinet=...`, dans `patient-frontend` |
+| Portail patient individuel | `frontend/Dockerfile`, contexte racine, argument `FRONTEND_DIR=patient-frontend` |
 | Mercure individuel | `mercure-prod/Dockerfile`, contexte `mercure-prod` |
 | Stack complète | `docker-compose.dokploy.yml` |
 
-Le Dockerfile, l'entrypoint, le Caddyfile, les règles d'exclusion et la configuration
-Symfony de l'API individuelle sont conservés. La stack utilise
-`api/Dockerfile.dokploy` et ses fichiers spécifiques. Les nouveaux YAML
-de configuration sont copiés dans `config/packages` uniquement lors de ce build.
-Le contexte frontend Dokploy est filtré par `docker/frontend/Dockerfile.dockerignore` ;
-aucun filtre racine ne modifie les builds individuels.
+L'API individuelle et la stack partagent l'entrypoint de production, le Caddyfile
+et les surcharges Symfony, mais gardent leurs points d'entrée Docker et leurs
+paramètres de déploiement distincts.
+Chaque Dockerfile frontend utilise son propre fichier `.dockerignore` avec le
+contexte racine ; le mode individuel ne nécessite aucun upstream interne.
 
 Le routage navigateur à même origine est activé exclusivement par
 `VITE_DOKPLOY=true`, défini dans le nouveau Dockerfile frontend. Laisser cette
