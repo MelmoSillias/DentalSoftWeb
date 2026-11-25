@@ -436,7 +436,7 @@ onMounted(() => {
                     </Tab>
                 </TabList>
                 <TabPanels>
-                    <TabPanel value="personal" class="employee-panel grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
+                    <TabPanel value="personal" class="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
                         <PageSection title="Informations personnelles" tour-id="admin-employee-details.personal" class="employee-section" plain>
                             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 <div class="space-y-1">
@@ -483,7 +483,7 @@ onMounted(() => {
                             </dl>
                         </PageSection>
                     </TabPanel>
-                    <TabPanel value="rh" class="employee-panel space-y-6">
+                    <TabPanel value="rh" class="space-y-6">
                         <PageSection title="Synthèse du contrat" subtitle="Informations enregistrées pour cet employé" class="employee-section" :aria-busy="loading" plain>
                             <dl class="employee-metrics employee-metrics--row">
                                 <div v-for="item in contractKpis" :key="item.label">
@@ -527,7 +527,7 @@ onMounted(() => {
                             </div>
                         </PageSection>
                     </TabPanel>
-                    <TabPanel value="documents" class="employee-panel">
+                    <TabPanel value="documents">
                         <PageSection title="Documents administratifs" tour-id="admin-employee-details.documents" class="employee-section" plain>
                             <FileUpload
                                 ref="documentUpload"
@@ -573,7 +573,7 @@ onMounted(() => {
                             </section>
                         </PageSection>
                     </TabPanel>
-                    <TabPanel value="payments" class="employee-panel space-y-6">
+                    <TabPanel value="payments" class="space-y-6">
                         <PageSection title="Synthèse des salaires versés" subtitle="Indicateurs correspondant aux filtres actifs" class="employee-section" :aria-busy="loading" plain>
                             <dl class="employee-metrics employee-metrics--row">
                                 <div v-for="item in paymentKpis" :key="item.label">
@@ -648,7 +648,7 @@ onMounted(() => {
                             </p>
                         </PageSection>
                     </TabPanel>
-                    <TabPanel value="conges" class="employee-panel">
+                    <TabPanel value="conges">
                         <PageSection title="Congés par année" subtitle="Historique des absences et total annuel" tour-id="admin-employee-details.conges" class="employee-section" :aria-busy="loading" plain>
                             <div v-if="congesByYear.length" class="space-y-5">
                                 <section v-for="group in congesByYear" :key="group.year">
@@ -679,9 +679,9 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.employee-panel {
+.dossier-folder__tabs :deep(.p-tabpanels) {
     min-width: 0;
-    padding: clamp(1rem, 2vw, 1.5rem);
+    padding: clamp(1rem, 2.5vw, 2rem);
 }
 
 .employee-section :deep(.page-section__header) {
