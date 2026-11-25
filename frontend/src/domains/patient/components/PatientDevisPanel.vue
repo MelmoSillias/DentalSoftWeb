@@ -1,5 +1,6 @@
 <script setup>
 import DevisDialog from '@/domains/patient/components/DevisDialog.vue';
+import { usePatientDevisPrint } from '@/domains/patient/composables/usePatientDevisPrint.js';
 import { saveDevis } from '@/domains/clinical-record/services/ficheMedicale.js';
 import { useAuthStore } from '@/domains/auth/stores/auth.js';
 import { logAppError } from '@/shared/lib/appLogger.js';
@@ -24,6 +25,7 @@ const auth = useAuthStore();
 const confirm = useConfirm();
 const toast = useToast();
 const token = () => auth.token || localStorage.getItem('token');
+const { printDevis, printingId } = usePatientDevisPrint(token);
 
 const dialogVisible = ref(false);
 const editingDevis = ref(null);
@@ -127,9 +129,20 @@ const onSaved = () => {
                         {{ formatMoney(data.montant) }}
                     </template>
                 </Column>
-                <Column header="" style="width: 7rem">
+                <Column header="" style="min-width: 9rem">
                     <template #body="{ data }">
                         <div class="flex justify-end gap-1">
+                            <Button
+                                icon="pi pi-print"
+                                text
+                                rounded
+                                size="small"
+                                aria-label="Imprimer le devis"
+                                v-tooltip.top="'Imprimer le devis'"
+                                :loading="printingId === Number(data.id)"
+                                :disabled="printingId !== null || deletingId === data.id"
+                                @click="printDevis(data.id)"
+                            />
                             <Button icon="pi pi-pencil" text rounded size="small" v-tooltip.top="'Modifier'" @click="openEdit(data)" />
                             <Button icon="pi pi-trash" text rounded severity="danger" size="small" v-tooltip.top="'Supprimer'" :loading="deletingId === data.id" @click="askDelete($event, data)" />
                         </div>

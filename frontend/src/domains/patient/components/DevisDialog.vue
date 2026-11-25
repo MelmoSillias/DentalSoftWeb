@@ -1,13 +1,12 @@
 <script setup>
 import DevisForm from '@/domains/care-delivery/components/DevisForm.vue';
 import AppDialog from '@/app/components/layout/AppDialog.vue';
-import PrintDevisBody from '@/shared/print/components/PrintDevisBody.vue';
-import { usePrinter } from '@/shared/print/usePrinter.js';
+import { usePatientDevisPrint } from '@/domains/patient/composables/usePatientDevisPrint.js';
 import { defaultSoinList, normalizeSoinList } from '@/domains/care-delivery/services/consultations.js';
 import { createPatientFiche, loadFicheMedicale, saveDevis } from '@/domains/clinical-record/services/ficheMedicale.js';
 import { fetchPublicGeneralSettings } from '@/domains/settings/services/globalSettingsService.js';
 import { fetchPatientDossier } from '@/domains/patient/services/patients.js';
-import { fetchDevisPrintData } from '@/shared/print/printService.js';
+
 import { useAuthStore } from '@/domains/auth/stores/auth.js';
 import { logAppError } from '@/shared/lib/appLogger.js';
 import { emptyDevisEntry, listFicheDevis, nextDevisType, normalizeDevisServices, toApiDevis } from '@/domains/billing/model/patientDevis.js';
@@ -31,13 +30,12 @@ const emit = defineEmits(['saved']);
 
 const auth = useAuthStore();
 const toast = useToast();
-const { printComponent } = usePrinter();
 const token = () => auth.token || localStorage.getItem('token');
+const { printDevis, printingId } = usePatientDevisPrint(token);
 
 const soinsList = ref(defaultSoinList);
 const draft = ref(toDraft(emptyDevisEntry()));
 const saving = ref(false);
-const printing = ref(false);
 const saved = ref(false);
 const savedDevisId = ref(null);
 const savedFicheId = ref(null);
@@ -46,7 +44,7 @@ const ignoreDraftWatch = ref(false);
 
 const isEdit = computed(() => Boolean(props.devis?.id || savedDevisId.value));
 const dialogTitle = computed(() => (isEdit.value ? 'Modifier le devis' : 'Nouveau devis'));
-const canPrint = computed(() => saved.value && Number.isFinite(Number(savedDevisId.value)));
+const canPrint = computed(() => saved.value && savedDevisId.value > 0);
 
 function toDraft(entry) {
     const services = normalizeDevisServices(entry);
@@ -197,18 +195,8 @@ const submit = async () => {
     }
 };
 
-const printDevis = async () => {
-    if (!canPrint.value) return;
-    printing.value = true;
-    try {
-        const result = await fetchDevisPrintData(savedDevisId.value, token());
-        await printComponent(PrintDevisBody, { doc: result.doc, title: result.title || 'Devis' });
-    } catch (error) {
-        logAppError('Impression devis', error);
-        toast.add({ severity: 'error', summary: 'Impression', detail: "Impossible d'imprimer le devis.", life: 3000 });
-    } finally {
-        printing.value = false;
-    }
+const printSavedDevis = () => {
+    if (!saving.value && canPrint.value) return printDevis(savedDevisId.value);
 };
 </script>
 
@@ -233,8 +221,8 @@ const printDevis = async () => {
 
         <DevisForm v-model="draft" single :soins="soinsList" :saving="saving" />
 
-        <template #footerStart>
-            <Button v-if="canPrint" label="Imprimer" icon="pi pi-print" severity="secondary" outlined :loading="printing" @click="printDevis" />
+        <template v-if="canPrint" #footerStart>
+            <Button label="Imprimer" icon="pi pi-print" severity="secondary" outlined :disabled="saving" :loading="printingId !== null" @click="printSavedDevis" />
         </template>
     </AppDialog>
 </template>
