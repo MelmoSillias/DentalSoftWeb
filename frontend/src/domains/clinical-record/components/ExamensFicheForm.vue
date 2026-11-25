@@ -173,7 +173,7 @@ const tissusDursRows = ['Forme', 'Lesions', 'Excroissance osseuse'];
                     <Tab value="examens-biologiques">Examens biologiques</Tab>
                 </TabList>
 
-                <TabPanels class="mt-4">
+                <TabPanels :class="isBook ? 'mt-4' : 'medical-exam-panels'">
                     <TabPanel value="examens-complementaires">
                         <h4 v-if="isBook" class="fiche-book__title">Examens complémentaires</h4>
                         <div class="space-y-4">
@@ -404,3 +404,10 @@ const tissusDursRows = ['Forme', 'Lesions', 'Excroissance osseuse'];
         </div>
     </div>
 </template>
+
+<style scoped>
+.medical-exam-panels.p-tabpanels {
+    min-width: 0;
+    padding: clamp(0.75rem, 2vw, 1.5rem);
+}
+</style>

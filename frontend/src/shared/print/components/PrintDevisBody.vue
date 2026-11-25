@@ -1,13 +1,16 @@
 <script setup>
+import { computed } from 'vue';
 import PrintA4Page from '@/shared/print/components/PrintA4Page.vue';
 import PrintDocumentHeader from '@/shared/print/components/PrintDocumentHeader.vue';
 import logoImg from '@/assets/logo.png';
 
-defineProps({
+const props = defineProps({
     doc: { type: Object, default: () => ({}) },
     title: { type: String, default: 'Devis' },
     logoSrc: { type: String, default: logoImg }
 });
+
+const isDevis = computed(() => (props.doc?.type ? props.doc.type === 'Devis' : props.title === 'Devis'));
 
 const formatMoney = (value) => {
     const num = Number(value || 0);
@@ -32,7 +35,8 @@ const formatMoney = (value) => {
         <table class="print-doc-table">
             <thead>
                 <tr>
-                    <th>Désignation</th>
+                    <th v-if="isDevis" style="width: 24%">Diagnostic</th>
+                    <th>{{ isDevis ? 'Traitement' : 'Désignation' }}</th>
                     <th style="width: 8%">Qté</th>
                     <th style="width: 22%">Prix unitaire</th>
                     <th style="width: 22%">Total</th>
@@ -40,24 +44,23 @@ const formatMoney = (value) => {
             </thead>
             <tbody>
                 <tr v-for="(ligne, idx) in doc?.contenus || []" :key="idx">
-                    <td>
-                        {{ ligne.designation }}
-                    </td>
+                    <td v-if="isDevis" class="quote-text">{{ ligne.diagnostic || '—' }}</td>
+                    <td :class="{ 'quote-text': isDevis }">{{ isDevis ? ((ligne.traitement ?? ligne.designation) || '—') : ligne.designation }}</td>
                     <td>{{ ligne.qte }}</td>
                     <td>{{ formatMoney(ligne.montant) }}</td>
                     <td>{{ formatMoney(ligne.total) }}</td>
                 </tr>
                 <tr v-if="!(doc?.contenus && doc.contenus.length)">
-                    <td colspan="4" class="empty">Aucune ligne.</td>
+                    <td :colspan="isDevis ? 5 : 4" class="empty">Aucune ligne.</td>
                 </tr>
             </tbody>
             <tfoot>
                 <tr>
-                    <th colspan="3" style="text-align: right">Total TTC</th>
+                    <th :colspan="isDevis ? 4 : 3" style="text-align: right">Total TTC</th>
                     <th>{{ formatMoney(doc?.montant) }}</th>
                 </tr>
                 <tr v-if="doc?.reste !== undefined && doc?.reste !== null">
-                    <th colspan="3" style="text-align: right">Reste à payer</th>
+                    <th :colspan="isDevis ? 4 : 3" style="text-align: right">Reste à payer</th>
                     <th>{{ formatMoney(doc?.reste) }}</th>
                 </tr>
             </tfoot>
@@ -77,6 +80,10 @@ const formatMoney = (value) => {
 </template>
 
 <style scoped>
+.quote-text {
+    overflow-wrap: anywhere;
+}
+
 .sign-row {
     margin-top: 20px;
     display: flex;

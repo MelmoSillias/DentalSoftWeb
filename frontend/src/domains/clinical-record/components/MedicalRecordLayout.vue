@@ -5,7 +5,8 @@ import { computed, ref, useId, watch } from 'vue';
 
 const props = defineProps({
     sections: { type: Array, required: true },
-    tall: { type: Boolean, default: false }
+    tall: { type: Boolean, default: false },
+    padded: { type: Boolean, default: false }
 });
 const activeSection = ref(props.sections[0]?.id);
 const content = ref(null);
@@ -28,7 +29,7 @@ watch(
 </script>
 
 <template>
-    <div class="medical-record" :class="{ 'medical-record--tall': tall }">
+    <div class="medical-record" :class="{ 'medical-record--tall': tall, 'medical-record--padded': padded }">
         <nav class="medical-record__nav" aria-label="Rubriques de la fiche médicale">
             <button v-for="section in sections" :key="section.id" type="button" :aria-pressed="activeSection === section.id" :aria-controls="`${instanceId}-content`" @click="navigate(section.id)">
                 <span>{{ section.label }}</span>
@@ -110,6 +111,9 @@ watch(
     overflow-y: auto;
     scrollbar-gutter: stable;
     padding-right: 0.5rem;
+}
+.medical-record--padded .medical-record__content {
+    padding: clamp(1rem, 2.5cqi, 2rem);
 }
 .medical-record__pager {
     display: flex;

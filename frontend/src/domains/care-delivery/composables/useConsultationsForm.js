@@ -2,6 +2,7 @@ import { logAppError } from '@/shared/lib/appLogger.js';
 import { computed, nextTick, reactive, ref, watch } from 'vue';
 import { fetchInfirmiers } from '@/domains/workforce/services/corpsmedical.js';
 import { fetchSalles } from '@/domains/scheduling/services/salles.js';
+import { normalizeDevisServices, toApiDevis } from '@/domains/billing/model/patientDevis.js';
 import { fetchConsultationDetails } from '@/domains/care-delivery/services/consultations.js';
 import { loadOrdonnances, saveConsultation, closeConsultation } from '@/domains/care-delivery/services/consultationsforms.js';
 import { saveBilans, saveDevis, saveDocuments, saveEntretien, saveExamens, savePlanTraitement } from '@/domains/clinical-record/services/ficheMedicale.js';
@@ -103,19 +104,7 @@ const normalizeDevisEntry = (entry = {}) => ({
     type: parseDevisType(entry?.type),
     date: entry?.date ?? null,
     description: entry?.description || '',
-    services: Array.isArray(entry?.services)
-        ? entry.services.map((service) => ({
-              designation: service?.designation ?? '',
-              qte: Number(service?.qte) || 1,
-              montant: Number(service?.montant) || 0
-          }))
-        : Array.isArray(entry?.contenus)
-          ? entry.contenus.map((service) => ({
-                designation: service?.designation ?? '',
-                qte: Number(service?.qte) || 1,
-                montant: Number(service?.montant) || 0
-            }))
-          : []
+    services: normalizeDevisServices(entry)
 });
 
 const toDevisModel = (entries = [], requestedActiveIndex = 0) => {
@@ -607,17 +596,7 @@ export const useConsultationsForm = ({ ficheId, consultId, token, mode: _mode })
                     }
                     usedTypes.add(type);
 
-                    return {
-                        id: entry.id,
-                        type,
-                        date: normalizeDateForApi(entry.date),
-                        description: entry.description || '',
-                        contenus: (entry.services || []).map((service) => ({
-                            designation: service.designation ?? '',
-                            qte: service.qte ?? 1,
-                            montant: service.montant ?? 0
-                        }))
-                    };
+                    return toApiDevis({ ...entry, date: normalizeDateForApi(entry.date) }, type);
                 })
             };
             await saveDevis(ficheId.value, payload, token);

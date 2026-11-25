@@ -136,7 +136,7 @@ defineExpose({
         </div>
 
         <template v-else>
-            <MedicalRecordLayout :sections="recordSections" :tall="tall">
+            <MedicalRecordLayout :sections="recordSections" :tall="tall" padded>
                 <template #entretien>
                     <EntretienVerbalForm v-model="data.entretien" :saving="saving.entretien" :patient-sex="data.patient?.sexe" @save="() => saveAndNotify(saveEntretienSection)" />
                 </template>

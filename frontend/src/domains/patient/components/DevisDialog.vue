@@ -132,7 +132,12 @@ const resolveTargetFicheId = async () => {
 const submit = async () => {
     if (saving.value) return;
     const entry = activeEntry();
-    const lines = normalizeDevisServices(entry).filter((line) => String(line.designation || '').trim());
+    const services = normalizeDevisServices(entry);
+    if (services.some((line) => line.diagnostic.trim() && !line.traitement.trim())) {
+        toast.add({ severity: 'warn', summary: 'Devis', detail: 'Renseignez le traitement pour chaque diagnostic saisi.', life: 2500 });
+        return;
+    }
+    const lines = services.filter((line) => line.traitement.trim());
     if (!lines.length) {
         toast.add({ severity: 'warn', summary: 'Devis', detail: 'Ajoutez au moins une prestation.', life: 2500 });
         return;

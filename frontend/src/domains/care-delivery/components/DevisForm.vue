@@ -4,7 +4,8 @@ import Button from 'primevue/button';
 import _Calendar from 'primevue/calendar';
 import InputNumber from 'primevue/inputnumber';
 import InputText from 'primevue/inputtext';
-import { computed, ref } from 'vue';
+import { computed, ref, useId } from 'vue';
+import { normalizeDevisServices } from '@/domains/billing/model/patientDevis.js';
 import { defaultSoinList, findSoinMontant, normalizeSoinList, soinLabelList } from '@/domains/care-delivery/services/consultations.js';
 
 const props = defineProps({
@@ -38,6 +39,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'save', 'cloture', 'open-ordonnance', 'print-ordonnance', 'print-devis']);
 
 const isBook = computed(() => props.layout === 'book');
+const fieldId = useId();
 
 const devis = computed({
     get: () => props.modelValue,
@@ -51,11 +53,6 @@ const createEmptyDevis = () => ({
     services: []
 });
 
-const normalizeService = (service = {}) => ({
-    designation: service?.designation || '',
-    qte: Number(service?.qte) || 1,
-    montant: Number(service?.montant) || 0
-});
 
 const parseDevisType = (value) => {
     if (value === null || value === undefined || value === '') return null;
@@ -68,7 +65,7 @@ const normalizeDevisEntry = (entry = {}) => ({
     type: parseDevisType(entry?.type),
     date: entry?.date ?? null,
     description: entry?.description || '',
-    services: Array.isArray(entry?.services) ? entry.services.map((service) => normalizeService(service)) : Array.isArray(entry?.contenus) ? entry.contenus.map((service) => normalizeService(service)) : []
+    services: normalizeDevisServices(entry)
 });
 
 const getDevisState = (value) => {
@@ -156,13 +153,13 @@ const searchSoins = (event) => {
 };
 
 const onSoinItemSelect = (idx, event) => {
-    const designation = String(event?.value ?? '').trim();
-    const montant = findSoinMontant(soinsList.value, designation);
+    const traitement = String(event?.value ?? '').trim();
+    const montant = findSoinMontant(soinsList.value, traitement);
     if (montant === null) {
-        updateService(idx, { designation });
+        updateService(idx, { traitement });
         return;
     }
-    updateService(idx, { designation, montant });
+    updateService(idx, { traitement, montant });
 };
 
 const dateModel = computed({
@@ -229,7 +226,7 @@ const addService = () => {
         const services = Array.isArray(target.services) ? target.services : [];
         state.list[state.activeIndex] = {
             ...target,
-            services: [...services, { designation: '', qte: 1, montant: 0 }]
+            services: [...services, { diagnostic: '', traitement: '', qte: 1, montant: 0 }]
         };
     });
 };
@@ -432,7 +429,7 @@ function subtotal(service) {
             </div>
 
             <!-- Services List -->
-            <div class="space-y-4 grid grid-cols-2 gap-4 items-stretch">
+            <div class="devis-service-list grid grid-cols-1 gap-4">
                 <div v-if="!(activeDevis.services && activeDevis.services.length)" class="text-center py-8">
                     <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-surface-100 dark:bg-surface-800 mb-3">
                         <i class="pi pi-inbox text-2xl text-surface-400"></i>
@@ -458,25 +455,41 @@ function subtotal(service) {
                     </div>
 
                     <!-- Service Content -->
-                    <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                        <div class="lg:col-span-2 space-y-2 flex flex-col">
-                            <label class="text-xs font-medium text-surface-600 dark:text-surface-400 uppercase tracking-wider">Désignation</label>
-                            <AutoComplete
-                                :modelValue="service.designation"
-                                :suggestions="soinsSuggestions"
-                                dropdown
-                                class="w-full"
-                                inputClass="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 p-2.5"
-                                placeholder="Description du service"
-                                @complete="searchSoins"
-                                @item-select="(event) => onSoinItemSelect(idx, event)"
-                                @update:modelValue="(v) => updateService(idx, { designation: v || '' })"
+                    <div class="devis-service-fields grid grid-cols-1 items-end gap-4">
+                        <div class="flex min-w-0 flex-col gap-2">
+                            <label :for="`${fieldId}-diagnostic-${idx}`" class="text-xs font-medium text-surface-600 dark:text-surface-400 uppercase tracking-wider">Diagnostic</label>
+                            <InputText
+                                :id="`${fieldId}-diagnostic-${idx}`"
+                                :modelValue="service.diagnostic"
+                                :readonly="readonly"
+                                maxlength="255"
+                                class="w-full rounded-lg border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 p-2.5"
+                                placeholder="Saisir un diagnostic"
+                                @update:modelValue="(v) => updateService(idx, { diagnostic: v || '' })"
                             />
                         </div>
-                        <div class="space-y-2 flex flex-col">
-                            <label class="text-xs font-medium text-surface-600 dark:text-surface-400 uppercase tracking-wider">Quantité</label>
+                        <div class="flex min-w-0 flex-col gap-2">
+                            <label :for="`${fieldId}-traitement-${idx}`" class="text-xs font-medium text-surface-600 dark:text-surface-400 uppercase tracking-wider">Traitement</label>
+                            <AutoComplete
+                                :inputId="`${fieldId}-traitement-${idx}`"
+                                :modelValue="service.traitement"
+                                :suggestions="soinsSuggestions"
+                                :disabled="readonly"
+                                :dropdown="!readonly"
+                                class="w-full"
+                                inputClass="w-full min-w-0 rounded-lg border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 p-2.5"
+                                placeholder="Saisir ou choisir un traitement"
+                                @complete="searchSoins"
+                                @item-select="(event) => onSoinItemSelect(idx, event)"
+                                @update:modelValue="(v) => updateService(idx, { traitement: v || '' })"
+                            />
+                        </div>
+                        <div class="flex min-w-0 flex-col gap-2">
+                            <label :for="`${fieldId}-qte-${idx}`" class="text-xs font-medium text-surface-600 dark:text-surface-400 uppercase tracking-wider">Qté</label>
                             <InputNumber
+                                :inputId="`${fieldId}-qte-${idx}`"
                                 :modelValue="service.qte"
+                                :readonly="readonly"
                                 :min="1"
                                 mode="decimal"
                                 :useGrouping="false"
@@ -484,10 +497,12 @@ function subtotal(service) {
                                 @update:modelValue="(v) => updateService(idx, { qte: Number(v) || 1 })"
                             />
                         </div>
-                        <div class="space-y-2 flex flex-col">
-                            <label class="text-xs font-medium text-surface-600 dark:text-surface-400 uppercase tracking-wider">Prix unitaire</label>
+                        <div class="flex min-w-0 flex-col gap-2">
+                            <label :for="`${fieldId}-prix-${idx}`" class="text-xs font-medium text-surface-600 dark:text-surface-400 uppercase tracking-wider">Prix unitaire</label>
                             <InputNumber
+                                :inputId="`${fieldId}-prix-${idx}`"
                                 :modelValue="service.montant"
+                                :readonly="readonly"
                                 mode="decimal"
                                 :minFractionDigits="0"
                                 :maxFractionDigits="2"
@@ -532,3 +547,15 @@ function subtotal(service) {
         </div>
     </div>
 </template>
+
+<style scoped>
+.devis-service-list {
+    container: devis-services / inline-size;
+}
+
+@container devis-services (min-width: 34rem) {
+    .devis-service-fields {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) 4rem 7rem;
+    }
+}
+</style>

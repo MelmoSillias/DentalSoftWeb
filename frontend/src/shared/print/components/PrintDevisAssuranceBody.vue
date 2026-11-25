@@ -17,7 +17,8 @@ const lignes = computed(() => {
         return props.doc.contenus;
     }
     return (props.doc?.lignes || []).map((line) => ({
-        designation: line.designation,
+        diagnostic: line.diagnostic,
+        traitement: line.traitement ?? line.designation,
         qte: line.quantite ?? line.qte ?? 1,
         montant: line.prix ?? line.montant ?? 0,
         total: line.total ?? 0
@@ -68,7 +69,8 @@ const formatMoney = (value) => {
         <table class="print-doc-table">
             <thead>
                 <tr>
-                    <th>Désignation</th>
+                    <th style="width: 24%">Diagnostic</th>
+                    <th>Traitement</th>
                     <th style="width: 8%">Qté</th>
                     <th style="width: 22%">Prix unitaire</th>
                     <th style="width: 22%">Total</th>
@@ -76,26 +78,27 @@ const formatMoney = (value) => {
             </thead>
             <tbody>
                 <tr v-for="(ligne, idx) in lignes" :key="idx">
-                    <td>{{ ligne.designation }}</td>
+                    <td class="quote-text">{{ ligne.diagnostic || '—' }}</td>
+                    <td class="quote-text">{{ (ligne.traitement ?? ligne.designation) || '—' }}</td>
                     <td>{{ ligne.qte }}</td>
                     <td>{{ formatMoney(ligne.montant) }}</td>
                     <td>{{ formatMoney(ligne.total) }}</td>
                 </tr>
                 <tr v-if="!lignes.length">
-                    <td colspan="4" class="empty">Aucune ligne.</td>
+                    <td colspan="5" class="empty">Aucune ligne.</td>
                 </tr>
             </tbody>
             <tfoot>
                 <tr>
-                    <th colspan="3" style="text-align: right">Total TTC</th>
+                    <th colspan="4" style="text-align: right">Total TTC</th>
                     <th>{{ formatMoney(doc?.montantTotal ?? doc?.montant) }}</th>
                 </tr>
                 <tr>
-                    <th colspan="3" style="text-align: right">Taux de couverture</th>
+                    <th colspan="4" style="text-align: right">Taux de couverture</th>
                     <th>{{ tauxCouvertureLabel }}</th>
                 </tr>
                 <tr>
-                    <th colspan="3" style="text-align: right">Part assurance</th>
+                    <th colspan="4" style="text-align: right">Part assurance</th>
                     <th>{{ formatMoney(doc?.montantAssurance) }}</th>
                 </tr>
             </tfoot>
@@ -115,6 +118,10 @@ const formatMoney = (value) => {
 </template>
 
 <style scoped>
+.quote-text {
+    overflow-wrap: anywhere;
+}
+
 .assurance-card {
     margin-top: -4mm;
 }

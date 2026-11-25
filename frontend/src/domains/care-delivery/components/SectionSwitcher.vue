@@ -145,7 +145,7 @@ onBeforeUnmount(() => {
                 </button>
             </div>
 
-            <div class="w-full p-3 md:p-4">
+            <div class="w-full min-w-0 p-4 md:p-6 xl:p-8">
                 <slot :name="active"></slot>
             </div>
         </template>

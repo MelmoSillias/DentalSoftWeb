@@ -811,8 +811,10 @@ class FicheMedicaleService
                     $lineTotal = ((float) ($c['montant'] ?? 0)) * ((int) ($c['qte'] ?? 1));
                     $amount += $lineTotal;
 
+                    $diagnostic = trim((string) ($c['diagnostic'] ?? ''));
                     $cd = new ContenuDevis();
-                    $cd->setDesignation($c['designation'] ?? '')
+                    $cd->setDiagnostic($diagnostic !== '' ? $diagnostic : null)
+                        ->setTraitement($c['traitement'] ?? $c['designation'] ?? '')
                         ->setQte((int) ($c['qte'] ?? 1))
                         ->setMontant((float) ($c['montant'] ?? 0))
                         ->setMontantTotal($lineTotal);
@@ -1026,7 +1028,9 @@ class FicheMedicaleService
             'reste' => $d->getReste() ?? 0.0,
             'contenus' => array_map(static fn(ContenuDevis $c) => [
                 'id' => $c->getId(),
-                'designation' => $c->getDesignation(),
+                'diagnostic' => $c->getDiagnostic(),
+                'traitement' => $c->getTraitement(),
+                'designation' => $c->getTraitement(),
                 'qte' => $c->getQte(),
                 'montant' => $c->getMontant(),
                 'montantTotal' => $c->getMontantTotal(),

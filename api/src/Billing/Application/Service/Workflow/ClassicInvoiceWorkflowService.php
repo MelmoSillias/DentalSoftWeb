@@ -91,7 +91,9 @@ class ClassicInvoiceWorkflowService
             $lineTotal = $contenu->getQte() * $contenu->getMontant();
             $montant += $lineTotal;
             $contenus[] = [
-                'designation' => $contenu->getDesignation(),
+                'diagnostic' => $contenu->getDiagnostic(),
+                'traitement' => $contenu->getTraitement(),
+                'designation' => $contenu->getTraitement(),
                 'qte' => $contenu->getQte(),
                 'montant' => $contenu->getMontant(),
                 'total' => $lineTotal,

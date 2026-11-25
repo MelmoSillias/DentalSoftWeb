@@ -228,7 +228,10 @@ export default {
                         <div class="space-y-2">
                             <div class="text-sm text-surface-600 dark:text-surface-400 font-medium">Contenus</div>
                             <div v-for="(item, idx) in fiche.devis.contenus || []" :key="idx" class="flex items-center justify-between p-3 rounded-xl border border-surface-200/50 dark:border-surface-700/50">
-                                <div class="font-medium text-surface-900 dark:text-surface-100">{{ item.designation || 'Service' }}</div>
+                                <div>
+                                    <div class="font-medium text-surface-900 dark:text-surface-100">{{ (item.traitement ?? item.designation) || 'Service' }}</div>
+                                    <div v-if="item.diagnostic" class="text-sm text-surface-600 dark:text-surface-400">Diagnostic : {{ item.diagnostic }}</div>
+                                </div>
                                 <div class="text-sm text-surface-600 dark:text-surface-400">{{ item.qte || 1 }} x {{ item.montant || 0 }}</div>
                             </div>
                         </div>

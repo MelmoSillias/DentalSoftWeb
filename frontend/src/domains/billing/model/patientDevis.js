@@ -34,11 +34,7 @@ export const toApiDevis = (entry, type) => ({
     type,
     date: entry?.date || null,
     description: entry?.description || '',
-    contenus: serviceLines(entry).map((line) => ({
-        designation: line?.designation ?? '',
-        qte: Number(line?.qte) || 1,
-        montant: Number(line?.montant) || 0
-    }))
+    contenus: normalizeDevisServices(entry)
 });
 
 export const nextDevisType = (entries) => {
@@ -64,7 +60,8 @@ export const emptyDevisEntry = () => ({
 
 export const normalizeDevisServices = (entry) =>
     serviceLines(entry).map((line) => ({
-        designation: line?.designation || '',
+        diagnostic: line?.diagnostic ?? '',
+        traitement: line?.traitement ?? line?.designation ?? '',
         qte: Number(line?.qte) || 1,
         montant: Number(line?.montant) || 0
     }));

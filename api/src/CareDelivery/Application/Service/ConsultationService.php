@@ -1040,8 +1040,9 @@ class ConsultationService
             $contenus = [];
             foreach ($devis->getContenus() as $c) {
                 $contenus[] = [
-
-                    'designation' => $c->getDesignation(),
+                    'diagnostic' => $c->getDiagnostic(),
+                    'traitement' => $c->getTraitement(),
+                    'designation' => $c->getTraitement(),
                     'qte'         => $c->getQte(),
                     'montant'     => $c->getMontant(),
                 ];
