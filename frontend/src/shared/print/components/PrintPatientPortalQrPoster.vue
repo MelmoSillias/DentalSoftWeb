@@ -8,7 +8,7 @@ defineProps({
 </script>
 
 <template>
-    <div class="print-root">
+    <div class="print-root" data-print-format="poster">
         <div class="poster" id="posterA4">
             <div class="header-modern">
                 <div class="title-section">
@@ -81,26 +81,22 @@ defineProps({
 }
 
 .print-root {
+    max-width: var(--print-paper-width, 210mm);
+    min-height: var(--print-paper-height, 297mm);
+    margin-inline: auto;
+    padding: 4mm;
     background: #eef5f8;
     font-family: Inter, Arial, sans-serif;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 40px 24px;
+    display: grid;
+    overflow-wrap: anywhere;
 }
 
 .poster {
-    max-width: 210mm;
-    width: 100%;
-    min-height: 297mm;
     background: #fff;
     border-radius: 40px;
     box-shadow: 0 30px 50px -20px rgba(0, 0, 0, 0.3);
-    margin: 0 auto 32px auto;
-    padding: 12mm 12mm;
+    padding: 8mm;
     position: relative;
-    transition: all 0.2s;
 }
 
 .poster::after {
@@ -120,9 +116,9 @@ defineProps({
     justify-content: space-between;
     align-items: flex-start;
     flex-wrap: wrap;
-    margin-bottom: 36px;
+    margin-bottom: 18px;
     border-bottom: 2px solid rgba(44, 155, 143, 0.2);
-    padding-bottom: 20px;
+    padding-bottom: 14px;
 }
 
 .title-section h1 {
@@ -160,21 +156,20 @@ defineProps({
 
 .asymmetric-layout {
     display: grid;
-    grid-template-columns: 1fr 1.2fr;
-    gap: 32px;
-    margin: 24px 0 32px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+    gap: 24px;
 }
 
 .left-stack {
     display: flex;
     flex-direction: column;
-    gap: 28px;
+    gap: 16px;
 }
 
 .qr-card {
     background: #fff;
     border-radius: 32px;
-    padding: 28px 20px 30px;
+    padding: 16px 20px;
     text-align: center;
     transition: all 0.25s ease;
     box-shadow: 0 15px 30px -12px rgba(0, 0, 0, 0.08);
@@ -185,13 +180,13 @@ defineProps({
 .card-icon {
     font-size: 2.4rem;
     background: #eef7f5;
-    width: 70px;
-    height: 70px;
+    width: 56px;
+    height: 56px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 35px;
-    margin: 0 auto 18px;
+    border-radius: 50%;
+    margin: 0 auto 10px;
     color: #1f6e8c;
 }
 
@@ -206,7 +201,7 @@ defineProps({
     font-size: 0.85rem;
     color: #597f8f;
     line-height: 1.45;
-    margin: 8px 0 18px;
+    margin: 6px 0 10px;
     padding: 0 8px;
 }
 
@@ -234,7 +229,7 @@ defineProps({
     border-radius: 40px;
     color: #2c9b8f;
     font-weight: 600;
-    margin-top: 14px;
+    margin-top: 8px;
 }
 
 .feature-card {
@@ -244,7 +239,6 @@ defineProps({
     text-align: center;
     box-shadow: 0 20px 35px -14px rgba(31, 110, 140, 0.2);
     border: 1px solid rgba(44, 155, 143, 0.35);
-    height: 100%;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -300,9 +294,9 @@ defineProps({
 }
 
 .footer-note {
-    margin-top: 35px;
+    margin-top: 24px;
     border-top: 2px dashed #cbe0e8;
-    padding-top: 22px;
+    padding-top: 14px;
     display: flex;
     justify-content: space-between;
     flex-wrap: wrap;
@@ -326,160 +320,66 @@ defineProps({
     place-items: center;
 }
 
-@media (max-width: 800px) {
-    .asymmetric-layout {
-        grid-template-columns: 1fr;
-        gap: 28px;
-    }
-    .poster {
-        padding: 10mm;
-    }
-    .feature-card {
-        order: 2;
-    }
+html[data-print-orientation='landscape'] .print-root {
+    max-width: var(--print-paper-width, 297mm);
+    min-height: var(--print-paper-height, 210mm);
+}
+
+html[data-print-orientation='landscape'] .asymmetric-layout {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+html[data-print-orientation='landscape'] .left-stack {
+    display: contents;
+}
+
+html[data-print-orientation='landscape'] .qr-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+html[data-print-orientation='landscape'] .feature-card {
+    padding: 16px 20px;
+}
+
+html[data-print-orientation='landscape'] .feature-icon {
+    width: 76px;
+    height: 76px;
+    margin-bottom: 14px;
+    font-size: 2.5rem;
+}
+
+html[data-print-orientation='landscape'] .feature-desc {
+    margin: 8px auto 14px;
+}
+
+html[data-print-orientation='landscape'] .big-qr-canvas {
+    width: 184px;
+    height: 184px;
 }
 
 @media print {
-    .print-root {
-        background: #fff;
-        display: block;
+    .print-root,
+    html[data-print-orientation='landscape'] .print-root {
+        min-height: 0;
         padding: 0;
-        margin: 0;
+        background: #fff;
     }
 
     .poster {
-        max-width: none;
-        width: 100%;
-        min-height: 0;
         border-radius: 0;
-        box-shadow: none;
-        padding: 7mm 8mm;
-        margin: 0;
-        break-inside: auto;
-        page-break-inside: auto;
-        overflow: hidden;
     }
 
-    .asymmetric-layout {
-        grid-template-columns: 1fr 1.2fr !important;
-        gap: 12px;
-        margin: 8px 0 10px;
-    }
-
-    .left-stack {
-        gap: 10px;
-    }
-
+    .poster,
     .qr-card,
-    .feature-card {
-        border-radius: 14px;
-        padding: 10px 8px;
-        box-shadow: none;
-        break-inside: auto;
-        page-break-inside: auto;
-        backdrop-filter: none;
-    }
-
-    .feature-card {
-        order: initial !important;
-    }
-
-    .card-icon {
-        width: 34px;
-        height: 34px;
-        border-radius: 17px;
-        font-size: 1rem;
-        margin-bottom: 6px;
-    }
-
-    .feature-icon {
-        width: 42px;
-        height: 42px;
-        border-radius: 21px;
-        font-size: 1.2rem;
-        margin-bottom: 8px;
-        box-shadow: none;
-    }
-
-    .qr-card h3,
-    .feature-card h3 {
-        font-size: 0.9rem;
-        margin-bottom: 4px;
-    }
-
-    .qr-desc,
-    .feature-desc {
-        font-size: 0.58rem;
-        line-height: 1.25;
-        margin: 4px 0 6px;
-        max-width: none;
-        padding: 0;
-    }
-
-    .canvas-wrapper,
-    .big-canvas-wrapper {
-        margin: 4px 0;
-    }
-
-    .qr-canvas {
-        width: 82px;
-        height: 82px;
-        border-radius: 10px;
-        padding: 2px;
-        box-shadow: none;
-    }
-
+    .feature-card,
+    .tooth-icon,
+    .feature-icon,
+    .qr-canvas,
     .big-qr-canvas {
-        width: 110px;
-        height: 110px;
-        border-radius: 12px;
-        padding: 3px;
         box-shadow: none;
-    }
-
-    .badge-qr,
-    .big-badge {
-        margin-top: 5px;
-        padding: 2px 8px;
-        font-size: 0.52rem;
-        border-radius: 999px;
-    }
-
-    .header-modern {
-        margin-bottom: 8px;
-        padding-bottom: 6px;
-    }
-
-    .title-section h1 {
-        font-size: 1.05rem;
-        line-height: 1.1;
-    }
-
-    .clinic-sub {
-        margin-top: 3px;
-        font-size: 0.55rem;
-        padding-left: 6px;
-        border-left-width: 2px;
-    }
-
-    .tooth-icon {
-        width: 26px;
-        height: 26px;
-        border-radius: 13px;
-        font-size: 0.82rem;
-        box-shadow: none;
-    }
-
-    .footer-note {
-        margin-top: 8px;
-        padding-top: 6px;
-        gap: 6px 8px;
-        font-size: 0.5rem;
-    }
-
-    @page {
-        size: A4;
-        margin: 0.4cm;
     }
 }
 </style>

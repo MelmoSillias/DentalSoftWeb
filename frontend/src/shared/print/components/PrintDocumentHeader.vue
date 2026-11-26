@@ -54,6 +54,15 @@ const hasMeta = computed(() => formattedNumber.value !== '—' || dateLabel.valu
     border-bottom: 2px solid #1d6fbf;
 }
 
+html[data-print-orientation='landscape'] .print-doc-header {
+    margin-bottom: 5mm;
+}
+
+html[data-print-orientation='landscape'] .print-doc-header__cabinet {
+    margin-bottom: 3mm;
+    padding-bottom: 3mm;
+}
+
 .print-doc-header__title-band {
     display: flex;
     align-items: center;

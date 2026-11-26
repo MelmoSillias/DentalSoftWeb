@@ -1,8 +1,7 @@
 import { createApp } from 'vue';
 import { openPrintPreview } from './printPreview.js';
 
-const injectPrintBaseStyles = (targetDocument, options = {}) => {
-    const pageSize = options.orientation === 'landscape' ? 'A4 landscape' : 'A4';
+const injectPrintBaseStyles = (targetDocument) => {
     const style = targetDocument.createElement('style');
     style.type = 'text/css';
     style.textContent = `
@@ -16,7 +15,7 @@ const injectPrintBaseStyles = (targetDocument, options = {}) => {
 
         @media print {
             @page {
-                size: ${pageSize};
+                size: A4;
                 margin: 14mm 14mm 22mm 14mm;
             }
 
@@ -61,8 +60,9 @@ export const usePrinter = () => ({
     printComponent(Component, props = {}, options = {}) {
         openPrintPreview({
             title: options.title || props.title || 'Document',
+            orientation: options.orientation,
             mount(doc) {
-                injectPrintBaseStyles(doc, options);
+                injectPrintBaseStyles(doc);
 
                 const container = doc.createElement('div');
                 container.style.width = options.width || '100%';

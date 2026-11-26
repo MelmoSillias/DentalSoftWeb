@@ -3,16 +3,18 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
+import SelectButton from 'primevue/selectbutton';
+import { buildPrintPageRule, resolvePrintPaper } from '@/shared/print/printPaper.js';
 import { closePrintPreview, printPreview } from '@/shared/print/printPreview.js';
 
 const shell = '<!doctype html><html lang="fr"><head><meta charset="utf-8"></head><body></body></html>';
-const paperFormats = {
-    ticket: { width: 80, label: 'Ticket · 80 mm' },
-    card: { width: 165, label: 'QR code' },
-    portrait: { width: 210, label: 'A4 portrait' },
-    landscape: { width: 297, label: 'A4 paysage' }
-};
-const paper = ref(paperFormats.portrait);
+const orientations = [
+    { label: 'Portrait', value: 'portrait' },
+    { label: 'Paysage', value: 'landscape' }
+];
+const format = ref('portrait');
+const orientation = ref(null);
+const paper = computed(() => resolvePrintPaper(format.value, orientation.value));
 const dialogWidth = computed(() => `min(calc(100vw - 1rem), calc(${paper.value.width}mm + 3.5rem))`);
 const frame = ref(null);
 const title = ref('');
@@ -36,7 +38,8 @@ watch(
         ready.value = false;
         error.value = '';
         title.value = request?.title || '';
-        paper.value = paperFormats.portrait;
+        format.value = 'portrait';
+        orientation.value = null;
         fitScale.value = 1;
         actualSize.value = false;
         if (request) {
@@ -67,14 +70,15 @@ function waitForResource(node, isLoaded) {
 
 function stylePreview(doc, iframe, request) {
     const page = doc.querySelector('[data-print-format]');
-    const format = page?.dataset.printFormat;
-    paper.value = Object.hasOwn(paperFormats, format) ? paperFormats[format] : paperFormats.portrait;
+    format.value = page?.dataset.printFormat || 'portrait';
+    orientation.value = resolvePrintPaper(format.value, request.orientation).orientation;
 
     const sheet = request.mount ? doc.body.firstElementChild : page;
     if (!sheet) return;
     sheet.classList.add('print-preview-sheet');
-    sheet.style.setProperty('--preview-paper-width', `${paper.value.width}mm`);
 
+    const pageRule = doc.createElement('style');
+    pageRule.media = 'print';
     const style = doc.createElement('style');
     style.media = 'screen';
     style.textContent = `
@@ -89,23 +93,37 @@ function stylePreview(doc, iframe, request) {
             zoom: var(--preview-paper-scale, 1);
         }
         .print-preview-sheet .print-a4-page { margin-block: 0; border: 0; }
-        .print-preview-sheet .single-page { min-height: 0; }
     `;
-    doc.head.appendChild(style);
+    doc.head.append(style, pageRule);
 
-    const paperWidth = (paper.value.width * 96) / 25.4;
     const fitToFrame = () => {
         // Leave room for the gutter and the iframe's vertical scrollbar.
+        const paperWidth = (paper.value.width * 96) / 25.4;
         fitScale.value = Math.min(1, Math.max(0, iframe.clientWidth - 40) / paperWidth);
         sheet.style.setProperty('--preview-paper-scale', actualSize.value ? 1 : fitScale.value || 1);
     };
     const resizeObserver = new ResizeObserver(fitToFrame);
     resizeObserver.observe(iframe);
+    const stopWatchingPaper = watch(
+        paper,
+        (selected) => {
+            sheet.style.setProperty('--preview-paper-width', `${selected.width}mm`);
+            if (selected.orientation) {
+                const root = doc.documentElement;
+                root.dataset.printOrientation = selected.orientation;
+                root.style.setProperty('--print-paper-width', `${selected.width}mm`);
+                root.style.setProperty('--print-paper-height', `${selected.height}mm`);
+                pageRule.textContent = buildPrintPageRule(selected);
+            }
+            fitToFrame();
+        },
+        { immediate: true, flush: 'sync' }
+    );
     const stopWatchingSize = watch(actualSize, fitToFrame);
-    fitToFrame();
 
     return () => {
         resizeObserver.disconnect();
+        stopWatchingPaper();
         stopWatchingSize();
     };
 }
@@ -198,7 +216,7 @@ function printDocument() {
         <div class="print-preview__stage" :aria-busy="!ready && !error">
             <iframe
                 v-if="printPreview"
-                :key="printPreview.id"
+                :key="`print-frame-${printPreview.id}`"
                 ref="frame"
                 :title="title || 'Document à imprimer'"
                 :srcdoc="printPreview.html || shell"
@@ -213,7 +231,19 @@ function printDocument() {
 
         <template #footer>
             <div class="print-preview__toolbar">
-                <span v-if="ready" class="print-preview__format"><i class="pi pi-file" aria-hidden="true" />{{ paper.label }}</span>
+                <div v-if="ready" class="print-preview__paper-settings">
+                    <span class="print-preview__format"><i class="pi pi-file" aria-hidden="true" />{{ paper.label }}</span>
+                    <SelectButton
+                        v-if="paper.orientation"
+                        v-model="orientation"
+                        :options="orientations"
+                        option-label="label"
+                        option-value="value"
+                        :allow-empty="false"
+                        aria-label="Orientation de la feuille"
+                        size="small"
+                    />
+                </div>
                 <div class="print-preview__actions">
                     <Button v-if="ready && fitScale < 1" label="Taille réelle" size="small" severity="secondary" :text="!actualSize" :outlined="actualSize" :aria-pressed="actualSize" @click="actualSize = !actualSize" />
                     <Button label="Fermer" size="small" severity="secondary" outlined @click="closePrintPreview" />
@@ -296,6 +326,7 @@ function printDocument() {
 }
 
 .print-preview__toolbar,
+.print-preview__paper-settings,
 .print-preview__actions {
     display: flex;
     flex-wrap: wrap;

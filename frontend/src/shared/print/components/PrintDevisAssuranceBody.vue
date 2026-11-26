@@ -37,33 +37,35 @@ const formatMoney = (value) => {
 </script>
 
 <template>
-    <PrintA4Page :logo-src="logoSrc">
+    <PrintA4Page :logo-src="logoSrc" orientation="landscape">
         <template #header>
             <PrintDocumentHeader :title="title || 'Devis assurance'" :doc-id="doc?.id" :date="doc?.date || doc?.dateFacture" />
         </template>
 
-        <div class="print-info-card">
-            <div class="patient-infos">
-                <strong>Patient :</strong>
-                {{ doc?.patient?.nom || '—' }} {{ doc?.patient?.prenom || '' }}
-            </div>
-            <div class="muted">Tél : {{ doc?.patient?.telephone || 'Non renseigné' }}</div>
-        </div>
-
-        <div class="print-info-card assurance-card">
-            <div class="assurance-title">
-                <strong>Assurance :</strong>
-                {{ doc?.assurance?.nom || doc?.assuranceSnapshot?.nom || '—' }}
-                <span v-if="doc?.assurance?.code || doc?.assuranceSnapshot?.code" class="muted"> ({{ doc?.assurance?.code || doc?.assuranceSnapshot?.code }}) </span>
-            </div>
-
-            <div v-if="assureFields.length" class="assure-grid">
-                <div v-for="field in assureFields" :key="field.key" class="assure-field">
-                    <span class="assure-label">{{ field.label }}</span>
-                    <span class="assure-value">{{ field.value }}</span>
+        <div class="quote-parties">
+            <div class="print-info-card">
+                <div class="patient-infos">
+                    <strong>Patient :</strong>
+                    {{ doc?.patient?.nom || '—' }} {{ doc?.patient?.prenom || '' }}
                 </div>
+                <div class="muted">Tél : {{ doc?.patient?.telephone || 'Non renseigné' }}</div>
             </div>
-            <div v-else class="muted">Aucune information assuré renseignée.</div>
+
+            <div class="print-info-card assurance-card">
+                <div class="assurance-title">
+                    <strong>Assurance :</strong>
+                    {{ doc?.assurance?.nom || doc?.assuranceSnapshot?.nom || '—' }}
+                    <span v-if="doc?.assurance?.code || doc?.assuranceSnapshot?.code" class="muted"> ({{ doc?.assurance?.code || doc?.assuranceSnapshot?.code }}) </span>
+                </div>
+
+                <div v-if="assureFields.length" class="assure-grid">
+                    <div v-for="field in assureFields" :key="field.key" class="assure-field">
+                        <span class="assure-label">{{ field.label }}</span>
+                        <span class="assure-value">{{ field.value }}</span>
+                    </div>
+                </div>
+                <div v-else class="muted">Aucune information assuré renseignée.</div>
+            </div>
         </div>
 
         <table class="print-doc-table">
@@ -126,6 +128,22 @@ const formatMoney = (value) => {
     margin-top: -4mm;
 }
 
+html[data-print-orientation='landscape'] .quote-parties {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    gap: 4mm;
+    margin-bottom: 5mm;
+    overflow-wrap: anywhere;
+}
+
+html[data-print-orientation='landscape'] .quote-parties .print-info-card {
+    margin: 0;
+}
+
+html[data-print-orientation='landscape'] .print-doc-table :is(th, td) {
+    padding-block: 4px;
+}
+
 .assurance-title {
     margin-bottom: 8px;
 }
@@ -158,6 +176,11 @@ const formatMoney = (value) => {
     display: flex;
     justify-content: space-between;
     gap: 20px;
+    break-inside: avoid;
+}
+
+html[data-print-orientation='landscape'] .sign-row {
+    margin-top: 12px;
 }
 
 .sign-col {

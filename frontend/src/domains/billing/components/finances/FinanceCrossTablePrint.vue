@@ -122,4 +122,12 @@ const formatCellDate = (week, weekday) => {
 .print-cross-table td {
     padding: 5px 7px;
 }
+
+html[data-print-orientation='portrait'] .print-cross-table {
+    font-size: 8.5pt;
+}
+
+html[data-print-orientation='portrait'] .print-cross-table :is(th, td) {
+    padding-inline: 4px;
+}
 </style>

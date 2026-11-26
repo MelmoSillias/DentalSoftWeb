@@ -8,10 +8,12 @@
     --print-watermark-opacity: 0.07;
     --print-page-margin: 14mm;
     --print-footer-reserve: 18mm;
+    --print-default-width: 210mm;
+    --print-default-height: 297mm;
 
     position: relative;
-    width: 210mm;
-    min-height: 297mm;
+    width: var(--print-paper-width, var(--print-default-width));
+    min-height: var(--print-paper-height, var(--print-default-height));
     margin: 10mm auto;
     padding: 12mm 14mm 16mm;
     background: #fff;
@@ -24,8 +26,8 @@
 }
 
 .print-a4-page--landscape {
-    width: 297mm;
-    min-height: 210mm;
+    --print-default-width: 297mm;
+    --print-default-height: 210mm;
 }
 
 .print-a4-page__watermark {
@@ -43,11 +45,7 @@
     z-index: 1;
     display: flex;
     flex-direction: column;
-    min-height: calc(297mm - 28mm);
-}
-
-.print-a4-page--landscape .print-a4-page__inner {
-    min-height: calc(210mm - 28mm);
+    min-height: calc(var(--print-paper-height, var(--print-default-height)) - 28mm);
 }
 
 .print-a4-page__body {
@@ -82,6 +80,11 @@
     padding: 7px 9px;
     vertical-align: top;
     text-align: left;
+    overflow-wrap: anywhere;
+}
+
+[data-print-orientation='portrait'] .print-doc-table :is(th, td) {
+    padding-inline: 5px;
 }
 
 .print-doc-table thead th {
@@ -113,6 +116,11 @@
     margin-bottom: 10mm;
     background: #f9fbfd;
     font-size: 11pt;
+}
+
+[data-print-orientation='landscape'] .print-info-card {
+    margin-bottom: 5mm;
+    padding-block: 7px;
 }
 
 .print-info-card .muted {
@@ -213,10 +221,6 @@
         margin: 14mm 14mm 22mm 14mm;
     }
 
-    @page landscape {
-        size: A4 landscape;
-        margin: 14mm 14mm 22mm 14mm;
-    }
 
     html,
     body {
@@ -239,10 +243,15 @@
         width: 100%;
         min-height: auto;
         padding: 0;
+        overflow: visible;
     }
 
-    .print-a4-page--landscape {
-        page: landscape;
+    .print-a4-page__inner {
+        min-height: 0;
+    }
+
+    [data-print-orientation='landscape'] .print-a4-page {
+        --print-footer-reserve: 12mm;
     }
 
     /* Réserve supplémentaire en fin de flux (dernier contenu avant footer) */

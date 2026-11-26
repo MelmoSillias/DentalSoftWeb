@@ -772,6 +772,11 @@ th {
     color: #586574;
 }
 
+html[data-print-orientation='portrait'] table:not(.teeth-grid) :is(th, td) {
+    padding-inline: 5px;
+    overflow-wrap: anywhere;
+}
+
 .teeth-grid {
     width: 100%;
     border-collapse: separate;
@@ -801,6 +806,22 @@ th {
 
 .grid-spacer {
     width: 16px;
+}
+
+html[data-print-orientation='portrait'] .teeth-grid {
+    table-layout: fixed;
+    border-spacing: 2px;
+}
+
+html[data-print-orientation='portrait'] .tooth-cell {
+    width: auto;
+    padding-inline: 1px;
+    overflow-wrap: anywhere;
+}
+
+html[data-print-orientation='portrait'] .grid-spacer {
+    width: 4px;
+    padding-inline: 0;
 }
 
 .tooth-empty {

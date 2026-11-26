@@ -121,6 +121,13 @@ export const PRINT_DOCUMENT_BASE_CSS = `
         text-align: left;
         vertical-align: top;
     }
+    .print-table th, .print-table td {
+        overflow-wrap: anywhere;
+    }
+    [data-print-orientation='portrait'] .print-table th,
+    [data-print-orientation='portrait'] .print-table td {
+        padding-inline: 5px;
+    }
     .print-table thead {
         display: table-header-group;
     }
@@ -156,8 +163,9 @@ export const PRINT_DOCUMENT_BASE_CSS = `
             display: flex;
             flex-direction: column;
             max-width: var(--print-paper-width);
+            min-height: var(--print-paper-height, 0);
             margin: 0 auto;
-            padding: clamp(12px, 4vw, 14mm);
+            padding: 12mm 14mm;
             background: #fff;
         }
         .print-footer { position: relative; order: 1; padding: 6px 0; margin-top: 12px; }

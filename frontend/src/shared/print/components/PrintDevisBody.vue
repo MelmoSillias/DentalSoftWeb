@@ -19,7 +19,7 @@ const formatMoney = (value) => {
 </script>
 
 <template>
-    <PrintA4Page :logo-src="logoSrc">
+    <PrintA4Page :logo-src="logoSrc" :orientation="isDevis ? 'landscape' : 'portrait'">
         <template #header>
             <PrintDocumentHeader :title="title" :doc-id="doc?.id" :date="doc?.date" />
         </template>
@@ -89,6 +89,11 @@ const formatMoney = (value) => {
     display: flex;
     justify-content: space-between;
     gap: 20px;
+    break-inside: avoid;
+}
+
+html[data-print-orientation='landscape'] .sign-row {
+    margin-top: 12px;
 }
 
 .sign-col {

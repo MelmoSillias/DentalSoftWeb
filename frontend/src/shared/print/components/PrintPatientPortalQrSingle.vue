@@ -10,17 +10,21 @@ defineProps({
 <template>
     <div class="single-page" data-print-format="card">
         <article :class="entry.key === 'showcase' ? 'feature-card' : 'qr-card'">
-            <div :class="entry.key === 'showcase' ? 'feature-icon' : 'card-icon'">
-                <i :class="entry.iconClass"></i>
-            </div>
-            <h1>{{ entry.title }}</h1>
-            <p :class="entry.key === 'showcase' ? 'feature-desc' : 'qr-desc'">
-                {{ entry.description }}
-            </p>
+            <div class="card-main">
+                <div>
+                    <div :class="entry.key === 'showcase' ? 'feature-icon' : 'card-icon'">
+                        <i :class="entry.iconClass"></i>
+                    </div>
+                    <h1>{{ entry.title }}</h1>
+                    <p :class="entry.key === 'showcase' ? 'feature-desc' : 'qr-desc'">
+                        {{ entry.description }}
+                    </p>
+                </div>
 
-            <div class="qr-wrapper">
-                <img v-if="entry.imageSrc" :src="entry.imageSrc" :alt="entry.title" :class="entry.key === 'showcase' ? 'qr-image large' : 'qr-image'" />
-                <div v-else class="qr-placeholder">URL non renseignee</div>
+                <div class="qr-wrapper">
+                    <img v-if="entry.imageSrc" :src="entry.imageSrc" :alt="entry.title" :class="entry.key === 'showcase' ? 'qr-image large' : 'qr-image'" />
+                    <div v-else class="qr-placeholder">URL non renseignee</div>
+                </div>
             </div>
 
             <div :class="entry.key === 'showcase' ? 'big-badge' : 'badge-qr'">{{ entry.badge }}</div>
@@ -34,16 +38,21 @@ defineProps({
 
 <style scoped>
 .single-page {
-    min-height: 100vh;
-    padding: 24px;
+    box-sizing: border-box;
+    max-width: var(--print-paper-width, 148mm);
+    min-height: var(--print-paper-height, 210mm);
+    margin-inline: auto;
+    padding: 10mm;
     background: #eef5f8;
     display: grid;
     place-items: center;
+    overflow-wrap: anywhere;
 }
 
 .qr-card,
 .feature-card {
-    width: min(100%, 150mm);
+    box-sizing: border-box;
+    width: 100%;
     background: #fff;
     border-radius: 28px;
     padding: 24px;
@@ -99,6 +108,7 @@ h1 {
 }
 
 .qr-image {
+    box-sizing: border-box;
     width: 210px;
     height: 210px;
     object-fit: cover;
@@ -142,6 +152,7 @@ h1 {
 }
 
 .qr-placeholder {
+    box-sizing: border-box;
     width: 210px;
     height: 210px;
     border-radius: 24px;
@@ -152,21 +163,29 @@ h1 {
     padding: 10px;
 }
 
+html[data-print-orientation='landscape'] .single-page {
+    max-width: var(--print-paper-width, 210mm);
+    min-height: var(--print-paper-height, 148mm);
+}
+
+html[data-print-orientation='landscape'] .card-main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8mm;
+}
+
 @media print {
-    .single-page {
-        background: #fff;
+    .single-page,
+    html[data-print-orientation='landscape'] .single-page {
+        min-height: 0;
         padding: 0;
+        background: #fff;
     }
 
     .qr-card,
-    .feature-card,
-    .qr-image {
+    .feature-card {
         box-shadow: none;
-    }
-
-    @page {
-        size: A5;
-        margin: 1cm;
     }
 }
 </style>

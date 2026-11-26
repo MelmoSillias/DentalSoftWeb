@@ -755,7 +755,7 @@ function resetFilters() {
             <PageSection tour-id="consultations-table.table">
                 <template #header>
                     <div class="space-y-1">
-                        <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100">Liste des Consultations</h3>
+                        <h3 class="text-lg font-semibold mt-0 text-surface-900 dark:text-surface-100">Liste des Consultations</h3>
                         <div class="flex flex-wrap items-center gap-3">
                             <div class="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-400">
                                 <i class="pi pi-calendar"></i>
