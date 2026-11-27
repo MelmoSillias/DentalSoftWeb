@@ -7,6 +7,7 @@
         "php": ">=8.2",
         "ext-ctype": "*",
         "ext-iconv": "*",
+        "directorytree/imapengine": "^1.27",
         "doctrine/dbal": "^3.10.6",
         "doctrine/doctrine-bundle": "^2.19.0",
         "doctrine/doctrine-migrations-bundle": "^3.7.1",
@@ -96,6 +97,6 @@
         "symfony/stopwatch": "7.4.*",
         "symfony/twig-bundle": "7.4.*",
         "symfony/web-profiler-bundle": "7.4.*",
-        "twig/twig": "^2.12|^3.28"
+        "twig/twig": "^3.31.1"
     }
 }

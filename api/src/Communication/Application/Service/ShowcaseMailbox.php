@@ -7,12 +7,17 @@ use App\Settings\Domain\Entity\AppSetting;
 use App\Settings\Application\Service\InternetFeaturesGate;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use App\Communication\Infrastructure\Integration\MailboxImapConnection;
+use App\Communication\Infrastructure\Integration\MailboxTlsStream;
 use App\Communication\Infrastructure\Security\MailboxCredentialCipher;
 use App\Communication\Infrastructure\Security\MailboxHostPolicy;
 use App\Communication\Infrastructure\Security\VitrineVoter;
+use DirectoryTree\ImapEngine\Connection\Responses\Data\ListData;
 
 final class ShowcaseMailbox
 {
+    private const SUBJECT = 'Nouvelle demande de rendez-vous';
+
     public function __construct(private EntityManagerInterface $em, private MailboxCredentialCipher $crypto,
         private NotificationService $notifications, private InternetFeaturesGate $internet,
         #[Autowire('%kernel.cache_dir%')] private string $cacheDir, private MailboxHostPolicy $hostPolicy) {}
@@ -50,26 +55,29 @@ final class ShowcaseMailbox
         $value['password'] = $password !== '' ? $this->crypto->encrypt($password, $this->credentialContext($value)) : ($old['password'] ?? '');
         if (!$value['password']) { throw new \InvalidArgumentException('Mot de passe requis.'); }
         $connection = $this->connect($value);
-        imap_close($connection);
+        $connection->disconnect();
         $entry = $this->em->getRepository(AppSetting::class)->findOneBy(['keyName' => 'showcase_mailbox']) ?? (new AppSetting())->setKeyName('showcase_mailbox');
         $entry->setValue($value);
         $this->em->persist($entry);
         $this->em->flush();
     }
 
-    private function connect(array $config): mixed
+    private function connect(array $config): MailboxImapConnection
     {
         if (!$this->internet->isEnabled()) { throw new \RuntimeException($this->internet->disabledMessage()); }
-        if (!function_exists('imap_open')) { throw new \RuntimeException('Activez l’extension PHP IMAP sur le serveur.'); }
         if (empty($config['host'])) { throw new \RuntimeException('Connectez d’abord l’email de contact.'); }
-        $this->hostPolicy->assertConnectable($config['host']);
+        $addresses = $this->hostPolicy->resolvePublicAddresses($config['host']);
         $password = $this->crypto->decrypt($config['password'], $this->credentialContext($config));
-        imap_timeout(IMAP_OPENTIMEOUT, 10);
-        imap_timeout(IMAP_READTIMEOUT, 15);
-        $connection = @imap_open($this->mailboxName($config), $config['username'], $password, OP_READONLY, 1, ['DISABLE_AUTHENTICATOR' => 'GSSAPI']);
-        imap_errors(); // Drain protocol errors; never expose them or authentication details to the client.
-        imap_alerts();
-        if (!$connection) { throw new \RuntimeException('Connexion IMAP refusée. Vérifiez le serveur et les identifiants.'); }
+        if (preg_match('/[\x00-\x1f\x7f]/', $password)) { throw new \InvalidArgumentException('Mot de passe IMAP invalide.'); }
+        $connection = new MailboxImapConnection(new MailboxTlsStream($addresses));
+        try {
+            $connection->connect($config['host'], 993, ['encryption' => 'tls', 'timeout' => 10]);
+            $connection->login($config['username'], $password);
+            $connection->examine('INBOX');
+        } catch (\Throwable) {
+            $connection->disconnect();
+            throw new \RuntimeException('Connexion IMAP refusée. Vérifiez le serveur et les identifiants.');
+        }
         return $connection;
     }
 
@@ -78,7 +86,6 @@ final class ShowcaseMailbox
         return json_encode([$config['host'] ?? '', $config['username'] ?? '', $config['email'] ?? ''], JSON_THROW_ON_ERROR);
     }
 
-    private function mailboxName(array $config): string { return '{'.$config['host'].':993/imap/ssl/validate-cert/norsh}INBOX'; }
 
     public static function validEmail(string $value): bool
     {
@@ -93,40 +100,54 @@ final class ShowcaseMailbox
 
     public static function isAppointmentSubject(string $subject): bool
     {
-        return mb_stripos($subject, 'Nouvelle demande de rendez-vous') !== false;
+        return mb_stripos($subject, self::SUBJECT) !== false;
     }
 
-    private function decodeHeader(string $header): string
+    private function textBody(MailboxImapConnection $connection, int $uid, ListData $part, string $wanted, string $number = '', int $depth = 0): string
     {
-        $result = '';
-        foreach (imap_mime_header_decode($header) as $part) {
-            $result .= $this->utf8($part->text, $part->charset);
-        }
-        return $result;
-    }
-
-    private function textBody(mixed $connection, int $uid, object $part, string $number = '', bool $allowHtml = false, int $depth = 0): string
-    {
-        if ($depth > 12) return '';
-        if (!empty($part->parts)) {
-            foreach (array_slice($part->parts, 0, 50) as $i => $child) {
-                $text = $this->textBody($connection, $uid, $child, $number === '' ? (string) ($i + 1) : $number.'.'.($i + 1), $allowHtml, $depth + 1);
+        if ($depth > 12) { return ''; }
+        $first = $part->tokenAt(0);
+        if ($first instanceof ListData) {
+            $children = 0;
+            while ($part->tokenAt($children) instanceof ListData) { ++$children; }
+            // Multipart extensions follow the children, subtype and parameters.
+            if (self::isAttachment($part->tokenAt($children + 2))) { return ''; }
+            for ($i = 0; $i < min($children, 50); ++$i) {
+                $section = $number === '' ? (string) ($i + 1) : $number.'.'.($i + 1);
+                $text = $this->textBody($connection, $uid, $part->tokenAt($i), $wanted, $section, $depth + 1);
                 if ($text !== '') { return $text; }
             }
             return '';
         }
-        $subtype = strtoupper($part->subtype ?? '');
-        if ($part->type !== 0 || !in_array($subtype, $allowHtml ? ['PLAIN', 'HTML'] : ['PLAIN'], true) || strtoupper($part->disposition ?? '') === 'ATTACHMENT') { return ''; }
-        $text = $number === '' ? imap_body($connection, $uid, FT_UID | FT_PEEK) : imap_fetchbody($connection, $uid, $number, FT_UID | FT_PEEK);
-        $text = match ($part->encoding) { 3 => base64_decode($text), 4 => quoted_printable_decode($text), default => $text };
-        foreach ($part->parameters ?? [] as $parameter) {
-            if (strtolower($parameter->attribute) === 'charset') { $text = $this->utf8($text ?: '', $parameter->value); }
+        if (strtoupper(MailboxImapConnection::value($first)) !== 'TEXT'
+            || strtoupper(MailboxImapConnection::value($part->tokenAt(1))) !== $wanted
+            || self::isAttachment($part->tokenAt(9))) { return ''; }
+
+        $text = $connection->readTextPart($uid, $number === '' ? 'TEXT' : $number);
+        $text = match (strtoupper(MailboxImapConnection::value($part->tokenAt(5)))) {
+            'BASE64' => base64_decode($text) ?: '',
+            'QUOTED-PRINTABLE' => quoted_printable_decode($text),
+            default => $text,
+        };
+        $params = $part->tokenAt(2);
+        $charset = $params instanceof ListData ? ($params->toKeyValuePairs()['charset'] ?? '') : '';
+        $text = $this->utf8($text, $charset !== '' ? $charset : 'UTF-8');
+        if ($wanted === 'HTML') {
+            $text = preg_replace('/<(script|style)\b[^>]*>.*?<\/\1>/is', '', $text) ?? '';
+            $text = html_entity_decode(strip_tags(preg_replace('/<\/(p|div|tr)>|<br\s*\/?>/i', "\n", $text) ?? ''), ENT_QUOTES | ENT_HTML5, 'UTF-8');
         }
-        if ($subtype === 'HTML') {
-            $text = preg_replace('/<(script|style)\b[^>]*>.*?<\/\1>/is', '', $text ?: '');
-            $text = html_entity_decode(strip_tags(preg_replace('/<\/(p|div|tr)>|<br\s*\/?>/i', "\n", $text)), ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        }
-        return mb_substr($this->utf8($text ?: '', 'UTF-8'), 0, 100000);
+        return mb_substr($text, 0, 100000, 'UTF-8');
+    }
+
+    private static function isAttachment(mixed $disposition): bool
+    {
+        return $disposition instanceof ListData && strtoupper(MailboxImapConnection::value($disposition->tokenAt(0))) === 'ATTACHMENT';
+    }
+
+    private function readMailbox(callable $read): mixed
+    {
+        try { return $read(); }
+        catch (\Throwable) { throw new \RuntimeException('Impossible de lire la boîte mail.'); }
     }
 
     public function sync(): int
@@ -144,15 +165,12 @@ final class ShowcaseMailbox
         $connection = $this->connect($config);
         $count = 0;
         try {
-            $mailboxStatus = imap_status($connection, $this->mailboxName($config), SA_UIDVALIDITY);
-            if (!$mailboxStatus) throw new \RuntimeException('Impossible de lire l’état de la boîte mail.');
-            $validity = $mailboxStatus->uidvalidity;
+            $validity = $this->readMailbox($connection->uidValidity(...));
             $cursorKey = 'showcase_cursor_'.substr(hash('sha256', $this->credentialContext($config).'|'.$validity), 0, 64);
             $checkpoint = $this->em->getRepository(AppSetting::class)->findOneBy(['keyName' => $cursorKey]) ?? (new AppSetting())->setKeyName($cursorKey);
             $lastUid = (int) ($checkpoint->getValue()['uid'] ?? 0);
             $cursor = $lastUid;
-            $uids = imap_search($connection, 'UID '.($lastUid + 1).':* SUBJECT "Nouvelle demande de rendez-vous"', SE_UID, 'UTF-8') ?: [];
-            sort($uids, SORT_NUMERIC);
+            $uids = $this->readMailbox(fn () => $connection->searchAfter($lastUid, self::SUBJECT));
             $processed = 0;
             $deadline = microtime(true) + 45;
             foreach ($uids as $uid) {
@@ -162,24 +180,16 @@ final class ShowcaseMailbox
                 ++$processed;
                 $key = hash('sha256', $config['host'].'|'.$config['username'].'|'.$validity.'|'.$uid);
                 if ($this->em->getRepository(ShowcaseMessage::class)->findOneBy(['externalId' => $key])) { continue; }
-                $overview = imap_fetch_overview($connection, (string) $uid, FT_UID)[0] ?? null;
-                if (!$overview) { continue; }
-                if (($overview->size ?? PHP_INT_MAX) > 2 * 1024 * 1024) continue;
-                $subject = $this->decodeHeader($overview->subject ?? '');
-                if (!self::isAppointmentSubject($subject)) { continue; }
+                $metadata = $this->readMailbox(fn () => $connection->messageMetadata($uid));
+                if ($metadata === null || !self::isAppointmentSubject($metadata['subject']) || !self::validEmail($metadata['sender'])) { continue; }
                 $message = new ShowcaseMessage();
                 $message->externalId = $key;
-                $header = imap_headerinfo($connection, imap_msgno($connection, $uid));
-                // Website forms generally send from the cabinet and put the patient in Reply-To.
-                $address = $header->reply_to[0] ?? $header->from[0] ?? null;
-                $message->sender = $address ? $address->mailbox.'@'.$address->host : '';
-                if (!self::validEmail($message->sender)) { continue; }
-                $message->subject = mb_substr($subject, 0, 500);
-                $structure = imap_fetchstructure($connection, $uid, FT_UID);
-                if (!$structure) { continue; }
-                $message->body = $this->textBody($connection, $uid, $structure);
-                if ($message->body === '') { $message->body = $this->textBody($connection, $uid, $structure, allowHtml: true); }
-                $message->receivedAt = new \DateTimeImmutable('@'.($overview->udate ?? time()));
+                $message->sender = $metadata['sender'];
+                $message->subject = mb_substr($this->utf8($metadata['subject'], 'UTF-8'), 0, 500, 'UTF-8');
+                $structure = $metadata['structure'];
+                $message->body = $this->readMailbox(fn () => $this->textBody($connection, $uid, $structure, 'PLAIN')
+                    ?: $this->textBody($connection, $uid, $structure, 'HTML'));
+                $message->receivedAt = $metadata['receivedAt'];
                 $this->em->persist($message);
                 $this->em->flush();
                 $this->notifications->notifyRoles(VitrineVoter::ROLES, 'Nouvelle demande de rendez-vous reçue.', '/vitrine/messagerie?message='.$message->id);
@@ -190,7 +200,7 @@ final class ShowcaseMailbox
                 $this->em->persist($checkpoint);
                 $this->em->flush();
             }
-        } finally { imap_close($connection); imap_errors(); imap_alerts(); }
+        } finally { $connection->disconnect(); }
         return $count;
     }
 

@@ -23,14 +23,14 @@ Il s’agit d’une revue de code et de tests automatisés ciblés, pas d’un t
 ## Protections confirmées dans le code
 
 - JWT requis pour les API privées ; le pare-feu et le voter refusent les rôles médecin/patient. La connexion du navigateur utilise l’en-tête `Authorization`, sans authentification implicite par cookie pour ces API. Les prévols CORS ne donnent aucun accès aux données.
-- IMAP sur le port 993, TLS avec validation de certificat explicitement activée, sans option de désactivation. L’option `/norsh` interdit les sessions préauthentifiées par rsh/ssh. La boîte est ouverte en lecture seule et les corps lus avec `FT_PEEK`.
+- IMAP sur le port 993 avec validation du certificat TLS au nom du serveur, sans option de désactivation. Le client PHP se connecte directement à une adresse issue du contrôle DNS, sans rsh/ssh. La boîte est ouverte en lecture seule (`EXAMINE`) et les parties texte sont lues avec `BODY.PEEK`.
 - Aucun rendu `v-html`, chargement de pièce jointe ou image distante dans la Vitrine : les contenus non fiables sont affichés comme du texte échappé par Vue. La conversion HTML vers texte ne constitue pas un assainisseur HTML ; sa sécurité repose sur l’affichage en texte.
 - Aucun envoi automatique à `Reply-To` : un opérateur doit écrire et envoyer la réponse. L’adresse est revalidée au moment de l’envoi.
-- Secret non renvoyé dans la configuration GET, erreur IMAP générique sans détail du protocole ni mot de passe, purge de la file d’erreurs IMAP, requêtes Doctrine paramétrées et verrou local sur la synchronisation.
+- Secret non renvoyé dans la configuration GET, erreur IMAP générique sans détail du protocole ni mot de passe, requêtes Doctrine paramétrées et verrou local sur la synchronisation.
 
 ## Risques résiduels et conditions de production
 
-1. **DNS / sorties réseau :** la bibliothèque IMAP résout le nom une nouvelle fois après le contrôle DNS applicatif. La liste de confiance réduit l’exposition mais ne supprime pas ce décalage. N’y inscrire aucun domaine contrôlé par un utilisateur non fiable ; appliquer un filtrage réseau sortant vers les serveurs autorisés. Ne pas présenter la protection applicative comme une garantie absolue contre le DNS rebinding.
+1. **DNS / sorties réseau :** le client ouvre la connexion vers une adresse publique issue du contrôle DNS, sans seconde résolution entre le contrôle et la connexion. N’inscrire aucun domaine contrôlé par un utilisateur non fiable ; appliquer également un filtrage réseau sortant vers les serveurs autorisés.
 2. **Transport email sortant :** `mail()` confie les données au transport PHP/MTA. Le code ne garantit ni TLS SMTP ni authentification du relais, livraison, SPF/DKIM/DMARC ou traitement des rebonds. Configurer et vérifier ces propriétés sur le relais. Une réponse « acceptée » n’est pas un accusé de livraison. Pour gérer ces garanties depuis l’application, une évolution vers un transport SMTP explicite sera nécessaire.
 3. **Usurpation / hameçonnage :** le filtre d’objet, `From` et `Reply-To` ne prouvent pas qu’une demande vient du site ou d’un patient identifié. Une boîte dédiée, l’antispam du fournisseur et la vérification des destinataires par l’opérateur restent nécessaires ; ne pas envoyer automatiquement de données de santé en réponse à ces messages. Pour prouver l’origine du site, prévoir un canal signé plutôt qu’un simple objet email.
 4. **Données au repos :** les corps et historiques de réponse sont stockés en clair dans la base, contrairement au mot de passe IMAP. La clé dérive du secret applicatif ; compromettre simultanément ce secret et la base permet de déchiffrer les identifiants. Restreindre les accès base/sauvegardes, définir une durée de conservation et organiser la purge ; aucun mécanisme automatique de rétention n’est ajouté ici.
@@ -47,5 +47,5 @@ Avant mise en production : suivre la [procédure Vitrine](./vitrine.md), tester 
 ## Références
 
 - [OWASP — prévention SSRF](https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html) : liste de confiance, contrôle des destinations et défense réseau.
-- [PHP — imap_open](https://www.php.net/manual/en/function.imap-open.php) : options SSL, validation de certificat, lecture seule et `/norsh`.
+- [FrankenPHP — extensions non prises en charge](https://frankenphp.dev/docs/known-issues/#unsupported-php-extensions) : raison du remplacement de l’extension native IMAP par un client en PHP.
 - [PHP — mail](https://www.php.net/manual/en/function.mail.php) : validation des en-têtes et distinction entre acceptation du transport et livraison.

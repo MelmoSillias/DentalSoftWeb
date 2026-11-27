@@ -29,7 +29,8 @@ final class MailboxHostPolicy
         }
     }
 
-    public function assertConnectable(string $host): void
+    /** @return list<string> */
+    public function resolvePublicAddresses(string $host): array
     {
         $this->assertAllowedName($host);
         $records = dns_get_record($host, DNS_A | DNS_AAAA);
@@ -39,5 +40,6 @@ final class MailboxHostPolicy
             if (isset($record['ipv6'])) $addresses[] = $record['ipv6'];
         }
         self::assertPublicAddresses($addresses);
+        return $addresses;
     }
 }
