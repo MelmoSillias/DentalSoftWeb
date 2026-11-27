@@ -26,11 +26,13 @@ self.addEventListener('push', (event) => {
     const message = typeof data.message === 'string' ? data.message : '';
     const link = safeNotificationLink(data.link);
     const tag = data.id != null ? `notif-${data.id}` : `notif-${Date.now()}`;
+    // Mailbox arrivals show a system alert even when Mercure also shows a toast.
+    const isMailboxNotification = link?.startsWith('/vitrine/messagerie?message=');
 
     event.waitUntil(
         self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
             const visible = clients.some((client) => client.focused || client.visibilityState === 'visible');
-            if (visible) {
+            if (visible && !isMailboxNotification) {
                 return Promise.all(
                     clients.map((client) =>
                         client.postMessage({

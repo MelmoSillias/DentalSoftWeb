@@ -14,7 +14,10 @@ final class SyncShowcaseMailboxCommand extends Command
     public function __construct(private ShowcaseMailbox $mailbox) { parent::__construct(); }
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $output->writeln(sprintf('%d nouveau(x) message(s).', $this->mailbox->sync()));
+        $imported = $this->mailbox->sync(background: true);
+        if ($imported > 0) {
+            $output->writeln(sprintf('%d nouveau(x) message(s).', $imported));
+        }
         return Command::SUCCESS;
     }
 }

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, RouterLink } from 'vue-router';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
@@ -17,15 +17,20 @@ import Skeleton from 'primevue/skeleton';
 import VitrineEmptyState from '@/domains/communication/components/vitrine/VitrineEmptyState.vue';
 import { getHttpErrorMessage } from '@/shared/api/http.js';
 import { getMailbox, saveMailbox, getMessages, syncMailbox, setMessageStatus, replyToMessage } from '@/domains/communication/services/vitrineService.js';
-import { on as onRealtime } from '@/shared/realtime/mercureEventRouter.js';
+import { useMercureNotifications } from '@/shared/realtime/useMercureNotifications.js';
 import { useAuthStore } from '@/domains/auth/stores/auth.js';
 
 const route = useRoute();
 const auth = useAuthStore();
+const { onNotificationReceived } = useMercureNotifications();
 const canConfigure = computed(() => auth.user?.roles?.includes('ROLE_ADMIN'));
 const items = ref([]);
 const selectedId = ref(null);
 const selected = computed(() => items.value.find((item) => item.id === selectedId.value));
+const mailList = ref(null);
+const readingPane = ref(null);
+const readingTitle = ref(null);
+const mobileBack = ref(null);
 const search = ref('');
 const status = ref('all');
 const busy = ref(false);
@@ -39,41 +44,77 @@ const reply = ref('');
 const phone = ref('');
 const channel = ref('email');
 const statuses = [
-    { label: 'Tous les messages', value: 'all' },
-    { label: 'Nouveaux', value: 'new' },
+    { label: 'Tous', value: 'all' },
+    { label: 'Non lus', value: 'new' },
     { label: 'Lus', value: 'read' },
     { label: 'Traités', value: 'handled' }
 ];
-const labels = { new: 'Nouveau', read: 'Lu', handled: 'Traité' };
-const filtered = computed(() => items.value.filter((m) => (status.value === 'all' || m.status === status.value) && `${m.sender} ${m.subject} ${m.body}`.toLowerCase().includes(search.value.toLowerCase())));
+const labels = { new: 'Non lu', read: 'Lu', handled: 'Traité' };
+const filtered = computed(() => items.value.filter((m) => (status.value === 'all' || m.status === status.value) && `${m.sender} ${m.subject} ${m.body}`.toLowerCase().includes(search.value.trim().toLowerCase())));
 const newCount = computed(() => items.value.filter((m) => m.status === 'new').length);
-const handledCount = computed(() => items.value.filter((m) => m.status === 'handled').length);
 const date = (value) => new Date(value).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' });
+const shortDate = (value) => new Date(value).toLocaleDateString('fr-FR', { dateStyle: 'short' });
+
+function preview(body) {
+    const text = body?.trim().replace(/\s+/g, ' ') || 'Aucun aperçu disponible';
+    return text.length > 140 ? `${text.slice(0, 140).trimEnd()}…` : text;
+}
 function replace(item) {
     items.value = items.value.map((m) => (m.id === item.id ? item : m));
 }
+let refreshRequest;
+let refreshPending = false;
+
+async function load() {
+    items.value = (await getMessages()).items;
+}
+
+function refreshInbox() {
+    refreshPending = true;
+    if (busy.value || refreshRequest) return;
+    refreshPending = false;
+    refreshRequest = load()
+        .catch(() => {})
+        .finally(() => {
+            refreshRequest = undefined;
+            if (refreshPending) refreshInbox();
+        });
+}
+
 async function run(action) {
     busy.value = true;
     error.value = '';
     info.value = '';
     try {
+        await refreshRequest;
         await action();
     } catch (e) {
         error.value = getHttpErrorMessage(e, 'Impossible de terminer cette opération.');
     } finally {
         busy.value = false;
+        if (refreshPending) refreshInbox();
     }
 }
-async function load() {
-    items.value = (await getMessages()).items;
-    if (route.query.message && items.value.some((m) => m.id === Number(route.query.message))) selectedId.value = Number(route.query.message);
+async function openMessage(id) {
+    if (selectedId.value === id) return;
+    selectedId.value = id;
+    reply.value = '';
+    phone.value = '';
+    await nextTick();
+    if (readingPane.value) readingPane.value.scrollTop = 0;
+    if (mobileBack.value?.offsetWidth) readingTitle.value?.focus();
 }
 async function selectMessage(item) {
     if (busy.value) return;
-    selectedId.value = item.id;
-    reply.value = '';
-    phone.value = '';
+    await openMessage(item.id);
     if (item.status === 'new') await run(async () => replace(await setMessageStatus(item.id, 'read')));
+}
+async function backToList() {
+    const row = mailList.value?.querySelector('[aria-pressed="true"]');
+    selectedId.value = null;
+    await nextTick();
+    const target = row?.isConnected ? row : mailList.value?.querySelector('#mail-search');
+    target?.focus();
 }
 async function connect() {
     await run(async () => {
@@ -93,13 +134,17 @@ async function sync() {
 }
 async function send() {
     const id = selectedId.value;
+    const payload = { body: reply.value, channel: channel.value, phone: phone.value };
     await run(async () => {
-        replace(await replyToMessage(id, { body: reply.value, channel: channel.value, phone: phone.value }));
-        reply.value = '';
-        info.value = channel.value === 'sms' ? 'SMS ajouté à la file d’envoi.' : 'Réponse confiée au serveur email.';
+        replace(await replyToMessage(id, payload));
+        if (selectedId.value === id) reply.value = '';
+        info.value = payload.channel === 'sms' ? 'SMS ajouté à la file d’envoi.' : 'Réponse confiée au serveur email.';
     });
 }
-let unsubscribe;
+const unsubscribe = onNotificationReceived((notification) => {
+    if (notification.link?.startsWith('/vitrine/messagerie?message=')) refreshInbox();
+});
+
 onMounted(async () => {
     await run(async () => {
         const config = await getMailbox();
@@ -108,21 +153,23 @@ onMounted(async () => {
         await load();
     });
     loading.value = false;
-    unsubscribe = onRealtime('notification', () => load().catch(() => {}));
 });
 onUnmounted(() => {
-    unsubscribe?.();
+    unsubscribe();
+    refreshPending = false;
     settings.value.password = '';
 });
 watch(settingsOpen, (open) => {
     if (!open) settings.value.password = '';
 });
-watch(
-    () => route.query.message,
-    () => {
-        if (route.query.message) selectedId.value = Number(route.query.message);
-    }
-);
+const linkedMessageId = computed(() => Number(route.query.message) || null);
+const hasLinkedMessage = computed(() => items.value.some((item) => item.id === linkedMessageId.value));
+watch(linkedMessageId, (id) => {
+    if (id !== null && !hasLinkedMessage.value) refreshInbox();
+});
+watch([linkedMessageId, hasLinkedMessage], ([id, available]) => {
+    if (available) openMessage(id);
+});
 </script>
 
 <template>
@@ -140,65 +187,65 @@ watch(
         <Message v-if="!loading && !connected" severity="info" :closable="false">{{
             canConfigure ? 'Connectez l’email de contact pour recevoir les demandes de rendez-vous du site.' : 'Un administrateur doit connecter l’email de contact pour recevoir les demandes du site.'
         }}</Message>
-        <template #toolbar>
-            <div class="page-kpi-grid mailbox-stats">
-                <div class="page-kpi-card">
-                    <div>
-                        <p class="page-kpi-label">Demandes reçues</p>
-                        <p class="page-kpi-value">{{ items.length }}</p>
-                    </div>
-                    <i class="pi pi-inbox page-kpi-icon" />
-                </div>
-                <div class="page-kpi-card">
-                    <div>
-                        <p class="page-kpi-label">Nouveaux messages</p>
-                        <p class="page-kpi-value">{{ newCount }}</p>
-                    </div>
-                    <i class="pi pi-envelope page-kpi-icon" />
-                </div>
-                <div class="page-kpi-card">
-                    <div>
-                        <p class="page-kpi-label">Demandes traitées</p>
-                        <p class="page-kpi-value">{{ handledCount }}</p>
-                    </div>
-                    <i class="pi pi-check-circle page-kpi-icon" />
-                </div>
-            </div>
-        </template>
-        <PageSection title="Boîte de réception" subtitle="Consultez les demandes et répondez aux patients.">
+        <PageSection class="mailbox-frame" title="Boîte de réception">
             <template #headerActions><Tag :value="loading ? 'Connexion…' : connected ? 'Email connecté' : 'Email non connecté'" :severity="connected ? 'success' : 'secondary'" :icon="connected ? 'pi pi-check-circle' : 'pi pi-envelope'" /></template>
             <div class="mailbox" :class="{ 'mailbox--selected': selected }">
-                <aside class="mail-list" aria-label="Liste des messages" :aria-busy="loading">
+                <aside ref="mailList" class="mail-list" aria-label="Liste des messages" :aria-busy="loading">
                     <div class="mail-filters">
-                        <label for="mail-search">Rechercher un message</label><IconField><InputIcon class="pi pi-search" /><InputText id="mail-search" v-model="search" placeholder="Nom, email, contenu…" fluid /></IconField>
-                        <label for="mail-status">Statut</label><Select input-id="mail-status" v-model="status" :options="statuses" option-label="label" option-value="value" aria-label="Statut des messages" fluid />
+                        <div class="mail-filter-controls">
+                            <IconField>
+                                <InputIcon class="pi pi-search" />
+                                <InputText id="mail-search" v-model="search" placeholder="Rechercher…" aria-label="Rechercher par objet, expéditeur ou contenu" size="small" fluid />
+                            </IconField>
+                            <Select v-model="status" :options="statuses" option-label="label" option-value="value" aria-label="Filtrer par statut" size="small" />
+                        </div>
+                        <p v-if="!loading" class="mail-count" role="status">
+                            <span>{{ filtered.length }} message{{ filtered.length === 1 ? '' : 's' }}</span>
+                            <span v-if="newCount" class="mail-unread-count">{{ newCount }} non lu{{ newCount === 1 ? '' : 's' }} au total</span>
+                        </p>
                     </div>
-                    <div v-if="loading" class="mail-loading"><Skeleton v-for="n in 3" :key="n" height="6rem" /></div>
-                    <VitrineEmptyState
-                        v-else-if="!filtered.length"
-                        icon="pi pi-inbox"
-                        :title="items.length ? 'Aucun résultat' : 'Aucun message reçu'"
-                        :description="items.length ? 'Modifiez votre recherche ou le statut sélectionné.' : 'Les demandes de rendez-vous apparaîtront ici.'"
-                    />
-                    <p v-else class="mail-count" role="status">{{ filtered.length }} message{{ filtered.length > 1 ? 's' : '' }}</p>
-                    <button v-for="item in filtered" :key="item.id" class="mail-row" :class="{ active: selectedId === item.id, unread: item.status === 'new' }" :aria-pressed="selectedId === item.id" @click="selectMessage(item)">
-                        <div class="row-heading">
-                            <strong>{{ item.sender }}</strong
-                            ><Tag :value="labels[item.status]" :severity="item.status === 'new' ? 'info' : 'secondary'" />
-                        </div>
-                        <span class="mail-subject">{{ item.subject }}</span
-                        ><small>{{ date(item.receivedAt) }}</small>
-                        <p>{{ item.body.slice(0, 110) }}</p>
-                    </button>
+                    <div class="mail-results">
+                        <div v-if="loading" class="mail-loading"><Skeleton v-for="n in 4" :key="n" height="3.5rem" /></div>
+                        <VitrineEmptyState
+                            v-else-if="!filtered.length"
+                            icon="pi pi-inbox"
+                            :title="items.length ? 'Aucun résultat' : 'Aucun message reçu'"
+                            :description="items.length ? 'Modifiez votre recherche ou le statut sélectionné.' : 'Les demandes de rendez-vous apparaîtront ici.'"
+                        />
+                        <ul v-else class="mail-rows">
+                            <li v-for="item in filtered" :key="item.id">
+                                <button class="mail-row" :class="{ unread: item.status === 'new' }" :aria-pressed="selectedId === item.id" @click="selectMessage(item)">
+                                    <span class="mail-row-line">
+                                        <span class="mail-subject">{{ item.subject || '(Sans objet)' }}</span>
+                                        <i v-if="item.status === 'handled'" class="pi pi-check mail-handled" aria-hidden="true" :title="labels[item.status]" />
+                                        <span class="sr-only">{{ labels[item.status] }}</span>
+                                        <time class="mail-date" :datetime="item.receivedAt" :title="date(item.receivedAt)">{{ shortDate(item.receivedAt) }}</time>
+                                    </span>
+                                    <span class="mail-row-line mail-snippet">
+                                        <span v-if="item.sender" class="mail-sender">{{ item.sender }}</span>
+                                        <span v-if="item.sender" aria-hidden="true">·</span>
+                                        <span class="mail-preview">{{ preview(item.body) }}</span>
+                                    </span>
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
                 </aside>
-                <section v-if="selected" class="conversation" aria-label="Message et réponses">
-                    <Button class="conversation-back" label="Tous les messages" icon="pi pi-arrow-left" severity="secondary" text size="small" @click="selectedId = null" />
+                <section v-if="selected" ref="readingPane" class="conversation" aria-labelledby="mail-reading-title">
+                    <div ref="mobileBack" class="conversation-back">
+                        <Button label="Retour aux messages" icon="pi pi-arrow-left" severity="secondary" text size="small" @click="backToList" />
+                    </div>
                     <header class="conversation-header">
-                        <div>
-                            <h2>{{ selected.subject }}</h2>
-                            <p>{{ selected.sender }} · {{ date(selected.receivedAt) }}</p>
+                        <h2 id="mail-reading-title" ref="readingTitle" tabindex="-1">{{ selected.subject || '(Sans objet)' }}</h2>
+                        <div class="conversation-meta">
+                            <span class="sender-avatar" aria-hidden="true"><i class="pi pi-user" /></span>
+                            <div class="conversation-sender">
+                                <strong>{{ selected.sender }}</strong>
+                                <time :datetime="selected.receivedAt">{{ date(selected.receivedAt) }}</time>
+                            </div>
+                            <Tag v-if="selected.status === 'handled'" value="Traité" severity="success" icon="pi pi-check" />
+                            <Button v-else label="Marquer comme traité" icon="pi pi-check" severity="secondary" outlined size="small" :disabled="busy" @click="run(async () => replace(await setMessageStatus(selected.id, 'handled')))" />
                         </div>
-                        <Button label="Marquer traité" icon="pi pi-check" severity="secondary" outlined :disabled="busy || selected.status === 'handled'" @click="run(async () => replace(await setMessageStatus(selected.id, 'handled')))" />
                     </header>
                     <div class="message-body">{{ selected.body || 'Ce message ne contient pas de version texte.' }}</div>
                     <div class="quick-links">
@@ -252,117 +299,135 @@ watch(
 </template>
 
 <style scoped>
-.mailbox-stats {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-.mailbox-stats .page-kpi-icon {
-    color: var(--p-primary-color);
+.mailbox-frame {
+    container: mailbox / inline-size;
 }
 .mailbox {
     display: grid;
-    grid-template-columns: minmax(16rem, 32%) minmax(0, 1fr);
-    min-height: 34rem;
+    grid-template-columns: clamp(17rem, 35%, 25rem) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    height: clamp(26rem, 70dvh, 56rem);
 }
 .mail-list {
-    min-width: 0;
-    border-right: 1px solid var(--surface-border);
-    max-height: 72vh;
-    overflow: auto;
-}
-.mail-filters {
     display: flex;
     flex-direction: column;
-    gap: 0.375rem;
-    padding: 0.875rem;
+    min-width: 0;
+    border-inline-end: 1px solid var(--surface-border);
+}
+.mail-filters {
+    flex-shrink: 0;
+    padding: 0.625rem 0.75rem;
     border-bottom: 1px solid var(--surface-border);
+    background: var(--surface-ground);
 }
-.mail-filters label,
-.connection-form label,
-.composer label {
-    color: var(--text-color-secondary);
-    font-weight: 500;
+.mail-filter-controls {
+    display: flex;
+    gap: 0.5rem;
 }
-.mail-filters :deep(.p-iconfield) {
-    width: 100%;
+.mail-filter-controls :deep(.p-iconfield) {
+    flex: 1;
+    min-width: 0;
 }
-.mail-filters :deep(.p-select) {
-    margin-top: 0;
+.mail-filter-controls :deep(.p-select) {
+    flex-shrink: 0;
+    min-width: 6.25rem;
 }
 .mail-count {
-    margin: 0;
-    padding: 0.625rem 0.875rem;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.625rem;
+    margin: 0.5rem 0 0;
     color: var(--text-color-secondary);
-    background: var(--surface-ground);
+    font-size: 0.75rem;
+}
+.mail-unread-count {
+    font-weight: 600;
+}
+.mail-results,
+.conversation {
+    min-height: 0;
+    overflow: auto;
 }
 .mail-loading {
     display: grid;
-    gap: 0.75rem;
-    padding: 0.875rem;
+    gap: 0.375rem;
+    padding: 0.625rem 0.75rem;
+}
+.mail-rows {
+    margin: 0;
+    padding: 0;
+    list-style: none;
 }
 .mail-row {
-    display: flex;
-    flex-direction: column;
-    gap: 0.375rem;
+    display: grid;
+    gap: 0.125rem;
     width: 100%;
-    padding: 0.875rem;
-    text-align: left;
+    padding: 0.5rem 0.75rem;
+    text-align: start;
     border: 0;
-    border-left: 3px solid transparent;
+    border-inline-start: 3px solid transparent;
     border-bottom: 1px solid var(--surface-border);
     background: transparent;
     color: var(--text-color);
     font: inherit;
+    line-height: 1.35;
     cursor: pointer;
-    overflow-wrap: anywhere;
 }
 .mail-row:hover {
     background: var(--surface-hover);
 }
-.mail-row.active {
-    background: color-mix(in srgb, var(--p-primary-color) 9%, var(--surface-card));
+.mail-row[aria-pressed='true'] {
+    background: color-mix(in srgb, var(--p-primary-color) 13%, var(--surface-card));
 }
 .mail-row.unread {
-    border-left-color: var(--p-primary-color);
+    border-inline-start-color: var(--p-primary-color);
+}
+.mail-row.unread .mail-subject {
+    font-weight: 700;
 }
 .mail-row:focus-visible,
 .quick-links a:focus-visible {
     outline: 2px solid var(--p-primary-color);
     outline-offset: -2px;
 }
-.row-heading {
+.mail-row-line {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-    width: 100%;
+    align-items: baseline;
+    min-width: 0;
+    gap: 0.375rem;
 }
-.row-heading strong {
+.mail-subject,
+.mail-sender,
+.mail-preview {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-.row-heading :deep(.p-tag) {
-    flex-shrink: 0;
-}
 .mail-subject {
+    flex: 1;
+    font-weight: 600;
+}
+.mail-date,
+.mail-handled {
+    flex-shrink: 0;
+    color: var(--text-color-secondary);
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+.mail-snippet {
+    font-size: 0.8125rem;
+    color: var(--text-color-secondary);
+}
+.mail-sender {
+    flex: 0 0 auto;
+    max-width: 38%;
     font-weight: 500;
 }
-.mail-row p {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    margin: 0;
-    color: var(--text-color-secondary);
-}
-.mail-row small {
-    color: var(--text-color-secondary);
-    font-size: var(--page-kpi-meta-size);
-}
 .conversation {
-    padding: 1rem 1.25rem;
     min-width: 0;
+    padding: 1.125rem 1.5rem;
     overflow-wrap: anywhere;
 }
 .conversation--empty {
@@ -373,11 +438,8 @@ watch(
     display: none;
 }
 .conversation-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: start;
-    gap: 0.75rem;
-    flex-wrap: wrap;
+    display: grid;
+    gap: 0.875rem;
     padding-bottom: 1rem;
     border-bottom: 1px solid var(--surface-border);
 }
@@ -386,9 +448,32 @@ watch(
     margin: 0;
     font-weight: 600;
 }
-.conversation-header p {
-    margin: 0.375rem 0 0;
+.conversation h2 {
+    font-size: 1.25rem;
+}
+.conversation-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.625rem;
+}
+.sender-avatar {
+    display: grid;
+    flex: 0 0 2.25rem;
+    height: 2.25rem;
+    place-items: center;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--p-primary-color) 10%, var(--surface-card));
+    color: var(--p-primary-color);
+}
+.conversation-sender {
+    flex: 1 1 10rem;
+    min-width: 0;
+}
+.conversation-sender time {
+    display: block;
     color: var(--text-color-secondary);
+    font-size: 0.8125rem;
 }
 .message-body {
     white-space: pre-wrap;
@@ -442,36 +527,37 @@ watch(
 .composer > .p-button {
     align-self: flex-end;
 }
+.connection-form label,
+.composer label {
+    color: var(--text-color-secondary);
+    font-weight: 500;
+}
 .connection-form p {
     margin: 0 0 0.5rem;
     color: var(--text-color-secondary);
 }
-@media (max-width: 800px) {
+@container mailbox (max-width: 42rem) {
     .mailbox {
-        grid-template-columns: minmax(0, 1fr);
-        min-height: 24rem;
+        display: block;
+        height: auto;
     }
     .mail-list {
-        max-height: 65vh;
-        border-right: 0;
+        border-inline-end: 0;
     }
-    .conversation--empty {
-        display: none;
+    .mail-results {
+        max-height: 65dvh;
     }
+    .conversation--empty,
     .mailbox--selected .mail-list {
         display: none;
     }
     .conversation-back {
-        display: inline-flex;
-        margin-bottom: 0.75rem;
+        display: block;
+        margin-bottom: 0.625rem;
     }
     .conversation {
         padding: 0.875rem;
-    }
-}
-@media (max-width: 479px) {
-    .mailbox-stats {
-        grid-template-columns: 1fr;
+        overflow: visible;
     }
 }
 </style>

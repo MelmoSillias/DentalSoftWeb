@@ -53,9 +53,11 @@ _dispatch_limit="${SMS_DISPATCH_LIMIT:-20}"
 _time_limit="${MESSENGER_TIME_LIMIT:-3600}"
 _memory_limit="${MESSENGER_MEMORY_LIMIT:-128M}"
 _app_env="${APP_ENV:-prod}"
+_mailbox_sync="${ENABLE_VITRINE_MAILBOX_SYNC:-${ENABLE_EMBEDDED_WORKER:-1}}"
 
 SMS_PID=""
 MSG_PID=""
+MAILBOX_PID=""
 MAIN_PID=""
 
 # Poll SMS + consumer Messenger (mails / messages async).
@@ -90,8 +92,19 @@ start_background_workers() {
     MSG_PID=$!
 }
 
+start_mailbox_sync() {
+    (
+        while true; do
+            php bin/console app:vitrine:sync-mailbox --no-interaction --env="${_app_env}" \
+                || echo "[worker] app:vitrine:sync-mailbox failed (non bloquant)"
+            sleep 60
+        done
+    ) &
+    MAILBOX_PID=$!
+}
+
 stop_background_workers() {
-    for _pid in "${SMS_PID}" "${MSG_PID}"; do
+    for _pid in "${SMS_PID}" "${MSG_PID}" "${MAILBOX_PID}"; do
         if [ -n "${_pid}" ] && kill -0 "${_pid}" 2>/dev/null; then
             kill "${_pid}" 2>/dev/null || true
         fi
@@ -118,7 +131,14 @@ fi
 if [ "${ENABLE_EMBEDDED_WORKER:-1}" != "0" ]; then
     echo "[entrypoint] ENABLE_EMBEDDED_WORKER=1 — process-queue SMS + messenger:consume en arrière-plan"
     start_background_workers "process-queue"
+fi
 
+if [ "${_mailbox_sync}" = "1" ]; then
+    echo "[entrypoint] Synchronisation automatique de la boîte Vitrine toutes les 60s"
+    start_mailbox_sync
+fi
+
+if [ -n "${MSG_PID}${MAILBOX_PID}" ]; then
     _shutdown_api() {
         echo "[entrypoint] signal reçu — arrêt FrankenPHP + workers embarqués"
         if [ -n "${MAIN_PID}" ] && kill -0 "${MAIN_PID}" 2>/dev/null; then

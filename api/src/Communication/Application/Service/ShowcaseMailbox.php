@@ -26,10 +26,15 @@ final class ShowcaseMailbox
     {
         $value = $this->em->getRepository(AppSetting::class)->findOneBy(['keyName' => 'showcase_mailbox'])?->getValue() ?? [];
         if (!$secret) {
-            $value['configured'] = str_starts_with($value['password'] ?? '', 'gcm1:');
+            $value['configured'] = $this->isConfigured($value);
             unset($value['password']);
         }
         return $value;
+    }
+
+    private function isConfigured(array $config): bool
+    {
+        return !empty($config['host']) && str_starts_with($config['password'] ?? '', 'gcm1:');
     }
 
     public function save(#[\SensitiveParameter] array $data): void
@@ -150,18 +155,28 @@ final class ShowcaseMailbox
         catch (\Throwable) { throw new \RuntimeException('Impossible de lire la boîte mail.'); }
     }
 
-    public function sync(): int
+    public function sync(bool $background = false): int
     {
+        if ($background && !$this->internet->isEnabled()) {
+            return 0;
+        }
+
         $lock = fopen($this->cacheDir.'/showcase-mailbox.lock', 'c');
         if (!$lock) { throw new \RuntimeException('Impossible de verrouiller la synchronisation.'); }
-        if (!flock($lock, LOCK_EX | LOCK_NB)) { fclose($lock); throw new \RuntimeException('Une synchronisation est déjà en cours.'); }
-        try { return $this->import(); }
-        finally { flock($lock, LOCK_UN); fclose($lock); }
+        if (!flock($lock, LOCK_EX | LOCK_NB, $wouldBlock)) {
+            fclose($lock);
+            if ($wouldBlock && $background) { return 0; }
+            throw new \RuntimeException($wouldBlock ? 'Une synchronisation est déjà en cours.' : 'Impossible de verrouiller la synchronisation.');
+        }
+        try {
+            $config = $this->config(true);
+            if ($background && !$this->isConfigured($config)) { return 0; }
+            return $this->import($config);
+        } finally { flock($lock, LOCK_UN); fclose($lock); }
     }
 
-    private function import(): int
+    private function import(array $config): int
     {
-        $config = $this->config(true);
         $connection = $this->connect($config);
         $count = 0;
         try {

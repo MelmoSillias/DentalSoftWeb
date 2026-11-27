@@ -90,6 +90,7 @@ internes, le mode production et les chemins JWT sont raccordés par le Compose.
 | `APP_INTERNET_FEATURES_ENABLED` | Fonctionnalités Internet |
 | `RUN_MIGRATIONS` | `1` : migrations au démarrage ; `0` pour gestion manuelle |
 | `ENABLE_EMBEDDED_WORKER` | `1` : workers SMS/Messenger embarqués |
+| `ENABLE_VITRINE_MAILBOX_SYNC` | `1` : synchronisation IMAP automatique dans l’API ; `0` : désactivée. Par défaut, reprend `ENABLE_EMBEDDED_WORKER`. Activer sur une seule instance par cabinet. |
 | `MESSENGER_*`, `SMS_*` | Transport, durée, mémoire et fréquence des workers |
 | `MERCURE_TOPIC_NAMESPACE` | Namespace des notifications du cabinet |
 | `MERCURE_PUBLISH_*`, `MERCURE_CIRCUIT_COOLDOWN_SECONDS` | Timeouts et circuit breaker |
